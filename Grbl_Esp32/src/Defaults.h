@@ -59,11 +59,11 @@
 #endif
 
 #ifndef DEFAULT_DIRECTION_INVERT_MASK
-#    define DEFAULT_DIRECTION_INVERT_MASK 0  // $3 uint8_
+#    define DEFAULT_DIRECTION_INVERT_MASK 0  // $3 uint8_t
 #endif
 
 #ifndef DEFAULT_INVERT_ST_ENABLE
-#    define DEFAULT_INVERT_ST_ENABLE 0  // $4 boolean
+#    define DEFAULT_INVERT_ST_ENABLE 0  // $4 uint8_t
 #endif
 
 #ifndef DEFAULT_INVERT_LIMIT_PINS
@@ -201,6 +201,10 @@
 
 #ifndef DEFAULT_SPINDLE_DELAY_SPINDOWN
 #    define DEFAULT_SPINDLE_DELAY_SPINDOWN 0
+#endif
+
+#ifndef DEFAULT_INVERT_SPINDLE_DIRECTION_PIN
+#    define DEFAULT_INVERT_SPINDLE_DIRECTION_PIN 0
 #endif
 
 #ifndef DEFAULT_INVERT_SPINDLE_OUTPUT_PIN
@@ -467,6 +471,30 @@
 #    define DEFAULT_C_STALLGUARD 16  // $175 stallguard (extended set)
 #endif
 
+// ===  Plane Select & Swap Axises===
+
+#ifndef DEFAULT_PLANE
+#    define DEFAULT_PLANE Plane::XY  // Default Work Plane
+#endif
+#ifndef DEFAULT_SWAP_X
+#    define DEFAULT_SWAP_X X_AXIS  // Default Work Plane
+#endif
+#ifndef DEFAULT_SWAP_Y
+#    define DEFAULT_SWAP_Y Y_AXIS  // Default Work Plane
+#endif
+#ifndef DEFAULT_SWAP_Z
+#    define DEFAULT_SWAP_Z Z_AXIS  // Default Work Plane
+#endif
+#ifndef DEFAULT_SWAP_A
+#    define DEFAULT_SWAP_A A_AXIS  // Default Work Plane
+#endif
+#ifndef DEFAULT_SWAP_B
+#    define DEFAULT_SWAP_B B_AXIS  // Default Work Plane
+#endif
+#ifndef DEFAULT_SWAP_C
+#    define DEFAULT_SWAP_C C_AXIS  // Default Work Plane
+#endif
+
 // ==================  pin defaults ========================
 
 // Here is a place to default pins to UNDEFINED_PIN.
@@ -678,4 +706,30 @@
 
 #ifndef DEFAULT_USER_MACRO3
 #    define DEFAULT_USER_MACRO3 ""
+#endif
+
+// ================ TOOL CHANGER ==============================
+
+#ifndef DEFAULT_ATC_SPEED
+#    define DEFAULT_ATC_SPEED 100
+#endif
+
+#ifndef DEFAULT_ATC_SPEED_MAX
+#    define DEFAULT_ATC_SPEED_MAX DEFAULT_A_MAX_RATE
+#endif
+
+#ifndef DEFAULT_ATC_DISTANCE
+#    define DEFAULT_ATC_DISTANCE 4
+#endif
+
+#ifndef DEFAULT_ATC_DISTANCE_MAX
+#    define DEFAULT_ATC_DISTANCE_MAX 100
+#endif
+
+#ifndef DEFAULT_ATC_OFFSET
+#    define DEFAULT_ATC_OFFSET 0.5
+#endif
+
+#ifndef DEFAULT_ATC_OFFSET_MAX
+#    define DEFAULT_ATC_OFFSET_MAX 1
 #endif

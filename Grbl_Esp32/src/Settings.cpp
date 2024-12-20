@@ -15,6 +15,20 @@ bool idleOrAlarm() {
 bool notCycleOrHold() {
     return sys.state == State::Cycle && sys.state == State::Hold;
 }
+bool isAxisAsda(int axis) {
+    if (axis == POSITIONABLE_SPINDLE_AXIS && static_cast<SpindleType>(spindle_type->get()) == SpindleType::ASDA_CN1) {
+        return true;
+    }
+    return false;
+}
+bool isAxisRpm(int axis) {
+#ifdef POSITIONABLE_AXIS_CONVERT
+    if (axis == POSITIONABLE_SPINDLE_AXIS) {
+        return true;
+    }
+#endif
+    return false;
+}
 
 Word::Word(type_t type, permissions_t permissions, const char* description, const char* grblName, const char* fullName) :
     _description(description), _grblName(grblName), _fullName(fullName), _type(type), _permissions(permissions) {}
@@ -23,8 +37,7 @@ Command* Command::List = NULL;
 
 Command::Command(
     const char* description, type_t type, permissions_t permissions, const char* grblName, const char* fullName, bool (*cmdChecker)()) :
-    Word(type, permissions, description, grblName, fullName),
-    _cmdChecker(cmdChecker) {
+    Word(type, permissions, description, grblName, fullName), _cmdChecker(cmdChecker) {
     link = List;
     List = this;
 }
@@ -33,8 +46,7 @@ Setting* Setting::List = NULL;
 
 Setting::Setting(
     const char* description, type_t type, permissions_t permissions, const char* grblName, const char* fullName, bool (*checker)(char*)) :
-    Word(type, permissions, description, grblName, fullName),
-    _checker(checker) {
+    Word(type, permissions, description, grblName, fullName), _checker(checker) {
     link = List;
     List = this;
 
@@ -85,8 +97,8 @@ IntSetting::IntSetting(const char*   description,
                        int32_t       maxVal,
                        bool (*checker)(char*) = NULL,
                        bool currentIsNvm) :
-    Setting(description, type, permissions, grblName, name, checker),
-    _defaultValue(defVal), _currentValue(defVal), _minValue(minVal), _maxValue(maxVal), _currentIsNvm(currentIsNvm) {
+    Setting(description, type, permissions, grblName, name, checker), _defaultValue(defVal), _currentValue(defVal), _minValue(minVal),
+    _maxValue(maxVal), _currentIsNvm(currentIsNvm) {
     _storedValue = std::numeric_limits<int32_t>::min();
 }
 
@@ -122,6 +134,32 @@ Error IntSetting::setStringValue(char* s) {
     if (endptr == s || *endptr != '\0') {
         return Error::BadNumberFormat;
     }
+    if (convertedValue < _minValue || convertedValue > _maxValue) {
+        return Error::NumberRange;
+    }
+
+    // If we don't see the NVM state, we have to make this the live value:
+    if (!_currentIsNvm) {
+        _currentValue = convertedValue;
+    }
+
+    if (_storedValue != convertedValue) {
+        if (convertedValue == _defaultValue) {
+            nvs_erase_key(_handle, _keyName);
+        } else {
+            if (nvs_set_i32(_handle, _keyName, convertedValue)) {
+                return Error::NvsSetFailed;
+            }
+            _storedValue = convertedValue;
+        }
+    }
+    check(NULL);
+    return Error::Ok;
+}
+
+Error IntSetting::setValue(int32_t value) {
+    int32_t convertedValue = value;
+
     if (convertedValue < _minValue || convertedValue > _maxValue) {
         return Error::NumberRange;
     }
@@ -183,8 +221,7 @@ AxisMaskSetting::AxisMaskSetting(const char*   description,
                                  const char*   name,
                                  int32_t       defVal,
                                  bool (*checker)(char*) = NULL) :
-    Setting(description, type, permissions, grblName, name, checker),
-    _defaultValue(defVal), _currentValue(defVal) {}
+    Setting(description, type, permissions, grblName, name, checker), _defaultValue(defVal), _currentValue(defVal) {}
 
 void AxisMaskSetting::load() {
     esp_err_t err = nvs_get_i32(_handle, _keyName, &_storedValue);
@@ -201,6 +238,32 @@ void AxisMaskSetting::setDefault() {
     if (_storedValue != _currentValue) {
         nvs_erase_key(_handle, _keyName);
     }
+}
+
+Error AxisMaskSetting::saveValue() {
+    if (_storedValue != _currentValue) {
+        if (_currentValue == _defaultValue) {
+            nvs_erase_key(_handle, _keyName);
+        } else {
+            if (nvs_set_i32(_handle, _keyName, _currentValue)) {
+                return Error::NvsSetFailed;
+            }
+            _storedValue = _currentValue;
+        }
+    }
+    return Error::Ok;
+}
+
+Error AxisMaskSetting::setAxis(uint8_t axis, bool val) {
+    if (axis < 0 && axis >= number_axis->get()) {
+        return Error::NvsSetFailed;
+    }
+    if (val) {
+        bitnum_true(_currentValue, axis);
+    } else {
+        bit_false(_currentValue, bit(axis));
+    }
+    return Error::Ok;
 }
 
 Error AxisMaskSetting::setStringValue(char* s) {
@@ -286,8 +349,8 @@ FloatSetting::FloatSetting(const char*   description,
                            float         minVal,
                            float         maxVal,
                            bool (*checker)(char*) = NULL) :
-    Setting(description, type, permissions, grblName, name, checker),
-    _defaultValue(defVal), _currentValue(defVal), _minValue(minVal), _maxValue(maxVal) {}
+    Setting(description, type, permissions, grblName, name, checker), _defaultValue(defVal), _currentValue(defVal), _minValue(minVal),
+    _maxValue(maxVal) {}
 
 void FloatSetting::load() {
     union {
@@ -344,6 +407,32 @@ Error FloatSetting::setStringValue(char* s) {
     return Error::Ok;
 }
 
+Error FloatSetting::setValue(float value) {
+    float convertedValue = value;
+
+    if (convertedValue < _minValue || convertedValue > _maxValue) {
+        return Error::NumberRange;
+    }
+    _currentValue = convertedValue;
+    if (_storedValue != _currentValue) {
+        if (_currentValue == _defaultValue) {
+            nvs_erase_key(_handle, _keyName);
+        } else {
+            union {
+                int32_t ival;
+                float   fval;
+            } v;
+            v.fval = _currentValue;
+            if (nvs_set_i32(_handle, _keyName, v.ival)) {
+                return Error::NvsSetFailed;
+            }
+            _storedValue = _currentValue;
+        }
+    }
+    check(NULL);
+    return Error::Ok;
+}
+
 const char* FloatSetting::getDefaultString() {
     static char strval[32];
     (void)sprintf(strval, "%.3f", _defaultValue);
@@ -376,8 +465,7 @@ StringSetting::StringSetting(const char*   description,
                              const char*   defVal,
                              int           min,
                              int           max,
-                             bool (*checker)(char*)) :
-    Setting(description, type, permissions, grblName, name, checker) {
+                             bool (*checker)(char*)) : Setting(description, type, permissions, grblName, name, checker) {
     _defaultValue = defVal;
     _currentValue = defVal;
     _minLength    = min;
@@ -469,8 +557,7 @@ EnumSetting::EnumSetting(const char*   description,
                          int8_t        defVal,
                          enum_opt_t*   opts,
                          bool (*checker)(char*) = NULL) :
-    Setting(description, type, permissions, grblName, name, checker),
-    _defaultValue(defVal), _options(opts) {}
+    Setting(description, type, permissions, grblName, name, checker), _defaultValue(defVal), _options(opts) {}
 
 void EnumSetting::load() {
     esp_err_t err = nvs_get_i8(_handle, _keyName, &_storedValue);
@@ -537,6 +624,32 @@ Error EnumSetting::setStringValue(char* s) {
     return Error::Ok;
 }
 
+Error EnumSetting::setEnumValue(int8_t value) {
+    // Look for the value in the _options map using the numeric value
+    auto it = std::find_if(
+        _options->begin(), _options->end(), [value](const std::pair<const char*, int8_t>& option) { return option.second == value; });
+
+    if (it != _options->end()) {
+        // If we find the value in the map
+        _currentValue = it->second;
+    } else {
+        // If the value is not found in the enum map that means there is something wrong in the application we need to fix the code
+        return Error::BadNumberFormat;
+    }
+    if (_storedValue != _currentValue) {
+        if (_currentValue == _defaultValue) {
+            nvs_erase_key(_handle, _keyName);
+        } else {
+            if (nvs_set_i8(_handle, _keyName, _currentValue)) {
+                return Error::NvsSetFailed;
+            }
+            _storedValue = _currentValue;
+        }
+    }
+    check(NULL);
+    return Error::Ok;
+}
+
 const char* EnumSetting::enumToString(int8_t value) {
     for (enum_opt_t::iterator it = _options->begin(); it != _options->end(); it++) {
         if (it->second == value) {
@@ -574,8 +687,7 @@ FlagSetting::FlagSetting(const char*   description,
                          const char*   name,
                          bool          defVal,
                          bool (*checker)(char*) = NULL) :
-    Setting(description, type, permissions, grblName, name, checker),
-    _defaultValue(defVal) {}
+    Setting(description, type, permissions, grblName, name, checker), _defaultValue(defVal) {}
 
 void FlagSetting::load() {
     esp_err_t err = nvs_get_i8(_handle, _keyName, &_storedValue);
@@ -591,6 +703,25 @@ void FlagSetting::setDefault() {
     if (_storedValue != _currentValue) {
         nvs_erase_key(_handle, _keyName);
     }
+}
+
+Error FlagSetting::setBoolValue(bool value) {
+    _currentValue = value;
+
+    // _storedValue is -1, 0, or 1
+    // _currentValue is 0 or 1
+    if (_storedValue != (int8_t)_currentValue) {
+        if (_currentValue == _defaultValue) {
+            nvs_erase_key(_handle, _keyName);
+        } else {
+            if (nvs_set_i8(_handle, _keyName, _currentValue)) {
+                return Error::NvsSetFailed;
+            }
+            _storedValue = _currentValue;
+        }
+    }
+    check(NULL);
+    return Error::Ok;
 }
 
 Error FlagSetting::setStringValue(char* s) {
@@ -645,8 +776,7 @@ IPaddrSetting::IPaddrSetting(const char*   description,
                              const char*   grblName,
                              const char*   name,
                              const char*   defVal,
-                             bool (*checker)(char*) = NULL) :
-    Setting(description, type, permissions, grblName, name, checker) {
+                             bool (*checker)(char*) = NULL) : Setting(description, type, permissions, grblName, name, checker) {
     IPAddress ipaddr;
     if (ipaddr.fromString(defVal)) {
         _defaultValue = ipaddr;
@@ -724,11 +854,13 @@ Error GrblCommand::action(char* value, WebUI::AuthenticationLevel auth_level, We
     }
     return _action((const char*)value, auth_level, out);
 };
+
 Coordinates* coords[CoordIndex::End];
 
 bool Coordinates::load() {
-    size_t len;
-    switch (nvs_get_blob(Setting::_handle, _name, _currentValue, &len)) {
+    size_t    len;
+    esp_err_t test = nvs_get_blob(Setting::_handle, _name, _currentValue, &len);
+    switch (test) {
         case ESP_OK:
             return true;
         case ESP_ERR_NVS_INVALID_LENGTH:
@@ -752,4 +884,318 @@ void Coordinates::set(float value[MAX_N_AXIS]) {
     protocol_buffer_synchronize();
 #endif
     nvs_set_blob(Setting::_handle, _name, _currentValue, sizeof(_currentValue));
+}
+
+ToolTable_t* ToolTable;  //= new ToolTable_t();
+
+bool ToolTable_t::load() {
+    uint8_t load_mask = 0;
+    size_t  len;
+
+    // load active
+    switch (nvs_get_blob(Setting::_handle, name_act, &_tool_active, &len)) {
+        case ESP_OK:
+        case ESP_ERR_NVS_INVALID_LENGTH:
+            // This could happen if the stored value is longer than the buffer.
+            // That is highly unlikely since we always store MAX_N_AXIS coordinates.
+            // It would indicate that we have decreased MAX_N_AXIS since the
+            // value was stored.  We don't flag it as an error, but rather
+            // accept the initial coordinates and ignore the residue.
+            // We could issue a warning message if we were so inclined.
+            bit_true(load_mask, bit(0));
+            break;
+        case ESP_ERR_NVS_INVALID_NAME:
+        case ESP_ERR_NVS_INVALID_HANDLE:
+        default:
+            bit_false(load_mask, bit(0));
+            break;
+    }
+
+    // load selected
+    switch (nvs_get_blob(Setting::_handle, name_sel, &_tool_selected, &len)) {
+        case ESP_OK:
+        case ESP_ERR_NVS_INVALID_LENGTH:
+            // This could happen if the stored value is longer than the buffer.
+            // That is highly unlikely since we always store MAX_N_AXIS coordinates.
+            // It would indicate that we have decreased MAX_N_AXIS since the
+            // value was stored.  We don't flag it as an error, but rather
+            // accept the initial coordinates and ignore the residue.
+            // We could issue a warning message if we were so inclined.
+            bit_true(load_mask, bit(1));
+            break;
+        case ESP_ERR_NVS_INVALID_NAME:
+        case ESP_ERR_NVS_INVALID_HANDLE:
+        default:
+            bit_false(load_mask, bit(1));
+            break;
+    }
+
+    // load tools
+    for (int idx = 0; idx < MAX_TOOL_NUMBER; idx++) {
+        if (_tools[idx]->load())
+            bit_true(load_mask, bit(idx + 2));
+        else
+            bit_false(load_mask, bit(idx + 2));
+    }
+
+    _isinit = true;
+
+    if (bit_isfalse(load_mask, B00111111)) {
+        setDefault(B00111111);
+        return false;
+    }
+    return true;
+};
+
+void ToolTable_t::set_tool_active(uint8_t value) {
+    if (_isinit) {
+        _tool_active = value;
+#ifdef FORCE_BUFFER_SYNC_DURING_NVS_WRITE
+        protocol_buffer_synchronize();
+#endif
+        nvs_set_blob(Setting::_handle, name_act, &_tool_active, sizeof(_tool_active));
+    }
+}
+
+void ToolTable_t::set_tool_selected(uint8_t value) {
+    if (_isinit) {
+        _tool_selected = value;
+#ifdef FORCE_BUFFER_SYNC_DURING_NVS_WRITE
+        protocol_buffer_synchronize();
+#endif
+        nvs_set_blob(Setting::_handle, name_sel, &_tool_selected, sizeof(_tool_selected));
+    }
+}
+
+bool ToolNfo::load() {
+    uint8_t load_mask = 0;
+    uint8_t load_xyz  = 0;
+    size_t  len;
+
+    // load xyz
+    snprintf(_temp, sizeof(_temp), "%s_xyz", _name);
+    switch (nvs_get_blob(Setting::_handle, _temp, _xyz, &len)) {
+        case ESP_OK:
+            bit_true(load_mask, bit(0));
+            break;
+        case ESP_ERR_NVS_INVALID_LENGTH:
+            // This could happen if the stored value is longer than the buffer.
+            // That is highly unlikely since we always store MAX_N_AXIS coordinates.
+            // It would indicate that we have decreased MAX_N_AXIS since the
+            // value was stored.  We don't flag it as an error, but rather
+            // accept the initial coordinates and ignore the residue.
+            // We could issue a warning message if we were so inclined.
+        case ESP_ERR_NVS_INVALID_NAME:
+        case ESP_ERR_NVS_INVALID_HANDLE:
+        default:
+            bit_false(load_mask, bit(0));
+            break;
+    }
+
+    // load xyz alternative
+    if (bit_isfalse(load_mask, bit(0))) {
+        for (int idx = 0; idx < MAX_N_AXIS; idx++) {
+            snprintf(_temp, sizeof(_temp), "%s_xyz_%d", _name, idx);
+            switch (nvs_get_blob(Setting::_handle, _temp, &_xyz[idx], &len)) {
+                case ESP_OK:
+                case ESP_ERR_NVS_INVALID_LENGTH:
+                    // This could happen if the stored value is longer than the buffer.
+                    // That is highly unlikely since we always store MAX_N_AXIS coordinates.
+                    // It would indicate that we have decreased MAX_N_AXIS since the
+                    // value was stored.  We don't flag it as an error, but rather
+                    // accept the initial coordinates and ignore the residue.
+                    // We could issue a warning message if we were so inclined.
+                    bit_true(load_xyz, bit(idx));
+                    break;
+                case ESP_ERR_NVS_INVALID_NAME:
+                case ESP_ERR_NVS_INVALID_HANDLE:
+                default:
+                    bit_false(load_xyz, bit(idx));
+                    break;
+            }
+        }
+        if (bit_istrue(load_xyz, B00111111)) {
+            bit_true(load_mask, bit(0));
+        }
+    }
+
+    // load i
+    snprintf(_temp, sizeof(_temp), "%s_i", _name);
+    switch (nvs_get_blob(Setting::_handle, _temp, &_i, &len)) {
+        case ESP_OK:
+        case ESP_ERR_NVS_INVALID_LENGTH:
+            // This could happen if the stored value is longer than the buffer.
+            // That is highly unlikely since we always store MAX_N_AXIS coordinates.
+            // It would indicate that we have decreased MAX_N_AXIS since the
+            // value was stored.  We don't flag it as an error, but rather
+            // accept the initial coordinates and ignore the residue.
+            // We could issue a warning message if we were so inclined.
+            bit_true(load_mask, bit(1));
+            break;
+        case ESP_ERR_NVS_INVALID_NAME:
+        case ESP_ERR_NVS_INVALID_HANDLE:
+        default:
+            bit_false(load_mask, bit(1));
+            break;
+    }
+
+    // load j
+    snprintf(_temp, sizeof(_temp), "%s_j", _name);
+    switch (nvs_get_blob(Setting::_handle, _temp, &_j, &len)) {
+        case ESP_OK:
+        case ESP_ERR_NVS_INVALID_LENGTH:
+            // This could happen if the stored value is longer than the buffer.
+            // That is highly unlikely since we always store MAX_N_AXIS coordinates.
+            // It would indicate that we have decreased MAX_N_AXIS since the
+            // value was stored.  We don't flag it as an error, but rather
+            // accept the initial coordinates and ignore the residue.
+            // We could issue a warning message if we were so inclined.
+            bit_true(load_mask, bit(2));
+            break;
+        case ESP_ERR_NVS_INVALID_NAME:
+        case ESP_ERR_NVS_INVALID_HANDLE:
+        default:
+            bit_false(load_mask, bit(2));
+            break;
+    }
+
+    // load p
+    snprintf(_temp, sizeof(_temp), "%s_p", _name);
+    switch (nvs_get_blob(Setting::_handle, _temp, &_p, &len)) {
+        case ESP_OK:
+        case ESP_ERR_NVS_INVALID_LENGTH:
+            // This could happen if the stored value is longer than the buffer.
+            // That is highly unlikely since we always store MAX_N_AXIS coordinates.
+            // It would indicate that we have decreased MAX_N_AXIS since the
+            // value was stored.  We don't flag it as an error, but rather
+            // accept the initial coordinates and ignore the residue.
+            // We could issue a warning message if we were so inclined.
+            bit_true(load_mask, bit(3));
+            break;
+        case ESP_ERR_NVS_INVALID_NAME:
+        case ESP_ERR_NVS_INVALID_HANDLE:
+        default:
+            bit_false(load_mask, bit(3));
+            break;
+    }
+
+    // load r
+    snprintf(_temp, sizeof(_temp), "%s_r", _name);
+    switch (nvs_get_blob(Setting::_handle, _temp, &_r, &len)) {
+        case ESP_OK:
+        case ESP_ERR_NVS_INVALID_LENGTH:
+            // This could happen if the stored value is longer than the buffer.
+            // That is highly unlikely since we always store MAX_N_AXIS coordinates.
+            // It would indicate that we have decreased MAX_N_AXIS since the
+            // value was stored.  We don't flag it as an error, but rather
+            // accept the initial coordinates and ignore the residue.
+            // We could issue a warning message if we were so inclined.
+            bit_true(load_mask, bit(4));
+            break;
+        case ESP_ERR_NVS_INVALID_NAME:
+        case ESP_ERR_NVS_INVALID_HANDLE:
+        default:
+            bit_false(load_mask, bit(4));
+            break;
+    }
+
+    // load q
+    snprintf(_temp, sizeof(_temp), "%s_q", _name);
+    switch (nvs_get_blob(Setting::_handle, _temp, &_q, &len)) {
+        case ESP_OK:
+        case ESP_ERR_NVS_INVALID_LENGTH:
+            // This could happen if the stored value is longer than the buffer.
+            // That is highly unlikely since we always store MAX_N_AXIS coordinates.
+            // It would indicate that we have decreased MAX_N_AXIS since the
+            // value was stored.  We don't flag it as an error, but rather
+            // accept the initial coordinates and ignore the residue.
+            // We could issue a warning message if we were so inclined.
+            bit_true(load_mask, bit(5));
+            break;
+        case ESP_ERR_NVS_INVALID_NAME:
+        case ESP_ERR_NVS_INVALID_HANDLE:
+        default:
+            bit_false(load_mask, bit(5));
+            break;
+    }
+
+    _isinit = true;
+
+    if (bit_isfalse(load_mask, B00111111)) {
+        // setDefault(-1);
+        return false;
+    }
+    return true;
+};
+
+void ToolNfo::set_i(float value) {
+    if (_isinit) {
+        _i = value;
+#ifdef FORCE_BUFFER_SYNC_DURING_NVS_WRITE
+        protocol_buffer_synchronize();
+#endif
+        snprintf(_temp, sizeof(_temp), "%s_i", _name);
+        nvs_set_blob(Setting::_handle, _temp, &_i, sizeof(_i));
+    }
+}
+
+void ToolNfo::set_j(float value) {
+    if (_isinit) {
+        _j = value;
+#ifdef FORCE_BUFFER_SYNC_DURING_NVS_WRITE
+        protocol_buffer_synchronize();
+#endif
+        snprintf(_temp, sizeof(_temp), "%s_j", _name);
+        nvs_set_blob(Setting::_handle, _temp, &_j, sizeof(_j));
+    }
+}
+
+void ToolNfo::set_p(float value) {
+    if (_isinit) {
+        _p = value;
+#ifdef FORCE_BUFFER_SYNC_DURING_NVS_WRITE
+        protocol_buffer_synchronize();
+#endif
+        snprintf(_temp, sizeof(_temp), "%s_p", _name);
+        nvs_set_blob(Setting::_handle, _temp, &_p, sizeof(_p));
+    }
+}
+
+void ToolNfo::set_q(float value) {
+    if (_isinit) {
+        _q = value;
+#ifdef FORCE_BUFFER_SYNC_DURING_NVS_WRITE
+        protocol_buffer_synchronize();
+#endif
+        snprintf(_temp, sizeof(_temp), "%s_q", _name);
+        nvs_set_blob(Setting::_handle, _temp, &_q, sizeof(_q));
+    }
+}
+
+void ToolNfo::set_r(float value) {
+    if (_isinit) {
+        _r = value;
+#ifdef FORCE_BUFFER_SYNC_DURING_NVS_WRITE
+        protocol_buffer_synchronize();
+#endif
+        snprintf(_temp, sizeof(_temp), "%s_r", _name);
+        nvs_set_blob(Setting::_handle, _temp, &_r, sizeof(_r));
+    }
+}
+
+void ToolNfo::set_xyz(float value[MAX_N_AXIS]) {
+    if (_isinit) {
+        memcpy(&_xyz, value, sizeof(_xyz));
+#ifdef FORCE_BUFFER_SYNC_DURING_NVS_WRITE
+        protocol_buffer_synchronize();
+#endif
+        snprintf(_temp, sizeof(_temp), "%s_xyz", _name);
+
+        nvs_set_blob(Setting::_handle, _temp, _xyz, sizeof(_xyz));
+
+        for (int idx = 0; idx < MAX_N_AXIS; idx++) {
+            snprintf(_temp, sizeof(_temp), "%s_xyz_%d", _name, idx);
+            nvs_set_blob(Setting::_handle, _temp, &_xyz[idx], sizeof(float));
+        }
+    }
 }

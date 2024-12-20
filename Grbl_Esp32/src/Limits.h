@@ -44,6 +44,9 @@ void limits_go_home(uint8_t cycle_mask);
 // Check for soft limit violations
 void limits_soft_check(float* target);
 
+// Check for soft limit violations
+void limits_direction_check(float* target);
+
 void isr_limit_switches();
 
 // A task that runs after a limit switch interrupt.
@@ -54,6 +57,9 @@ float limitsMinPosition(uint8_t axis);
 
 // Internal factor used by limits_soft_check
 bool limitsCheckTravel(float* target);
+
+// Internal factor used by limits_dir_check
+bool limitsCheckDirection(float* target);
 
 // check if a switch has been defined
 bool limitsSwitchDefined(uint8_t axis, uint8_t gang_index);

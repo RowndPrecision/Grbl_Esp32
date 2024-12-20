@@ -157,6 +157,7 @@ static void report_util_axis_values(float* axis_value, char* rpt) {
     uint8_t     idx;
     char        axisVal[coordStringLen];
     float       unit_conv = 1.0;      // unit conversion multiplier..default is mm
+    float       rpm_conv  = 1.0;      // unit conversion multiplier..default is mm
     const char* format    = "%4.3f";  // Default - report mm to 3 decimal places
     rpt[0]                = '\0';
     if (report_inches->get()) {
@@ -165,7 +166,14 @@ static void report_util_axis_values(float* axis_value, char* rpt) {
     }
     auto n_axis = number_axis->get();
     for (idx = 0; idx < n_axis; idx++) {
-        snprintf(axisVal, coordStringLen - 1, format, axis_value[idx] * unit_conv);
+#ifdef POSITIONABLE_AXIS_CONVERT
+        if (isAxisRpm(idx)) {
+            rpm_conv = axis_convet_multiplier->get();
+        } else {
+            rpm_conv = 1.0;
+        }
+#endif
+        snprintf(axisVal, coordStringLen - 1, format, axis_value[idx] * unit_conv * rpm_conv);
         strcat(rpt, axisVal);
         if (idx < (number_axis->get() - 1)) {
             strcat(rpt, ",");
@@ -286,6 +294,7 @@ void report_feedback_message(Message message) {  // ok to send to all clients
 
 // Welcome message
 void report_init_message(uint8_t client) {
+    grbl_sendf(client, "\r\nCNC: %s ['$' for help]\r\n", CNC_VERSION);
     grbl_sendf(client, "\r\nGrbl %s ['$' for help]\r\n", GRBL_VERSION);
 }
 
@@ -316,6 +325,7 @@ void report_probe_parameters(uint8_t client) {
 // Prints Grbl NGC parameters (coordinate offsets, probing)
 void report_ngc_parameters(uint8_t client) {
     String ngc_rpt = "";
+    float  temp[MAX_N_AXIS];
 
     // Print persistent offsets G54 - G59, G28, and G30
     for (auto coord_select = CoordIndex::Begin; coord_select < CoordIndex::End; ++coord_select) {
@@ -329,13 +339,28 @@ void report_ngc_parameters(uint8_t client) {
     ngc_rpt += report_util_axis_values(gc_state.coord_offset);
     ngc_rpt += "]\r\n";
     ngc_rpt += "[TLO:";  // Print tool length offset
-    float tlo = gc_state.tool_length_offset;
-    if (report_inches->get()) {
-        tlo *= INCH_PER_MM;
-    }
-    ngc_rpt += String(tlo, 3);
-    ;
+    ngc_rpt += report_util_axis_values(gc_state.tool_length_offset);
     ngc_rpt += "]\r\n";
+
+    // tool table
+    for (int idx = 0; idx < tool_count->get(); idx++) {  // Axes indices are consistent, so loop may be used.
+        ngc_rpt += "[T";
+        ngc_rpt += idx + 1;
+        ngc_rpt += ":";
+        ToolTable->get_xyz(temp, idx);
+        ngc_rpt += report_util_axis_values(temp);
+        ngc_rpt += ", p:";
+        ngc_rpt += ToolTable->get_p(idx);
+        ngc_rpt += ", r:";
+        ngc_rpt += ToolTable->get_r(idx);
+        ngc_rpt += ", i:";
+        ngc_rpt += ToolTable->get_i(idx);
+        ngc_rpt += ", j:";
+        ngc_rpt += ToolTable->get_j(idx);
+        ngc_rpt += ", q:";
+        ngc_rpt += ToolTable->get_q(idx);
+        ngc_rpt += "]\r\n";
+    }
     grbl_send(client, ngc_rpt.c_str());
     report_probe_parameters(client);
 }
@@ -487,14 +512,15 @@ void report_gcode_modes(uint8_t client) {
     }
 #endif
 
-    sprintf(temp, " T%d", gc_state.tool);
+    sprintf(temp, " T%d", tool_active->get());
     strcat(modes_rpt, temp);
     sprintf(temp, report_inches->get() ? " F%.1f" : " F%.0f", gc_state.feed_rate);
     strcat(modes_rpt, temp);
     sprintf(temp, " S%d", uint32_t(gc_state.spindle_speed));
     strcat(modes_rpt, temp);
     strcat(modes_rpt, "]\r\n");
-    grbl_send(client, modes_rpt);
+    // grbl_send(client, modes_rpt);
+    grbl_send(CLIENT_ALL, modes_rpt);
 }
 
 // Prints specified startup line
@@ -509,6 +535,7 @@ void report_execute_startup_message(const char* line, Error status_code, uint8_t
 
 // Prints build info line
 void report_build_info(const char* line, uint8_t client) {
+    grbl_sendf(client, "[VER:%s.%s:%s]\r\n[OPT:", CNC_VERSION, CNC_VERSION_BUILD, line);
     grbl_sendf(client, "[VER:%s.%s:%s]\r\n[OPT:", GRBL_VERSION, GRBL_VERSION_BUILD, line);
 #ifdef COOLANT_MIST_PIN
     grbl_send(client, "M");  // TODO Need to deal with M8...it could be disabled
@@ -557,7 +584,8 @@ void report_build_info(const char* line, uint8_t client) {
     grbl_send(client, "]\r\n");
     report_machine_type(client);
 #if defined(ENABLE_WIFI)
-    grbl_send(client, (char*)WebUI::wifi_config.info());
+    // grbl_send(client, (char*)WebUI::wifi_config.info());
+    grbl_send(CLIENT_ALL, (char*)WebUI::wifi_config.info());
 #endif
 #if defined(ENABLE_BLUETOOTH)
     grbl_send(client, (char*)WebUI::bt_config.info());
@@ -641,6 +669,9 @@ void report_realtime_status(uint8_t client) {
     }
     strcat(status, temp);
 #endif
+    sprintf(temp, "|Led:%s", led_state->getStringValue());
+    strcat(status, temp);
+
 #ifdef REPORT_FIELD_PIN_STATE
     AxisMask    lim_pin_state  = limits_get_state();
     ControlPins ctrl_pin_state = system_control_get_state();
@@ -860,7 +891,9 @@ char* report_state_text() {
             strcpy(state, "Home");
             break;
         case State::Alarm:
-            strcpy(state, "Alarm");
+            char temp[10];
+            sprintf(temp, "Alarm:%d", static_cast<int>(sys_rt_exec_alarm));
+            strcpy(state, temp);
             break;
         case State::CheckMode:
             strcpy(state, "Check");
@@ -888,17 +921,17 @@ char* report_state_text() {
 
 char report_get_axis_letter(uint8_t axis) {
     switch (axis) {
-        case X_AXIS:
+        case DEFAULT_SWAP_X:
             return 'X';
-        case Y_AXIS:
+        case DEFAULT_SWAP_Y:
             return 'Y';
-        case Z_AXIS:
+        case DEFAULT_SWAP_Z:
             return 'Z';
-        case A_AXIS:
+        case DEFAULT_SWAP_A:
             return 'A';
-        case B_AXIS:
+        case DEFAULT_SWAP_B:
             return 'B';
-        case C_AXIS:
+        case DEFAULT_SWAP_C:
             return 'C';
         default:
             return '?';
@@ -946,10 +979,7 @@ float* get_wco() {
     auto         n_axis = number_axis->get();
     for (int idx = 0; idx < n_axis; idx++) {
         // Apply work coordinate offsets and tool length offset to current position.
-        wco[idx] = gc_state.coord_system[idx] + gc_state.coord_offset[idx];
-        if (idx == TOOL_LENGTH_OFFSET_AXIS) {
-            wco[idx] += gc_state.tool_length_offset;
-        }
+        wco[idx] = gc_state.coord_system[idx] + gc_state.coord_offset[idx] + gc_state.tool_length_offset[idx];
     }
     return wco;
 }

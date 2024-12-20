@@ -266,14 +266,14 @@ void system_exec_control_pin(ControlPins pins) {
         sys_rt_exec_state.bit.feedHold = true;
     } else if (pins.bit.safetyDoor) {
         sys_rt_exec_state.bit.safetyDoor = true;
-    } else if (pins.bit.macro0) {
-        user_defined_macro(0);  // function must be implemented by user
-    } else if (pins.bit.macro1) {
-        user_defined_macro(1);  // function must be implemented by user
-    } else if (pins.bit.macro2) {
-        user_defined_macro(2);  // function must be implemented by user
-    } else if (pins.bit.macro3) {
-        user_defined_macro(3);  // function must be implemented by user
+        // } else if (pins.bit.macro0) {
+        //     user_defined_macro(0);  // function must be implemented by user //CHG remove
+        // } else if (pins.bit.macro1) {
+        //     user_defined_macro(1);  // function must be implemented by user
+        // } else if (pins.bit.macro2) {
+        //     user_defined_macro(2);  // function must be implemented by user
+        // } else if (pins.bit.macro3) {
+        //     user_defined_macro(3);  // function must be implemented by user
     }
 }
 

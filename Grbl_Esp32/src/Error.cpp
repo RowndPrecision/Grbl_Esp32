@@ -81,4 +81,6 @@ std::map<Error, const char*> ErrorNames = {
     { Error::AuthenticationFailed, "Authentication failed!" },
     { Error::AnotherInterfaceBusy, "Another interface is busy" },
     { Error::JogCancelled, "Jog Cancelled" },
+    { Error::AsdaMode, "Incompatible servo mode" },
+    { Error::AsdaAlarm, "Servo ALARM" },
 };

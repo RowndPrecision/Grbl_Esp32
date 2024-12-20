@@ -125,7 +125,9 @@ void __attribute__((weak)) display_init() {}
 
 void __attribute__((weak)) user_m30() {}
 
-void __attribute__((weak)) user_tool_change(uint8_t new_tool) {}
+Error __attribute__((weak)) user_tool_change(uint8_t new_tool) {
+    return Error::Ok;
+}
 /*
   setup() and loop() in the Arduino .ino implements this control flow:
 

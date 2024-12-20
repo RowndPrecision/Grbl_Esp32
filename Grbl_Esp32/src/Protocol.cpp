@@ -75,7 +75,6 @@ Error add_char_to_line(char c, uint8_t client) {
 }
 
 Error execute_line(char* line, uint8_t client, WebUI::AuthenticationLevel auth_level) {
-    Error result = Error::Ok;
     // Empty or comment line. For syncing purposes.
     if (line[0] == 0) {
         return Error::Ok;
@@ -183,7 +182,7 @@ void protocol_main_loop() {
                         break;
                 }
             }  // while serial read
-        }      // for clients
+        }  // for clients
         // If there are no more characters in the serial read buffer to be processed and executed,
         // this indicates that g-code streaming has either filled the planner buffer or has
         // completed. In either case, auto-cycle start, if enabled, any queued moves.
@@ -257,7 +256,7 @@ void protocol_exec_rt_system() {
         sys.state = State::Alarm;  // Set system alarm state
         report_alarm_message(alarm);
         // Halt everything upon a critical event flag. Currently hard and soft limits flag this.
-        if ((alarm == ExecAlarm::HardLimit) || (alarm == ExecAlarm::SoftLimit)) {
+        if ((alarm == ExecAlarm::HardLimit) || (alarm == ExecAlarm::SoftLimit) || (alarm == ExecAlarm::DirectionBlock)) {
             report_feedback_message(Message::CriticalEvent);
             sys_rt_exec_state.bit.reset = false;  // Disable any existing reset
             do {

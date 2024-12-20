@@ -54,7 +54,7 @@ Some features should not be changed. See notes below.
 // The mask order is ...
 // Macro3 | Macro2 | Macro 1| Macr0 |Cycle Start | Feed Hold | Reset | Safety Door
 // For example B1101 will invert the function of the Reset pin.
-#define INVERT_CONTROL_PIN_MASK B00001111
+#define INVERT_CONTROL_PIN_MASK B00001110
 
 // #define ENABLE_CONTROL_SW_DEBOUNCE     // Default disabled. Uncomment to enable.
 #define CONTROL_SW_DEBOUNCE_PERIOD 32  // in milliseconds default 32 microseconds
@@ -75,7 +75,14 @@ Some features should not be changed. See notes below.
 #    endif
 #endif
 
-const int MAX_N_AXIS = 6;
+// ======= TOOL STUFF ========
+
+#ifndef DEFAULT_TOOL_COUNT_MAX
+#    define DEFAULT_TOOL_COUNT_MAX 4
+#endif
+
+const int MAX_N_AXIS      = 6;
+const int MAX_TOOL_NUMBER = DEFAULT_TOOL_COUNT_MAX;
 
 // Number of axes defined (steppers, servos, etc) (valid range: 3 to 6)
 // Even if your machine only uses less than the minimum of 3, you should select 3
@@ -96,15 +103,20 @@ const int MAX_N_AXIS = 6;
 //#define CONNECT_TO_SSID  "your SSID"
 //#define SSID_PASSWORD  "your SSID password"
 //CONFIGURE_EYECATCH_BEGIN (DO NOT MODIFY THIS LINE)
-#define ENABLE_BLUETOOTH  // enable bluetooth
+// #define ENABLE_BLUETOOTH  // enable bluetooth
 
-#define ENABLE_SD_CARD  // enable use of SD Card to run jobs
+// #define ENABLE_SD_CARD  // enable use of SD Card to run jobs
+// #define REPORT_HEAP     // enable use of SD Card to run jobs
 
-#define ENABLE_WIFI  //enable wifi
+// #define ENABLE_WIFI  //enable wifi
+
+// #define ENABLE_ESPNOW  //enable EspNow
 
 #if defined(ENABLE_WIFI) || defined(ENABLE_BLUETOOTH)
 #    define WIFI_OR_BLUETOOTH
 #endif
+
+/*
 
 #define ENABLE_HTTP                //enable HTTP and all related services
 #define ENABLE_OTA                 //enable OTA
@@ -117,11 +129,13 @@ const int MAX_N_AXIS = 6;
 #define ENABLE_SERIAL2SOCKET_IN
 #define ENABLE_SERIAL2SOCKET_OUT
 
+*/
+
 // Captive portal is used when WiFi is in access point mode.  It lets the
 // WebUI come up automatically in the browser, instead of requiring the user
 // to browse manually to a default URL.  It works like airport and hotel
 // WiFi that takes you a special page as soon as you connect to that AP.
-#define ENABLE_CAPTIVE_PORTAL
+// #define ENABLE_CAPTIVE_PORTAL
 
 // Warning! The current authentication implementation is too weak to provide
 // security against an attacker, since passwords are stored and transmitted
@@ -238,7 +252,7 @@ static const uint8_t NHomingLocateCycle = 1;  // Integer (1-128)
 
 // Allows GRBL to track and report gcode line numbers.  Enabling this means that the planning buffer
 // goes from 16 to 15 to make room for the additional line number data in the plan_block_t struct
-// #define USE_LINE_NUMBERS // Disabled by default. Uncomment to enable.
+#define USE_LINE_NUMBERS  // Disabled by default. Uncomment to enable.
 
 // Upon a successful probe cycle, this option provides immediately feedback of the probe coordinates
 // through an automatically generated message. If disabled, users can still access the last probe
@@ -384,7 +398,7 @@ const int ACCELERATION_TICKS_PER_SECOND = 100;
 // Sets which axis the tool length offset is applied. Assumes the spindle is always parallel with
 // the selected axis with the tool oriented toward the negative direction. In other words, a positive
 // tool length offset value is subtracted from the current location.
-const int TOOL_LENGTH_OFFSET_AXIS = Z_AXIS;  // Default z-axis. Valid values are X_AXIS, Y_AXIS, or Z_AXIS.
+const int TOOL_LENGTH_OFFSET_AXIS = X_AXIS;  // Default z-axis. Valid values are X_AXIS, Y_AXIS, or Z_AXIS.
 
 // With this enabled, Grbl sends back an echo of the line it has received, which has been pre-parsed (spaces
 // removed, capitalized letters, no comments) and is to be immediately executed by Grbl. Echoes will not be
@@ -394,12 +408,12 @@ const int TOOL_LENGTH_OFFSET_AXIS = Z_AXIS;  // Default z-axis. Valid values are
 // NOTE: Only use this for debugging purposes!! When echoing, this takes up valuable resources and can effect
 // performance. If absolutely needed for normal operation, the serial write buffer should be greatly increased
 // to help minimize transmission waiting within the serial write protocol.
-//#define REPORT_ECHO_LINE_RECEIVED // Default disabled. Uncomment to enable.
+// #define REPORT_ECHO_LINE_RECEIVED  // Default disabled. Uncomment to enable.
 
 // This is similar to REPORT_ECHO_LINE_RECEIVED and subject to all its caveats,
 // but instead of echoing the pre-parsed line, it echos the raw line exactly as
 // received, including not only GCode lines, but also $ and [ESP commands.
-//#define REPORT_ECHO_RAW_LINE_RECEIVED // Default disabled. Uncomment to enable.
+// #define REPORT_ECHO_RAW_LINE_RECEIVED  // Default disabled. Uncomment to enable.
 
 // Minimum planner junction speed. Sets the default minimum junction speed the planner plans to at
 // every buffer block junction, except for starting from rest and end of the buffer, which are always
@@ -501,7 +515,7 @@ const int DEBOUNCE_PERIOD = 32;  // in milliseconds default 32 microseconds
 // that the switches don't bounce, we recommend enabling this option. This will help prevent
 // triggering a hard limit when the machine disengages from the switch.
 // NOTE: This option has no effect if SOFTWARE_DEBOUNCE is enabled.
-// #define HARD_LIMIT_FORCE_STATE_CHECK // Default disabled. Uncomment to enable.
+#define HARD_LIMIT_FORCE_STATE_CHECK  // Default disabled. Uncomment to enable.
 
 // Adjusts homing cycle search and locate scalars. These are the multipliers used by Grbl's
 // homing cycle to ensure the limit switches are engaged and cleared through each phase of
@@ -562,7 +576,7 @@ const int DEBOUNCE_PERIOD = 32;  // in milliseconds default 32 microseconds
 // Restoring to the resume position follows these set motions in reverse: fast restore to
 // pull-out position, power-up with a time-out, and plunge back to the original position at the
 // slower pull-out rate.
-#define PARKING_ENABLE  // Default disabled. Uncomment to enable
+// #define PARKING_ENABLE  // Default disabled. Uncomment to enable
 
 // Configure options for the parking motion, if enabled.
 #define PARKING_AXIS Z_AXIS                      // Define which axis that performs the parking motion

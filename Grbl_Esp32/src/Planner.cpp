@@ -344,6 +344,7 @@ uint8_t plan_buffer_line(float* target, plan_line_data_t* pl_data) {
     block->millimeters  = convert_delta_vector_to_unit_vector(unit_vec);
     block->acceleration = limit_acceleration_by_axis_maximum(unit_vec);
     block->rapid_rate   = limit_rate_by_axis_maximum(unit_vec);
+
     // Store programmed rate.
     if (block->motion.rapidMotion) {
         block->programmed_rate = block->rapid_rate;

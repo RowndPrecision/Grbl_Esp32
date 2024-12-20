@@ -20,7 +20,8 @@ AxisMaskSetting* homing_dir_mask;
 AxisMaskSetting* homing_squared_axes;
 AxisMaskSetting* stallguard_debug_mask;
 
-FlagSetting* step_enable_invert;
+AxisMaskSetting* step_enable_invert;
+
 FlagSetting* limit_invert;
 FlagSetting* probe_invert;
 FlagSetting* report_inches;
@@ -38,12 +39,21 @@ IntSetting*   status_mask;
 FloatSetting* junction_deviation;
 FloatSetting* arc_tolerance;
 
+AxisMaskSetting* limit_axis_move_plus;
+AxisMaskSetting* limit_axis_move_minus;
+
+FloatSetting* axis_convet_multiplier;
+
+FlagSetting* led_state;
+FlagSetting* led_inverse;
+
 FloatSetting*    homing_feed_rate;
 FloatSetting*    homing_seek_rate;
 FloatSetting*    homing_debounce;
 FloatSetting*    homing_pulloff;
 AxisMaskSetting* homing_cycle[MAX_N_AXIS];
 FloatSetting*    spindle_pwm_freq;
+FloatSetting*    rpm_max_chuck;
 FloatSetting*    rpm_max;
 FloatSetting*    rpm_min;
 FloatSetting*    spindle_delay_spinup;
@@ -52,6 +62,8 @@ FloatSetting*    coolant_start_delay;
 FlagSetting*     spindle_enbl_off_with_zero_speed;
 FlagSetting*     spindle_enable_invert;
 FlagSetting*     spindle_output_invert;
+FlagSetting*     spindle_direction_invert;
+FlagSetting*     chuck_direction_invert;
 
 FloatSetting* spindle_pwm_off_value;
 FloatSetting* spindle_pwm_min_value;
@@ -59,6 +71,14 @@ FloatSetting* spindle_pwm_max_value;
 IntSetting*   spindle_pwm_bit_precision;
 
 EnumSetting* spindle_type;
+
+FloatSetting* atc_speed;
+FloatSetting* atc_distance;
+FloatSetting* atc_offset;
+
+IntSetting* tool_selected;
+IntSetting* tool_active;
+IntSetting* tool_count;
 
 EnumSetting* message_level;
 
@@ -74,6 +94,7 @@ enum_opt_t spindleTypes = {
     { "10V", int8_t(SpindleType::_10V) },
     { "H2A", int8_t(SpindleType::H2A) },
     { "YL620", int8_t(SpindleType::YL620) },
+    // { "AsdaCN1", int8_t(SpindleType::ASDA_CN1) },
     // clang-format on
 };
 
@@ -203,6 +224,32 @@ static bool postMotorSetting(char* value) {
     return true;
 }
 
+static bool checkLedChange() {
+    bool temp = led_state->get();
+    if (led_inverse->get()) {
+        temp = !temp;
+    }
+    digitalWrite(LED_PIN, temp);
+
+    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "led state: %d ", temp);
+
+    return true;
+}
+
+static bool checkLedChange(char* value) {
+    if (!value) {
+        checkLedChange();
+        return true;
+    }
+    return true;
+}
+
+static void led_init() {
+    pinMode(LED_PIN, OUTPUT);
+    led_state->setBoolValue(false);
+    checkLedChange();
+}
+
 static bool checkSpindleChange(char* val) {
     if (!val) {
         // if not in disable (M5) ...
@@ -216,6 +263,7 @@ static bool checkSpindleChange(char* val) {
         gc_state.spindle_speed = 0;   // Set S value to 0
         spindle->deinit();            // old spindle
         Spindles::Spindle::select();  // get new spindle
+        motors_set_disable(true);
         return true;
     }
     return true;
@@ -239,6 +287,13 @@ void make_coordinate(CoordIndex index, const char* name) {
         coords[index]->setDefault();
     }
 }
+
+void make_toolTable() {
+    ToolTable = new ToolTable_t();
+
+    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Tool table load %d ", ToolTable->load());
+}
+
 void make_settings() {
     Setting::init();
 
@@ -252,6 +307,8 @@ void make_settings() {
     make_coordinate(CoordIndex::G59, "G59");
     make_coordinate(CoordIndex::G28, "G28");
     make_coordinate(CoordIndex::G30, "G30");
+
+    make_toolTable();
 
     verbose_errors = new FlagSetting(EXTENDED, WG, NULL, "Errors/Verbose", DEFAULT_VERBOSE_ERRORS);
 
@@ -323,7 +380,7 @@ void make_settings() {
     }
     for (axis = MAX_N_AXIS - 1; axis >= 0; axis--) {
         def          = &axis_defaults[axis];
-        auto setting = new FloatSetting(GRBL, WG, makeGrblName(axis, 110), makename(def->name, "MaxRate"), def->max_rate, 1.0, 100000.0);
+        auto setting = new FloatSetting(GRBL, WG, makeGrblName(axis, 110), makename(def->name, "MaxRate"), def->max_rate, 1.0, 1000000.0);
         setting->setAxis(axis);
         axis_settings[axis]->max_rate = setting;
     }
@@ -335,9 +392,43 @@ void make_settings() {
         axis_settings[axis]->steps_per_mm = setting;
     }
 
+    // Tool settings
+
+    atc_speed    = new FloatSetting(EXTENDED, WG, "67", "ATC/speed", DEFAULT_ATC_SPEED, 0.0, DEFAULT_ATC_SPEED_MAX, NULL);
+    atc_distance = new FloatSetting(EXTENDED, WG, "66", "ATC/distance", DEFAULT_ATC_DISTANCE, 0.0, DEFAULT_ATC_DISTANCE_MAX, NULL);
+    atc_offset   = new FloatSetting(EXTENDED, WG, "65", "ATC/offset", DEFAULT_ATC_OFFSET, 0.0, DEFAULT_ATC_OFFSET_MAX, NULL);
+
+    tool_selected = new IntSetting(EXTENDED, WG, "62", "Tool/Selected", 1, 1, DEFAULT_TOOL_COUNT_MAX, NULL);
+    tool_active   = new IntSetting(EXTENDED, WG, "61", "Tool/Active", 1, 1, DEFAULT_TOOL_COUNT_MAX, NULL);
+    tool_count    = new IntSetting(EXTENDED, WG, "60", "Tool/Count", DEFAULT_TOOL_COUNT_MAX, 1, DEFAULT_TOOL_COUNT_MAX, NULL);
+
+    // Limit move vars
+
+    limit_axis_move_minus = new AxisMaskSetting(EXTENDED, WG, NULL, "BlockAxis/Minus", 0);
+    limit_axis_move_plus  = new AxisMaskSetting(EXTENDED, WG, NULL, "BlockAxis/Plus", 0);
+
+    // special variables
+
+    axis_convet_multiplier = new FloatSetting(GRBL, WG, NULL, "AxisConvertMultiplier", POSITIONABLE_AXIS_CONVERT, 0, 100000);
+
+    led_state   = new FlagSetting(EXTENDED, WG, "45", "led/state", DEFAULT_LED_STATE, checkLedChange);
+    led_inverse = new FlagSetting(EXTENDED, WG, "44", "led/inverse", DEFAULT_LED_INVERSE, checkLedChange);
+
+    led_init();
+
     // Spindle Settings
+    chuck_direction_invert = new FlagSetting(EXTENDED, WG, "41", "Chuck/Dir/Invert", DEFAULT_INVERT_CHUCK_DIRECTION_PIN, checkSpindleChange);
+
+    spindle_direction_invert =
+        new FlagSetting(EXTENDED, WG, "40", "Spindle/Dir/Invert", DEFAULT_INVERT_SPINDLE_DIRECTION_PIN, checkSpindleChange);
+
+    spindle_output_invert = new FlagSetting(EXTENDED, WG, "39", "Spindle/PWM/Invert", DEFAULT_INVERT_SPINDLE_OUTPUT_PIN, checkSpindleChange);
+
+    spindle_enable_invert =
+        new FlagSetting(EXTENDED, WG, "38", "Spindle/Enable/Invert", DEFAULT_INVERT_SPINDLE_ENABLE_PIN, checkSpindleChange);
+
     spindle_type =
-        new EnumSetting(NULL, EXTENDED, WG, NULL, "Spindle/Type", static_cast<int8_t>(SPINDLE_TYPE), &spindleTypes, checkSpindleChange);
+        new EnumSetting(NULL, EXTENDED, WG, "37", "Spindle/Type", static_cast<int8_t>(SPINDLE_TYPE), &spindleTypes, checkSpindleChange);
 
     spindle_pwm_max_value =
         new FloatSetting(EXTENDED, WG, "36", "Spindle/PWM/Max", DEFAULT_SPINDLE_MAX_VALUE, 0.0, 100.0, checkSpindleChange);
@@ -347,7 +438,6 @@ void make_settings() {
         EXTENDED, WG, "34", "Spindle/PWM/Off", DEFAULT_SPINDLE_OFF_VALUE, 0.0, 100.0, checkSpindleChange);  // these are percentages
     // IntSetting spindle_pwm_bit_precision(EXTENDED, WG, "Spindle/PWM/Precision", DEFAULT_SPINDLE_BIT_PRECISION, 1, 16);
     spindle_pwm_freq = new FloatSetting(EXTENDED, WG, "33", "Spindle/PWM/Frequency", DEFAULT_SPINDLE_FREQ, 0, 100000, checkSpindleChange);
-    spindle_output_invert = new FlagSetting(GRBL, WG, NULL, "Spindle/PWM/Invert", DEFAULT_INVERT_SPINDLE_OUTPUT_PIN, checkSpindleChange);
 
     spindle_delay_spinup =
         new FloatSetting(EXTENDED, WG, NULL, "Spindle/Delay/SpinUp", DEFAULT_SPINDLE_DELAY_SPINUP, 0, 30, checkSpindleChange);
@@ -358,19 +448,18 @@ void make_settings() {
     spindle_enbl_off_with_zero_speed =
         new FlagSetting(GRBL, WG, NULL, "Spindle/Enable/OffWithSpeed", DEFAULT_SPINDLE_ENABLE_OFF_WITH_ZERO_SPEED, checkSpindleChange);
 
-    spindle_enable_invert = new FlagSetting(GRBL, WG, NULL, "Spindle/Enable/Invert", DEFAULT_INVERT_SPINDLE_ENABLE_PIN, checkSpindleChange);
-
-    // GRBL Non-numbered settings
-    startup_line_0 = new StringSetting(EXTENDED, WG, "N0", "GCode/Line0", "", checkStartupLine);
-    startup_line_1 = new StringSetting(EXTENDED, WG, "N1", "GCode/Line1", "", checkStartupLine);
-
     // GRBL Numbered Settings
-    laser_mode       = new FlagSetting(GRBL, WG, "32", "GCode/LaserMode", DEFAULT_LASER_MODE);
-    laser_full_power = new IntSetting(EXTENDED, WG, NULL, "Laser/FullPower", DEFAULT_LASER_FULL_POWER, 0, 10000, checkSpindleChange);
+    laser_mode = new FlagSetting(GRBL, WG, "32", "GCode/LaserMode", DEFAULT_LASER_MODE);
 
     // TODO Settings - also need to call my_spindle->init();
-    rpm_min = new FloatSetting(GRBL, WG, "31", "GCode/MinS", DEFAULT_SPINDLE_RPM_MIN, 0, 100000, checkSpindleChange);
-    rpm_max = new FloatSetting(GRBL, WG, "30", "GCode/MaxS", DEFAULT_SPINDLE_RPM_MAX, 0, 100000, checkSpindleChange);
+    rpm_min          = new FloatSetting(GRBL, WG, "31", "GCode/MinS", DEFAULT_SPINDLE_RPM_MIN, 0, 100000, checkSpindleChange);
+    rpm_max          = new FloatSetting(GRBL, WG, "30", "GCode/MaxS", DEFAULT_SPINDLE_RPM_MAX, 0, 100000, checkSpindleChange);
+    rpm_max_chuck    = new FloatSetting(EXTENDED, WG, "29", "Chuck/MaxS", DEFAULT_CHUCK_RPM_MAX, 0, 100000, checkSpindleChange);
+    laser_full_power = new IntSetting(EXTENDED, WG, "28", "Laser/FullPower", DEFAULT_LASER_FULL_POWER, 0, 10000, checkSpindleChange);
+
+    // GRBL Non-numbered settings
+    startup_line_1 = new StringSetting(EXTENDED, WG, "N1", "GCode/Line1", "", checkStartupLine);
+    startup_line_0 = new StringSetting(EXTENDED, WG, "N0", "GCode/Line0", "", checkStartupLine);
 
     homing_pulloff      = new FloatSetting(GRBL, WG, "27", "Homing/Pulloff", DEFAULT_HOMING_PULLOFF, 0, 1000);
     homing_debounce     = new FloatSetting(GRBL, WG, "26", "Homing/Debounce", DEFAULT_HOMING_DEBOUNCE_DELAY, 0, 10000);
@@ -396,7 +485,7 @@ void make_settings() {
 
     probe_invert                 = new FlagSetting(GRBL, WG, "6", "Probe/Invert", DEFAULT_INVERT_PROBE_PIN);
     limit_invert                 = new FlagSetting(GRBL, WG, "5", "Limits/Invert", DEFAULT_INVERT_LIMIT_PINS);
-    step_enable_invert           = new FlagSetting(GRBL, WG, "4", "Stepper/EnableInvert", DEFAULT_INVERT_ST_ENABLE);
+    step_enable_invert           = new AxisMaskSetting(GRBL, WG, "4", "Stepper/EnableInvert", DEFAULT_INVERT_ST_ENABLE);
     dir_invert_mask              = new AxisMaskSetting(GRBL, WG, "3", "Stepper/DirInvert", DEFAULT_DIRECTION_INVERT_MASK, postMotorSetting);
     step_invert_mask             = new AxisMaskSetting(GRBL, WG, "2", "Stepper/StepInvert", DEFAULT_STEPPING_INVERT_MASK, postMotorSetting);
     stepper_idle_lock_time       = new IntSetting(GRBL, WG, "1", "Stepper/IdleTime", DEFAULT_STEPPER_IDLE_LOCK_TIME, 0, 255);

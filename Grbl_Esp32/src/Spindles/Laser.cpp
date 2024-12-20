@@ -24,6 +24,7 @@
 // ===================================== Laser ==============================================
 
 namespace Spindles {
+
     bool Laser::inLaserMode() {
         return laser_mode->get();  // can use M4 (CCW) laser mode.
     }
@@ -48,7 +49,11 @@ namespace Spindles {
 #ifdef LASER_OUTPUT_PIN
         _output_pin = LASER_OUTPUT_PIN;
 #else
+#    ifdef SPINDLE_OUTPUT_PIN
+        _output_pin = SPINDLE_OUTPUT_PIN;
+#    else
         _output_pin = UNDEFINED_PIN;
+#    endif
 #endif
 
         _invert_pwm = spindle_output_invert->get();
@@ -56,7 +61,11 @@ namespace Spindles {
 #ifdef LASER_ENABLE_PIN
         _enable_pin = LASER_ENABLE_PIN;
 #else
+#    ifdef SPINDLE_ENABLE_PIN
+        _enable_pin = SPINDLE_ENABLE_PIN;
+#    else
         _enable_pin = UNDEFINED_PIN;
+#    endif
 #endif
 
         if (_output_pin == UNDEFINED_PIN) {
@@ -68,6 +77,8 @@ namespace Spindles {
 
         _direction_pin = UNDEFINED_PIN;
         is_reversable  = false;
+
+        laser_mode->setBoolValue(true);
 
         _pwm_freq      = spindle_pwm_freq->get();
         _pwm_precision = calc_pwm_precision(_pwm_freq);  // detewrmine the best precision
@@ -88,6 +99,9 @@ namespace Spindles {
 
     void Laser::deinit() {
         stop();
+
+        laser_mode->setBoolValue(false);
+
 #ifdef LASER_OUTPUT_PIN
         gpio_reset_pin(LASER_OUTPUT_PIN);
         pinMode(LASER_OUTPUT_PIN, INPUT);
@@ -96,6 +110,21 @@ namespace Spindles {
 #ifdef LASER_ENABLE_PIN
         gpio_reset_pin(LASER_ENABLE_PIN);
         pinMode(LASER_ENABLE_PIN, INPUT);
+#endif
+#ifdef SPINDLE_OUTPUT_PIN
+        gpio_reset_pin(SPINDLE_OUTPUT_PIN);
+        pinMode(SPINDLE_OUTPUT_PIN, OUTPUT);
+        digitalWrite(SPINDLE_OUTPUT_PIN, 0);
+#endif
+#ifdef SPINDLE_ENABLE_PIN
+        // gpio_reset_pin(SPINDLE_ENABLE_PIN);  // TODO might not be needed
+        pinMode(SPINDLE_ENABLE_PIN, OUTPUT);
+        set_enable_pin(0);
+#endif
+
+#ifdef SPINDLE_DIR_PIN
+        // gpio_reset_pin(SPINDLE_DIR_PIN);  // TODO might not be needed
+        pinMode(SPINDLE_DIR_PIN, INPUT);
 #endif
     }
 }

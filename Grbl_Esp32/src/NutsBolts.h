@@ -74,13 +74,33 @@ const double INCH_PER_MM = (0.0393701);
 // bit(n) is defined in Arduino.h.  We redefine it here so we can apply
 // the static_cast, thus making it work with scoped enums
 #undef bit
+
+// Macro to create a bitmask for a specific bit position 'n'
+// It shifts 1 to the left by 'n' positions
 #define bit(n) (1 << static_cast<unsigned int>(n))
 
+// Macro to set a specific bit (using a mask) to true (1)
+// It performs a bitwise OR operation
 #define bit_true(x, mask) (x) |= (mask)
+
+// Macro to set a specific bit (using a mask) to false (0)
+// It performs a bitwise AND operation with the negation of the mask
 #define bit_false(x, mask) (x) &= ~(mask)
+
+// Macro to check if a specific bit (using a mask) is true (1)
+// It performs a bitwise AND operation and checks if the result is not zero
 #define bit_istrue(x, mask) ((x & mask) != 0)
+
+// Macro to check if a specific bit (using a mask) is false (0)
+// It performs a bitwise AND operation and checks if the result is zero
 #define bit_isfalse(x, mask) ((x & mask) == 0)
+
+// Macro to set a specific bit (using a bit number 'num') to true (1)
+// It combines the value of 'x' with a bitmask created for the specified bit number
 #define bitnum_true(x, num) (x) |= bit(num)
+
+// Macro to check if a specific bit (using a bit number 'num') is true (1)
+// It performs a bitwise AND operation with a bitmask created for the specified bit number and checks if the result is not zero
 #define bitnum_istrue(x, num) ((x & bit(num)) != 0)
 
 // Read a floating point value from a string. Line points to the input buffer, char_counter

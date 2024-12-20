@@ -45,7 +45,22 @@ bool mc_line(float* target, plan_line_data_t* pl_data) {
     bool submitted_result = false;
     // store the plan data so it can be cancelled by the protocol system if needed
     sys_pl_data_inflight = pl_data;
-
+    // If enabled, check for soft limit violations. Placed here all line motions are picked up
+    // from everywhere in Grbl.
+    if (hard_limits->get()) {
+        // NOTE: Block jog state. Jogging is a special case and soft limits are handled independently.
+        if (sys.state != State::Jog) {
+            limits_direction_check(target);
+        }
+    }
+    // If enabled, check for soft limit violations. Placed here all line motions are picked up
+    // from everywhere in Grbl.
+    if (soft_limits->get()) {
+        // NOTE: Block jog state. Jogging is a special case and soft limits are handled independently.
+        if (sys.state != State::Jog) {
+            limits_soft_check(target);
+        }
+    }
     // If in check gcode mode, prevent motion by blocking planner. Soft limits still work.
     if (sys.state == State::CheckMode) {
         sys_pl_data_inflight = NULL;

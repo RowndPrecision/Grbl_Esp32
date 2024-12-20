@@ -39,7 +39,8 @@ enum class SpindleType : int8_t {
     _10V,
     H2A,
     YL620,
-    L510
+    L510,
+    ASDA_CN1,
 };
 
 #include "../Grbl.h"
@@ -55,10 +56,10 @@ namespace Spindles {
     public:
         Spindle() = default;
 
-        Spindle(const Spindle&) = delete;
-        Spindle(Spindle&&)      = delete;
+        Spindle(const Spindle&)            = delete;
+        Spindle(Spindle&&)                 = delete;
         Spindle& operator=(const Spindle&) = delete;
-        Spindle& operator=(Spindle&&) = delete;
+        Spindle& operator=(Spindle&&)      = delete;
 
         virtual void         init()                = 0;  // not in constructor because this also gets called when $$ settings change
         virtual uint32_t     set_rpm(uint32_t rpm) = 0;

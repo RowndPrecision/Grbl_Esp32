@@ -34,6 +34,11 @@ Error jog_execute(plan_line_data_t* pl_data, parser_block_t* gc_block, bool* can
 #ifdef USE_LINE_NUMBERS
     pl_data->line_number = gc_block->values.n;
 #endif
+    if (hard_limits->get()) {
+        if (limitsCheckDirection(gc_block->values.xyz)) {
+            return Error::TravelExceeded;
+        }
+    }
     if (soft_limits->get()) {
         if (limitsCheckTravel(gc_block->values.xyz)) {
             return Error::TravelExceeded;

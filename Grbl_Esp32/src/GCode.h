@@ -40,15 +40,16 @@ enum class ModalGroup : uint8_t {
     MG5  = 5,   // [G93,G94] Feed rate mode
     MG6  = 6,   // [G20,G21] Units
     MG7  = 7,   // [G40] Cutter radius compensation mode. G41/42 NOT SUPPORTED.
-    MG8  = 8,   // [G43.1,G49] Tool length offset
+    MG8  = 8,   // [G43,G43.1,G49] Tool length offset
     MG12 = 9,   // [G54,G55,G56,G57,G58,G59] Coordinate system selection
     MG13 = 10,  // [G61] Control mode
     MM4  = 11,  // [M0,M1,M2,M30] Stopping
-    MM6  = 14,  // [M6] Tool change
-    MM7  = 12,  // [M3,M4,M5] Spindle turning
-    MM8  = 13,  // [M7,M8,M9] Coolant control
-    MM9  = 14,  // [M56] Override control
-    MM10 = 15,  // [M62, M63, M64, M65, M67, M68] User Defined http://linuxcnc.org/docs/html/gcode/overview.html#_modal_groups
+    MM5  = 12,  // [M62, M63, M64, M65, M67, M68] IO control
+    MM6  = 13,  // [M6] Tool change
+    MM7  = 14,  // [M3,M4,M5] Spindle turning
+    MM8  = 15,  // [M7,M8,M9] Coolant control
+    MM9  = 16,  // [M56] Override control
+    MM10 = 17,  // [M100 - M199] User Defined http://linuxcnc.org/docs/html/gcode/overview.html#_modal_groups
 };
 
 // Command actions for within execution-type modal groups (motion, stopping, non-modal). Used
@@ -63,7 +64,9 @@ enum class ModalGroup : uint8_t {
 enum class NonModal : uint8_t {
     NoAction              = 0,    // (Default: Must be zero)
     Dwell                 = 4,    // G4 (Do not alter value)
-    SetCoordinateData     = 10,   // G10 (Do not alter value)
+    SetData               = 10,   // G10 (Do not alter value)
+    SetToolTableData      = 11,   // G10 L1 & L10 (Do not alter value)
+    SetCoordinateData     = 12,   // G10 L2 & L20 (Do not alter value)
     GoHome0               = 28,   // G28 (Do not alter value)
     SetHome0              = 38,   // G28.1 (Do not alter value)
     GoHome1               = 30,   // G30 (Do not alter value)
@@ -178,8 +181,9 @@ static const int MaxUserDigitalPin = 4;
 
 // Modal Group G8: Tool length offset
 enum class ToolLengthOffset : uint8_t {
-    Cancel        = 0,  // G49 (Default: Must be zero)
-    EnableDynamic = 1,  // G43.1
+    Cancel         = 0,  // G49 (Default: Must be zero)
+    EnableStandart = 1,  // G43 for rownd
+    EnableDynamic  = 2,  // G43.1 grbl def
 };
 
 enum class ToolChange : uint8_t {
@@ -194,22 +198,23 @@ enum class ToolChange : uint8_t {
 enum class GCodeWord : uint8_t {
     E = 0,
     F = 1,
-    I = 2,
-    J = 3,
-    K = 4,
-    L = 5,
-    N = 6,
-    P = 7,
-    Q = 8,
-    R = 9,
-    S = 10,
-    T = 11,
-    X = 12,
-    Y = 13,
-    Z = 14,
-    A = 15,
-    B = 16,
-    C = 17,
+    H = 2,
+    I = 3,
+    J = 4,
+    K = 5,
+    L = 6,
+    N = 7,
+    P = 8,
+    Q = 9,
+    R = 10,
+    S = 11,
+    T = 12,
+    X = 13,
+    Y = 14,
+    Z = 15,
+    A = 16,
+    B = 17,
+    C = 18,
 };
 
 // GCode parser position updating flags
@@ -234,9 +239,9 @@ enum GCParserFlags {
 
 // Various places in the code access saved coordinate system data
 // by a small integer index according to the values below.
-enum CoordIndex : uint8_t{
+enum CoordIndex : uint8_t {
     Begin = 0,
-    G54 = Begin,
+    G54   = Begin,
     G55,
     G56,
     G57,
@@ -256,7 +261,7 @@ enum CoordIndex : uint8_t{
 };
 
 // Allow iteration over CoordIndex values
-CoordIndex& operator ++ (CoordIndex& i);
+CoordIndex& operator++(CoordIndex& i);
 
 // NOTE: When this struct is zeroed, the 0 values in the above types set the system defaults.
 typedef struct {
@@ -281,6 +286,7 @@ typedef struct {
 typedef struct {
     uint8_t e;                // M67
     float   f;                // Feed
+    uint8_t h;                // G43
     float   ijk[3];           // I,J,K Axis arc offsets - only 3 are possible
     uint8_t l;                // G10 or canned cycles parameters
     int32_t n;                // Line number
@@ -297,7 +303,6 @@ typedef struct {
 
     float   spindle_speed;  // RPM
     float   feed_rate;      // Millimeters/min
-    uint8_t tool;           // Tracks tool number. NOT USED.
     int32_t line_number;    // Last line number sent
 
     float position[MAX_N_AXIS];  // Where the interpreter considers the tool to be at this point in the code
@@ -306,7 +311,7 @@ typedef struct {
     // position in mm. Loaded from non-volatile storage when called.
     float coord_offset[MAX_N_AXIS];  // Retains the G92 coordinate offset (work coordinates) relative to
     // machine zero in mm. Non-persistent. Cleared upon reset and boot.
-    float tool_length_offset;  // Tracks tool length offset value when enabled.
+    float tool_length_offset[MAX_N_AXIS];  // Tracks tool length offset value when enabled.
 } parser_state_t;
 extern parser_state_t gc_state;
 

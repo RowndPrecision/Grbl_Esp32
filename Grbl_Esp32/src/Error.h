@@ -85,6 +85,8 @@ enum class Error : uint8_t {
     Eol                         = 111,
     AnotherInterfaceBusy        = 120,
     JogCancelled                = 130,
+    AsdaMode                    = 150,  // Current servo mode is not compatible with the G Code input
+    AsdaAlarm                   = 151,  // Serve fell in to alarm mode
 };
 
 extern std::map<Error, const char*> ErrorNames;

@@ -31,6 +31,8 @@ uint8_t n_homing_locate_cycle = NHomingLocateCycle;
 
 xQueueHandle limit_sw_queue;  // used by limit switch debouncing
 
+TaskHandle_t saveLimitsTaskHandle;  // Task handle for the saveLimits task
+
 // Homing axis search distance multiplier. Computed by this value times the cycle travel.
 #ifndef HOMING_AXIS_SEARCH_SCALAR
 #    define HOMING_AXIS_SEARCH_SCALAR 1.1  // Must be > 1 to ensure limit switch will be engaged.
@@ -54,8 +56,8 @@ void IRAM_ATTR isr_limit_switches() {
 #else
 #    ifdef HARD_LIMIT_FORCE_STATE_CHECK
             // Check limit pin state.
-            if (limits_get_state()) {
-                grbl_msg_sendf(CLIENT_ALL, MsgLevel::Debug, "Hard limits");
+            AxisMask pinMask = limits_get_state();
+            if (pinMask) {
                 mc_reset();                                // Initiate system kill.
                 sys_rt_exec_alarm = ExecAlarm::HardLimit;  // Indicate hard limit critical event
             }
@@ -65,7 +67,64 @@ void IRAM_ATTR isr_limit_switches() {
             sys_rt_exec_alarm = ExecAlarm::HardLimit;  // Indicate hard limit critical event
 #    endif
 #endif
+            if (saveLimitsTaskHandle != NULL) {
+                // Trigger the saveLimits task here
+                BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+                vTaskNotifyGiveFromISR(saveLimitsTaskHandle, &xHigherPriorityTaskWoken);
+                // If a higher priority task was woken, yield control
+                if (xHigherPriorityTaskWoken == pdTRUE) {
+                    portYIELD_FROM_ISR();  // Correct usage without parameters
+                }
+            }
         }
+    }
+}
+
+// Define the saveLimits task function
+void saveLimitsTaskFunction(void* pvParameters) {
+    while (true) {
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);  // Wait for notification from ISR
+
+        delay(10);
+
+        // Check limit pin state.
+        AxisMask pinMask = limits_get_state();
+        if (pinMask) {
+            char msg[20] = "";
+            char temp[10];
+            auto n_axis = number_axis->get();
+            for (int axis = 0; axis < n_axis; axis++) {
+                if (bitnum_istrue(pinMask, axis)) {
+                    sprintf(temp, "%c", "XYZABC"[axis]);
+                    strcat(msg, temp);
+                    if (plan_get_block_buffer_available()) {
+                        plan_block_t* dirBlock = plan_get_current_block();
+                        if (dirBlock != NULL) {
+                            if (bitnum_istrue(dirBlock->direction_bits, axis)) {
+                                limit_axis_move_minus->setAxis(axis, true);
+                                limit_axis_move_plus->setAxis(axis, false);
+                            } else {
+                                limit_axis_move_minus->setAxis(axis, false);
+                                limit_axis_move_plus->setAxis(axis, true);
+                            }
+                        } else {
+                            limit_axis_move_minus->setAxis(axis, true);
+                            limit_axis_move_plus->setAxis(axis, true);
+                        }
+                    }
+                } else {
+                    limit_axis_move_minus->setAxis(axis, false);
+                    limit_axis_move_plus->setAxis(axis, false);
+                }
+            }
+            grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Hard limits: %s", msg);
+        } else {
+            limit_axis_move_minus->setDefault();
+            limit_axis_move_plus->setDefault();
+        }
+
+        limit_axis_move_minus->saveValue();
+        limit_axis_move_plus->saveValue();
     }
 }
 
@@ -80,6 +139,9 @@ void limits_go_home(uint8_t cycle_mask) {
     if (sys.abort) {
         return;  // Block if system reset has been issued.
     }
+
+    static float temp_target[MAX_N_AXIS];
+
     // Initialize plan data struct for homing motion. Spindle and coolant are disabled.
 
     // Put motors on axes listed in cycle_mask in homing mode and
@@ -132,9 +194,13 @@ void limits_go_home(uint8_t cycle_mask) {
                 sys_position[idx] = 0;
                 // Set target direction based on cycle mask and homing cycle approach state.
                 // NOTE: This happens to compile smaller than any other implementation tried.
-                auto mask = homing_dir_mask->get();
+                auto mask   = homing_dir_mask->get();
+                limit_state = limits_get_state();
                 if (bit_istrue(mask, bit(idx))) {
                     if (approach) {
+                        if (bitnum_istrue(limit_state, idx)) {
+                            // TODO detect if the limit switch is already pressed. if so act accordingly
+                        }
                         target[idx] = -max_travel;
                     } else {
                         target[idx] = max_travel;
@@ -150,6 +216,11 @@ void limits_go_home(uint8_t cycle_mask) {
                 axislock |= step_pin[idx];
             }
         }
+
+        memcpy(temp_target, target, n_axis * sizeof(float));
+        limitsCheckDirection(temp_target);
+        memcpy(target, temp_target, n_axis * sizeof(float));
+
         homing_rate *= sqrt(n_active_axis);  // [sqrt(number of active axis)] Adjust so individual axes all move at homing rate.
         sys.homing_axis_lock = axislock;
         // Perform homing cycle. Planner buffer should be empty, as required to initiate the homing cycle.
@@ -214,6 +285,7 @@ void limits_go_home(uint8_t cycle_mask) {
             }
         }
 #endif
+
         st_reset();                        // Immediately force kill steppers and reset step segment buffer.
         delay_ms(homing_debounce->get());  // Delay to allow transient dynamics to dissipate.
         // Reverse direction and reset homing rate for locate cycle(s).
@@ -271,11 +343,14 @@ void limits_init() {
             uint8_t pin;
             if ((pin = limit_pins[axis][gang_index]) != UNDEFINED_PIN) {
                 pinMode(pin, mode);
+                grbl_sendf(CLIENT_SERIAL, "[test: limit: %i | pin:  %i]\r\n", axis, pin);
                 limit_mask |= bit(axis);
                 if (hard_limits->get()) {
-                    attachInterrupt(pin, isr_limit_switches, CHANGE);
+                    attachInterrupt(pin, isr_limit_switches, RISING);
+                    grbl_sendf(CLIENT_SERIAL, "[test: attach: %i | pin:  %i]\r\n", axis, pin);
                 } else {
                     detachInterrupt(pin);
+                    grbl_sendf(CLIENT_SERIAL, "[test: deattach: %i | pin:  %i]\r\n", axis, pin);
                 }
 
                 if (limit_sw_queue == NULL) {
@@ -286,6 +361,14 @@ void limits_init() {
         }
     }
 
+    // Setup the saveLimits task here
+    xTaskCreate(saveLimitsTaskFunction,  // Task function
+                "saveLimitsTask",        // Task name
+                2048,                    // Stack size
+                NULL,                    // Parameters
+                2,                       // Task priority
+                &saveLimitsTaskHandle);  // Task handle
+
     // setup task used for debouncing
     if (limit_sw_queue == NULL) {
         limit_sw_queue = xQueueCreate(10, sizeof(int));
@@ -295,6 +378,7 @@ void limits_init() {
                     NULL,
                     5,  // priority
                     NULL);
+        grbl_sendf(CLIENT_SERIAL, "limitCheckTask created");
     }
 }
 
@@ -306,6 +390,7 @@ void limits_disable() {
             uint8_t pin = limit_pins[axis][gang_index];
             if (pin != UNDEFINED_PIN) {
                 detachInterrupt(pin);
+                grbl_sendf(CLIENT_SERIAL, "[disable: deattach: %i | pin:  %i]\r\n", axis, pin);
             }
         }
     }
@@ -361,6 +446,32 @@ void limits_soft_check(float* target) {
     }
 }
 
+// Performs a soft limit check. Called from mcline() only. Assumes the machine has been homed,
+// the workspace volume is in all negative space, and the system is in normal operation.
+// NOTE: Used by jogging to limit travel within soft-limit volume.
+void limits_direction_check(float* target) {
+    if (limitsCheckDirection(target) && sys.state != State::Homing) {
+        sys.soft_limit = true;
+        // Force feed hold if cycle is active. All buffered blocks are guaranteed to be within
+        // workspace volume so just come to a controlled stop so position is not lost. When complete
+        // enter alarm mode.
+        if (sys.state == State::Cycle) {
+            sys_rt_exec_state.bit.feedHold = true;
+            do {
+                protocol_execute_realtime();
+                if (sys.abort) {
+                    return;
+                }
+            } while (sys.state != State::Idle);
+        }
+        grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, AlarmNames[ExecAlarm::DirectionBlock]);
+        mc_reset();                                     // Issue system reset and ensure spindle and coolant are shutdown.
+        sys_rt_exec_alarm = ExecAlarm::DirectionBlock;  // Indicate soft limit critical event
+        protocol_execute_realtime();                    // Execute to enter critical event loop and system abort
+        return;
+    }
+}
+
 // this is the task
 void limitCheckTask(void* pvParameters) {
     while (true) {
@@ -382,13 +493,13 @@ void limitCheckTask(void* pvParameters) {
 }
 
 float limitsMaxPosition(uint8_t axis) {
-    float mpos = axis_settings[axis]->home_mpos->get();
+    float mpos = axis_settings[axis]->home_mpos->get() - homing_pulloff->get();
 
     return bitnum_istrue(homing_dir_mask->get(), axis) ? mpos + axis_settings[axis]->max_travel->get() : mpos;
 }
 
 float limitsMinPosition(uint8_t axis) {
-    float mpos = axis_settings[axis]->home_mpos->get();
+    float mpos = axis_settings[axis]->home_mpos->get() - homing_pulloff->get();
 
     return bitnum_istrue(homing_dir_mask->get(), axis) ? mpos : mpos - axis_settings[axis]->max_travel->get();
 }
@@ -404,6 +515,35 @@ bool __attribute__((weak)) limitsCheckTravel(float* target) {
 
         if ((target[idx] < limitsMinPosition(idx) || target[idx] > limitsMaxPosition(idx)) && axis_settings[idx]->max_travel->get() > 0) {
             return true;
+        }
+    }
+    return false;
+}
+
+bool __attribute__((weak)) limitsCheckDirection(float* target) {
+    uint8_t  idx;
+    auto     n_axis = number_axis->get();
+    float*   mpos   = system_get_mpos();
+    float    temp;
+    uint32_t mask_min = limit_axis_move_minus->get();
+    uint32_t mask_pls = limit_axis_move_plus->get();
+    for (idx = 0; idx < n_axis; idx++) {
+        temp = target[idx] - mpos[idx];
+        if (temp < 0 && bitnum_istrue(mask_min, idx)) {
+            return true;
+        } else {
+            if (!sys.abort && (sys.state == State::Idle)) {
+                limit_axis_move_minus->setAxis(idx, false);
+                limit_axis_move_minus->saveValue();
+            }
+        }
+        if (temp > 0 && bitnum_istrue(mask_pls, idx)) {
+            return true;
+        } else {
+            if (!sys.abort && (sys.state == State::Idle)) {
+                limit_axis_move_plus->setAxis(idx, false);
+                limit_axis_move_minus->saveValue();
+            }
         }
     }
     return false;

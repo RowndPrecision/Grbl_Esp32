@@ -40,6 +40,7 @@
 #include "10vSpindle.h"
 #include "YL620Spindle.h"
 #include "TecoL510.h"
+#include "AsdaCN1.h"
 
 namespace Spindles {
     // An instance of each type of spindle is created here.
@@ -56,8 +57,26 @@ namespace Spindles {
     _10v     _10v;
     YL620    yl620;
     L510     l510;
+    AsdaCN1  Asda_CN1;
 
     void Spindle::select() {
+        gc_state.spindle_speed = 0;  // Set S value to 0
+        null.deinit();
+        pwm.get_pins_and_settings();
+        pwm.deinit();
+        relay.get_pins_and_settings();
+        relay.deinit();
+        laser.get_pins_and_settings();
+        laser.deinit();
+        dac.get_pins_and_settings();
+        dac.deinit();
+        besc.get_pins_and_settings();
+        besc.deinit();
+        _10v.get_pins_and_settings();
+        _10v.deinit();
+        Asda_CN1.get_pins_and_settings();
+        Asda_CN1.deinit();
+
         switch (static_cast<SpindleType>(spindle_type->get())) {
             case SpindleType::PWM:
                 spindle = &pwm;
@@ -89,6 +108,9 @@ namespace Spindles {
             case SpindleType::L510:
                 spindle = &l510;
                 break;
+            case SpindleType::ASDA_CN1:
+                spindle = &Asda_CN1;
+                break;
             case SpindleType::NONE:
             default:
                 spindle = &null;
@@ -112,7 +134,9 @@ namespace Spindles {
         set_state(state, rpm);
     }
 
-    void Spindle::deinit() { stop(); }
+    void Spindle::deinit() {
+        stop();
+    }
 }
 
 Spindles::Spindle* spindle;

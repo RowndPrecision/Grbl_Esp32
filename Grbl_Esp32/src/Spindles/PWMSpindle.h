@@ -29,10 +29,10 @@ namespace Spindles {
     public:
         PWM() = default;
 
-        PWM(const PWM&) = delete;
-        PWM(PWM&&)      = delete;
+        PWM(const PWM&)            = delete;
+        PWM(PWM&&)                 = delete;
         PWM& operator=(const PWM&) = delete;
-        PWM& operator=(PWM&&) = delete;
+        PWM& operator=(PWM&&)      = delete;
 
         void             init() override;
         virtual uint32_t set_rpm(uint32_t rpm) override;
@@ -40,6 +40,9 @@ namespace Spindles {
         SpindleState     get_state() override;
         void             stop() override;
         void             config_message() override;
+
+        virtual void deinit();
+        virtual void get_pins_and_settings();
 
         virtual ~PWM() {}
 
@@ -60,14 +63,11 @@ namespace Spindles {
         bool     _piecewide_linear;
         bool     _off_with_zero_speed;
         bool     _invert_pwm;
-        //uint32_t _pwm_gradient; // Precalulated value to speed up rpm to PWM conversions.
 
         virtual void set_dir_pin(bool Clockwise);
         virtual void set_output(uint32_t duty);
         virtual void set_enable_pin(bool enable_pin);
-        virtual void deinit();
 
-        virtual void get_pins_and_settings();
-        uint8_t      calc_pwm_precision(uint32_t freq);
+        uint8_t calc_pwm_precision(uint32_t freq);
     };
 }

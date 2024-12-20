@@ -256,22 +256,22 @@ Error home_all(const char* value, WebUI::AuthenticationLevel auth_level, WebUI::
     return home(HOMING_CYCLE_ALL);
 }
 Error home_x(const char* value, WebUI::AuthenticationLevel auth_level, WebUI::ESPResponseStream* out) {
-    return home(bit(X_AXIS));
+    return home(bit(DEFAULT_SWAP_X));
 }
 Error home_y(const char* value, WebUI::AuthenticationLevel auth_level, WebUI::ESPResponseStream* out) {
-    return home(bit(Y_AXIS));
+    return home(bit(DEFAULT_SWAP_Y));
 }
 Error home_z(const char* value, WebUI::AuthenticationLevel auth_level, WebUI::ESPResponseStream* out) {
-    return home(bit(Z_AXIS));
+    return home(bit(DEFAULT_SWAP_Z));
 }
 Error home_a(const char* value, WebUI::AuthenticationLevel auth_level, WebUI::ESPResponseStream* out) {
-    return home(bit(A_AXIS));
+    return home(bit(DEFAULT_SWAP_A));
 }
 Error home_b(const char* value, WebUI::AuthenticationLevel auth_level, WebUI::ESPResponseStream* out) {
-    return home(bit(B_AXIS));
+    return home(bit(DEFAULT_SWAP_B));
 }
 Error home_c(const char* value, WebUI::AuthenticationLevel auth_level, WebUI::ESPResponseStream* out) {
-    return home(bit(C_AXIS));
+    return home(bit(DEFAULT_SWAP_C));
 }
 Error sleep_grbl(const char* value, WebUI::AuthenticationLevel auth_level, WebUI::ESPResponseStream* out) {
     sys_rt_exec_state.bit.sleep = true;
@@ -422,6 +422,38 @@ Error motor_disable(const char* value, WebUI::AuthenticationLevel auth_level, We
     return Error::Ok;
 }
 
+Error motor_enable(const char* value, WebUI::AuthenticationLevel auth_level, WebUI::ESPResponseStream* out) {
+    char* s;
+    if (value == NULL) {
+        value = "\0";
+    }
+
+    s = strdup(value);
+    s = trim(s);
+
+    int32_t convertedValue;
+    char*   endptr;
+    if (*s == '\0') {
+        convertedValue = 255;  // all axes
+    } else {
+        convertedValue = strtol(s, &endptr, 10);
+        if (endptr == s || *endptr != '\0') {
+            // Try to convert as an axis list
+            convertedValue = 0;
+            auto axisNames = String("XYZABC");
+            while (*s) {
+                int index = axisNames.indexOf(toupper(*s++));
+                if (index < 0) {
+                    return Error::BadNumberFormat;
+                }
+                convertedValue |= bit(index);
+            }
+        }
+    }
+    motors_set_disable(false, convertedValue);
+    return Error::Ok;
+}
+
 // Commands use the same syntax as Settings, but instead of setting or
 // displaying a persistent value, a command causes some action to occur.
 // That action could be anything, from displaying a run-time parameter
@@ -448,6 +480,7 @@ void make_grbl_commands() {
     new GrblCommand("#", "GCode/Offsets", report_ngc, idleOrAlarm);
     new GrblCommand("H", "Home", home_all, idleOrAlarm);
     new GrblCommand("MD", "Motor/Disable", motor_disable, idleOrAlarm);
+    new GrblCommand("ME", "Motor/Enable", motor_enable, idleOrAlarm);
 
 #ifdef HOMING_SINGLE_AXIS_COMMANDS
     new GrblCommand("HX", "Home/X", home_x, idleOrAlarm);

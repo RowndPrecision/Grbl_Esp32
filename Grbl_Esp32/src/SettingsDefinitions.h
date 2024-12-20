@@ -27,7 +27,8 @@ extern AxisMaskSetting* homing_dir_mask;
 extern AxisMaskSetting* homing_squared_axes;
 extern AxisMaskSetting* homing_cycle[MAX_N_AXIS];
 
-extern FlagSetting* step_enable_invert;
+extern AxisMaskSetting* step_enable_invert;
+
 extern FlagSetting* limit_invert;
 extern FlagSetting* probe_invert;
 extern FlagSetting* report_inches;
@@ -41,11 +42,20 @@ extern IntSetting*   status_mask;
 extern FloatSetting* junction_deviation;
 extern FloatSetting* arc_tolerance;
 
+extern FlagSetting* led_state;
+extern FlagSetting* led_inverse;
+
+extern AxisMaskSetting* limit_axis_move_plus;
+extern AxisMaskSetting* limit_axis_move_minus;
+
+extern FloatSetting* axis_convet_multiplier;
+
 extern FloatSetting* homing_feed_rate;
 extern FloatSetting* homing_seek_rate;
 extern FloatSetting* homing_debounce;
 extern FloatSetting* homing_pulloff;
 extern FloatSetting* spindle_pwm_freq;
+extern FloatSetting* rpm_max_chuck;
 extern FloatSetting* rpm_max;
 extern FloatSetting* rpm_min;
 extern FloatSetting* spindle_delay_spinup;
@@ -54,6 +64,8 @@ extern FloatSetting* coolant_start_delay;
 extern FlagSetting*  spindle_enbl_off_with_zero_speed;
 extern FlagSetting*  spindle_enable_invert;
 extern FlagSetting*  spindle_output_invert;
+extern FlagSetting*  spindle_direction_invert;
+extern FlagSetting*  chuck_direction_invert;
 
 extern FloatSetting* spindle_pwm_off_value;
 extern FloatSetting* spindle_pwm_min_value;
@@ -61,6 +73,14 @@ extern FloatSetting* spindle_pwm_max_value;
 extern IntSetting*   spindle_pwm_bit_precision;
 
 extern EnumSetting* spindle_type;
+
+extern FloatSetting* atc_speed;
+extern FloatSetting* atc_distance;
+extern FloatSetting* atc_offset;
+
+extern IntSetting* tool_selected;
+extern IntSetting* tool_active;
+extern IntSetting* tool_count;
 
 extern AxisMaskSetting* stallguard_debug_mask;
 

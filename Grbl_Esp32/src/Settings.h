@@ -191,10 +191,12 @@ public:
     void        setDefault();
     void        addWebui(WebUI::JSONencoder*);
     Error       setStringValue(char* value);
+    Error       setValue(int32_t value);
     const char* getStringValue();
     const char* getDefaultString();
 
     int32_t get() { return _currentValue; }
+    int32_t get(int32_t offset) { return _currentValue + offset; }
 };
 
 class AxisMaskSetting : public Setting {
@@ -219,6 +221,8 @@ public:
     void        load();
     void        setDefault();
     void        addWebui(WebUI::JSONencoder*);
+    Error       saveValue();
+    Error       setAxis(uint8_t axis, bool val);
     Error       setStringValue(char* value);
     const char* getCompatibleValue();
     const char* getStringValue();
@@ -233,6 +237,7 @@ private:
     const char* _name;
 
 public:
+    Coordinates() { _name = "null"; }
     Coordinates(const char* name) : _name(name) {}
 
     const char* getName() { return _name; }
@@ -251,6 +256,130 @@ public:
 };
 
 extern Coordinates* coords[CoordIndex::End];
+
+class ToolNfo {
+private:
+    float _i               = -1;  // Front angle
+    float _j               = -1;  // Back angle
+    float _p               = -1;  // Tool number
+    float _q               = -1;  // Orientation
+    float _r               = -1;  // Radius of tool
+    float _xyz[MAX_N_AXIS] = {
+        0.0,
+    };  // Axes Offsets
+
+    bool _isinit = false;
+
+    char _name[5];   // Name as a char array
+    char _temp[10];  // Name as a char array
+
+public:
+    ToolNfo(uint8_t index) {
+        _name[0] = '\0';
+        _temp[0] = '\0';
+        snprintf(_name, sizeof(_name), "T%d", index);  // Initialize _name with index
+        // grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Tool table tool %s declared", _name);
+    }
+
+    bool load();
+    void setDefault(uint8_t idx) {
+        float zeros[MAX_N_AXIS] = { 0.0 };
+        set_i(0.0);
+        set_j(0.0);
+        set_p(idx + 1);
+        set_q(0.0);
+        set_r(0.0);
+        set_xyz(zeros);
+    }
+
+    void set_i(float value);
+    void set_j(float value);
+    void set_p(float value);
+    void set_q(float value);
+    void set_r(float value);
+    void set_xyz(float* value);
+
+    float        get_i() const { return _i; }
+    float        get_j() const { return _j; }
+    float        get_p() const { return _p; }
+    float        get_q() const { return _q; }
+    float        get_r() const { return _r; }
+    const float* get_xyz() const { return _xyz; }
+    void         get_xyz(float* value) const { memcpy(value, _xyz, sizeof(_xyz)); }
+};
+
+class ToolTable_t {
+private:
+    uint8_t  _tool_active   = 0;       // Tracks tool number. NOT USED.
+    uint8_t  _tool_selected = 0;       // Tracks tool number. NOT USED.
+    ToolNfo* _tools[MAX_TOOL_NUMBER];  // Axes Offsets
+
+    const char* name_act = "TT_act";
+    const char* name_sel = "TT_sel";
+
+    bool _isinit = false;
+
+public:
+    ToolTable_t() : _tool_active(0), _tool_selected(0) {
+        for (uint8_t idx = 0; idx < MAX_TOOL_NUMBER; idx++) {
+            _tools[idx] = new ToolNfo(idx + 1);
+        }
+    }
+
+    ~ToolTable_t() {
+        for (uint8_t idx = 0; idx < MAX_TOOL_NUMBER; idx++) {
+            delete _tools[idx];  // Clean up
+        }
+    }
+
+    bool load();
+    void setDefault(uint8_t mask) {
+        if (bit_istrue(mask, bit(0)))
+            set_tool_active(0);
+        if (bit_istrue(mask, bit(1)))
+            set_tool_selected(0);
+        for (int idx = 0; idx < MAX_TOOL_NUMBER; idx++) {
+            if (bit_istrue(mask, bit(idx + 2))) {
+                _tools[idx]->setDefault(idx);
+            }
+        }
+    }
+
+    void set_tool_active(uint8_t value);
+    void set_tool_selected(uint8_t value);
+    void set_i(float value, uint8_t tool) {
+        if (_isinit)
+            _tools[tool]->set_i(value);
+    }
+    void set_j(float value, uint8_t tool) {
+        if (_isinit)
+            _tools[tool]->set_j(value);
+    }
+    void set_r(float value, uint8_t tool) {
+        if (_isinit)
+            _tools[tool]->set_r(value);
+    }
+    void set_q(float value, uint8_t tool) {
+        if (_isinit)
+            _tools[tool]->set_q(value);
+    }
+    void set_xyz(float* value, uint8_t tool) {
+        if (_isinit)
+            _tools[tool]->set_xyz(value);
+    }
+
+    uint8_t      get_tool_active() const { return _tool_active; }
+    uint8_t      get_tool_selected() const { return _tool_selected; }
+    float        get_i(uint8_t tool) const { return _tools[tool]->get_i(); }
+    float        get_j(uint8_t tool) const { return _tools[tool]->get_j(); }
+    float        get_p(uint8_t tool) const { return _tools[tool]->get_p(); }
+    float        get_q(uint8_t tool) const { return _tools[tool]->get_q(); }
+    float        get_r(uint8_t tool) const { return _tools[tool]->get_r(); }
+    const float* get_xyz(uint8_t tool) const { return _tools[tool]->get_xyz(); }
+    void         get_xyz(float* value, uint8_t tool) const { _tools[tool]->get_xyz(value); }
+};
+
+extern ToolTable_t* ToolTable;
 
 class FloatSetting : public Setting {
 private:
@@ -278,14 +407,14 @@ public:
                  float         defVal,
                  float         minVal,
                  float         maxVal,
-                 bool (*checker)(char*) = NULL) :
-        FloatSetting(NULL, type, permissions, grblName, name, defVal, minVal, maxVal, checker) {}
+                 bool (*checker)(char*) = NULL) : FloatSetting(NULL, type, permissions, grblName, name, defVal, minVal, maxVal, checker) {}
 
     void load();
     void setDefault();
     // There are no Float settings in WebUI
     void        addWebui(WebUI::JSONencoder*) {}
     Error       setStringValue(char* value);
+    Error       setValue(float value);
     const char* getStringValue();
     const char* getDefaultString();
 
@@ -354,13 +483,13 @@ public:
                 const char*   name,
                 int8_t        defVal,
                 enum_opt_t*   opts,
-                bool (*checker)(char*) = NULL) :
-        EnumSetting(NULL, type, permissions, grblName, name, defVal, opts, checker) {}
+                bool (*checker)(char*) = NULL) : EnumSetting(NULL, type, permissions, grblName, name, defVal, opts, checker) {}
 
     void        load();
     void        setDefault();
     void        addWebui(WebUI::JSONencoder*);
     Error       setStringValue(char* value);
+    Error       setEnumValue(int8_t value);
     const char* getStringValue();
     const char* getDefaultString();
 
@@ -390,6 +519,7 @@ public:
     // The booleans are expressed as Enums
     void        addWebui(WebUI::JSONencoder*) {}
     Error       setStringValue(char* value);
+    Error       setBoolValue(bool value);
     const char* getCompatibleValue();
     const char* getStringValue();
     const char* getDefaultString();
@@ -449,6 +579,8 @@ extern bool idleOrJog();
 extern bool idleOrAlarm();
 extern bool anyState();
 extern bool notCycleOrHold();
+extern bool isAxisAsda(int axis);
+extern bool isAxisRpm(int axis);
 
 class WebCommand : public Command {
 private:
@@ -462,9 +594,7 @@ public:
                const char*   grblName,
                const char*   name,
                Error (*action)(char*, WebUI::AuthenticationLevel),
-               bool (*cmdChecker)()) :
-        Command(description, type, permissions, grblName, name, cmdChecker),
-        _action(action) {}
+               bool (*cmdChecker)()) : Command(description, type, permissions, grblName, name, cmdChecker), _action(action) {}
 
     WebCommand(const char*   description,
                type_t        type,
@@ -486,15 +616,12 @@ public:
                 const char* name,
                 Error (*action)(const char*, WebUI::AuthenticationLevel, WebUI::ESPResponseStream*),
                 bool (*cmdChecker)(),
-                permissions_t auth) :
-        Command(NULL, GRBLCMD, auth, grblName, name, cmdChecker),
-        _action(action) {}
+                permissions_t auth) : Command(NULL, GRBLCMD, auth, grblName, name, cmdChecker), _action(action) {}
 
     GrblCommand(const char* grblName,
                 const char* name,
                 Error (*action)(const char*, WebUI::AuthenticationLevel, WebUI::ESPResponseStream*),
-                bool (*cmdChecker)()) :
-        GrblCommand(grblName, name, action, cmdChecker, WG) {}
+                bool (*cmdChecker)()) : GrblCommand(grblName, name, action, cmdChecker, WG) {}
     Error action(char* value, WebUI::AuthenticationLevel auth_level, WebUI::ESPResponseStream* response);
 };
 
