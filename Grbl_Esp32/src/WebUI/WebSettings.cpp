@@ -189,7 +189,9 @@ namespace WebUI {
             webPrint(" ");
         }
     }
-    static void webPrint(String s) { webPrint(s.c_str()); }
+    static void webPrint(String s) {
+        webPrint(s.c_str());
+    }
     static void webPrint(const char* s1, const char* s2) {
         webPrint(s1);
         webPrint(s2);
@@ -208,7 +210,9 @@ namespace WebUI {
         webPrint("\r\n");
         webColumn = 0;
     }
-    static void webPrintln(String s) { webPrintln(s.c_str()); }
+    static void webPrintln(String s) {
+        webPrintln(s.c_str());
+    }
     static void webPrintln(const char* s1, const char* s2) {
         webPrint(s1);
         webPrintln(s2);
@@ -217,7 +221,9 @@ namespace WebUI {
         webPrint(s);
         webPrintln(ip.toString().c_str());
     }
-    static void webPrintln(const char* s, String s2) { webPrintln(s, s2.c_str()); }
+    static void webPrintln(const char* s, String s2) {
+        webPrintln(s, s2.c_str());
+    }
 
     static void print_mac(const char* s, String mac) {
         webPrint(s);
@@ -228,11 +234,16 @@ namespace WebUI {
 
     static Error showFwInfo(char* parameter, AuthenticationLevel auth_level) {  // ESP800
         webPrint("FW version:");
+        webPrint(CNC_VERSION);
+        webPrint(" (");
+        webPrint(CNC_VERSION_BUILD);
+        webPrint(")");
+        webPrint("GRBL version:");
         webPrint(GRBL_VERSION);
         webPrint(" (");
         webPrint(GRBL_VERSION_BUILD);
         webPrint(")"
-                 " # FW target:grbl-embedded  # FW HW:");
+                 " # FW target:embedded  # FW HW:");
 #ifdef ENABLE_SD_CARD
         webPrint("Direct SD");
 #else
@@ -387,7 +398,7 @@ namespace WebUI {
             webPrintln("Invalid message!");
             return Error::InvalidValue;
         }
-        if (!notificationsservice.sendMSG("GRBL Notification", parameter)) {
+        if (!notificationsservice.sendMSG("CNC Notification", parameter)) {
             webPrintln("Cannot send message!");
             return Error::MessageFailed;
         }
@@ -593,9 +604,9 @@ namespace WebUI {
         webPrintln("");
 #endif
         webPrint("FW version: ");
-        webPrint(GRBL_VERSION);
+        webPrint(CNC_VERSION);
         webPrint(" (");
-        webPrint(GRBL_VERSION_BUILD);
+        webPrint(CNC_VERSION_BUILD);
         webPrint(") (ESP32)");
         webPrintln("");
         return Error::Ok;

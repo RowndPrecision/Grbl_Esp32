@@ -36,6 +36,8 @@ namespace WebUI {
         }
     }
 #else
-    void remove_password(char* str, AuthenticationLevel& auth_level) { auth_level = AuthenticationLevel::LEVEL_ADMIN; }
+    void remove_password(char* str, AuthenticationLevel& auth_level) {
+        auth_level = AuthenticationLevel::LEVEL_ADMIN;
+    }
 #endif
 }

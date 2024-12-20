@@ -32,6 +32,8 @@ void grbl_init() {
     WiFi.mode(WIFI_OFF);
     client_init();  // Setup serial baud rate and interrupts
     display_init();
+
+    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "CNCLathe Ver %s Date %s", CNC_VERSION, CNC_VERSION_BUILD);  // print grbl_esp32 verion info
     grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Grbl_ESP32 Ver %s Date %s", GRBL_VERSION, GRBL_VERSION_BUILD);  // print grbl_esp32 verion info
     grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Compiled with ESP32 SDK:%s", ESP.getSdkVersion());              // print the SDK version
 // show the map name at startup
@@ -44,6 +46,11 @@ void grbl_init() {
     init_motors();
     memset(sys_position, 0, sizeof(sys_position));  // Clear machine position.
     machine_init();                                 // weak definition in Grbl.cpp does nothing
+
+    led_state->setBoolValue(true);
+
+    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Led test");
+
     // Initialize system state.
 #ifdef FORCE_INITIALIZATION_ALARM
     // Force Grbl into an ALARM state upon a power-cycle or hard reset.
