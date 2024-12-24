@@ -169,6 +169,8 @@ static inline void gpio_matrix_out_check(uint8_t gpio, uint32_t signal_idx, bool
     }
 }
 
+// uint32_t test1 = 0;
+
 static inline void i2s_out_single_data() {
 #if I2S_OUT_NUM_BITS == 16
     uint32_t port_data = atomic_load(&i2s_out_port_data);
@@ -177,6 +179,10 @@ static inline void i2s_out_single_data() {
 #else
     I2S0.conf_single_data = atomic_load(&i2s_out_port_data);  // Apply port data in real-time (static I2S)
 #endif
+    // if (I2S0.conf_single_data != test1) {
+    //     grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "i2s_out_single_data : %i", I2S0.conf_single_data);
+    //     test1 = I2S0.conf_single_data;
+    // }
 }
 
 static inline void i2s_out_reset_fifo_without_lock() {
@@ -247,6 +253,7 @@ static int IRAM_ATTR i2s_out_gpio_shiftout(uint32_t port_data) {
         __digitalWrite(i2s_out_bck_pin, LOW);
     }
     __digitalWrite(i2s_out_ws_pin, HIGH);  // Latch
+
     return 0;
 }
 
@@ -851,8 +858,8 @@ int IRAM_ATTR i2s_out_init(i2s_out_init_t& init_param) {
     I2S0.sample_rate_conf.tx_bits_mod = 16;  // default is 16-bits
     I2S0.sample_rate_conf.rx_bits_mod = 16;  // default is 16-bits
 #else
-    I2S0.fifo_conf.tx_fifo_mod = 3;                    // 0: 16-bit dual channel data, 3: 32-bit single channel data
-    I2S0.fifo_conf.rx_fifo_mod = 3;                    // 0: 16-bit dual channel data, 3: 32-bit single channel data
+    I2S0.fifo_conf.tx_fifo_mod = 3;  // 0: 16-bit dual channel data, 3: 32-bit single channel data
+    I2S0.fifo_conf.rx_fifo_mod = 3;  // 0: 16-bit dual channel data, 3: 32-bit single channel data
     // Data width is 32-bit. Forgetting this setting will result in a 16-bit transfer.
     I2S0.sample_rate_conf.tx_bits_mod = 32;
     I2S0.sample_rate_conf.rx_bits_mod = 32;

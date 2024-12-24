@@ -1,12 +1,12 @@
 #pragma once
 // clang-format off
 
-#define MACHINE_NAME "CncLathe"
+#define MACHINE_NAME "Cnc5Axis"
 
-#define N_AXIS 4
+#define N_AXIS 5
 
 
-#define CUSTOM_CODE_FILENAME    "../Custom/CncLathe.cpp"
+// #define CUSTOM_CODE_FILENAME    "../Custom/CncLathe.cpp"
 
 #define USE_I2S_OUT
 
@@ -14,14 +14,14 @@
 #define I2S_OUT_WS              GPIO_NUM_23
 #define I2S_OUT_DATA            GPIO_NUM_21
 
-#define DEFAULT_PLANE   Plane::ZX  // ZX for lathe
+#define DEFAULT_PLANE   Plane::XY  // ZX for lathe
 
-#define DEFAULT_SWAP_Y  C_AXIS
-#define DEFAULT_SWAP_C  Y_AXIS
+#define DEFAULT_SWAP_B  C_AXIS
+#define DEFAULT_SWAP_C  B_AXIS
 
 #define BLOCK_AXIS_ON_PWM_MODE  A_AXIS
 
-#define POSITIONABLE_SPINDLE_AXIS DEFAULT_SWAP_C
+#define POSITIONABLE_SPINDLE_AXIS -1 // -1 to disable
 #define POSITIONABLE_AXIS_CONVERT 1.0f // 360.0f
 
 #define X_STEP_PIN              GPIO_NUM_27
@@ -33,15 +33,18 @@
 // #define STEPPERS_DISABLE_PIN    I2SO(0)
 #define STEPPERS_DISABLE_PIN    GPIO_NUM_18
 
-#define Y_STEP_PIN          GPIO_NUM_2
-#define Y_DIRECTION_PIN     GPIO_NUM_15
-#define Y_DISABLE_PIN       I2SO(2)
+#define Y_STEP_PIN          GPIO_NUM_5
+#define Y_DIRECTION_PIN     I2SO(5)
+#define Y_DISABLE_PIN       I2SO(6)
+
+#define A_STEP_PIN          GPIO_NUM_2
+#define A_DIRECTION_PIN     I2SO(1)
+
+#define B_STEP_PIN          GPIO_NUM_15
+#define B_DIRECTION_PIN     I2SO(2)
 
 #define DEFAULT_INVERT_ST_ENABLE 0 //bit(Y_AXIS)
 
-#define A_STEP_PIN          GPIO_NUM_5
-#define A_DIRECTION_PIN     I2SO(5)
-#define A_DISABLE_PIN       I2SO(6)
 
 #define X_LIMIT_PIN                 GPIO_NUM_36
 #define Z_LIMIT_PIN                 GPIO_NUM_39
@@ -49,8 +52,8 @@
 #define PROBE_PIN                   GPIO_NUM_34
 #define CONTROL_SAFETY_DOOR_PIN     GPIO_NUM_35
 
-#define DEFAULT_HOMING_CYCLE_0  bit(X_AXIS)
-#define DEFAULT_HOMING_CYCLE_1  bit(Z_AXIS)
+#define DEFAULT_HOMING_CYCLE_0  0
+#define DEFAULT_HOMING_CYCLE_1  0
 #define DEFAULT_HOMING_CYCLE_2  0
 #define DEFAULT_HOMING_CYCLE_3  0
 #define DEFAULT_HOMING_CYCLE_4  0
@@ -59,12 +62,12 @@
 #define SPINDLE_TYPE            SpindleType::PWM
 
 #define SPINDLE_OUTPUT_PIN      GPIO_NUM_17
-#define SPINDLE_DIR_PIN         I2SO(5)
+#define SPINDLE_DIR_PIN         I2SO(3)
 #define SPINDLE_ENABLE_PIN      I2SO(7)
 
 #define ASDA_CN1_OUTPUT_PIN     GPIO_NUM_16
-#define ASDA_CN1_S_P_PIN        I2SO(1)
-#define ASDA_CN1_ENABLE_PIN     I2SO(2)
+#define ASDA_CN1_S_P_PIN        I2SO(3)
+#define ASDA_CN1_ENABLE_PIN     I2SO(3)
 #define ASDA_CN1_DIR_PIN        I2SO(3)
 
 #define LED_PIN     I2SO(4)
@@ -128,24 +131,28 @@
 #define DEFAULT_LASER_MODE 0 // false
 
 #define DEFAULT_X_STEPS_PER_MM 1600.0   // steps per mm
-#define DEFAULT_Y_STEPS_PER_MM 10.0 * POSITIONABLE_AXIS_CONVERT    // steps per rev
+#define DEFAULT_Y_STEPS_PER_MM 1600.0   // steps per rev
 #define DEFAULT_Z_STEPS_PER_MM 1600.0   // steps per mm
-#define DEFAULT_A_STEPS_PER_MM 640.0   // steps per mm
+#define DEFAULT_A_STEPS_PER_MM 1600.0   // steps per mm
+#define DEFAULT_B_STEPS_PER_MM 1600.0   // steps per mm
 
 #define DEFAULT_X_MAX_RATE 1000.0   // mm/min
-#define DEFAULT_Y_MAX_RATE 360000.0 / POSITIONABLE_AXIS_CONVERT  // rpm
+#define DEFAULT_Y_MAX_RATE 1000.0   // rpm
 #define DEFAULT_Z_MAX_RATE 1000.0   // mm/min
 #define DEFAULT_A_MAX_RATE 1000.0   // mm/min
+#define DEFAULT_B_MAX_RATE 1000.0   // mm/min
 
 #define DEFAULT_X_ACCELERATION 200.0 // mm/sec^2. 50 mm/sec^2 = 180000 mm/min^2
-#define DEFAULT_Y_ACCELERATION 72000.0 / POSITIONABLE_AXIS_CONVERT // mm/sec^2
+#define DEFAULT_Y_ACCELERATION 200.0 // mm/sec^2
 #define DEFAULT_Z_ACCELERATION 200.0 // mm/sec^2
 #define DEFAULT_A_ACCELERATION 200.0 // mm/sec^2
+#define DEFAULT_B_ACCELERATION 200.0 // mm/sec^2
 
-#define DEFAULT_X_MAX_TRAVEL 100.0  // mm NOTE: Must be a positive value.
+#define DEFAULT_X_MAX_TRAVEL 0.0  // mm NOTE: Must be a positive value.
 #define DEFAULT_Y_MAX_TRAVEL 0.0    // 0 = inf
-#define DEFAULT_Z_MAX_TRAVEL 300.0  // This is percent in servo mode...used for calibration
-#define DEFAULT_A_MAX_TRAVEL 40.0   // This is percent in servo mode...used for calibration
+#define DEFAULT_Z_MAX_TRAVEL 0.0  // This is percent in servo mode...used for calibration
+#define DEFAULT_A_MAX_TRAVEL 0.0   // This is percent in servo mode...used for calibration
+#define DEFAULT_B_MAX_TRAVEL 0.0   // This is percent in servo mode...used for calibration
 
 
 #define DEFAULT_ATC_SPEED 100

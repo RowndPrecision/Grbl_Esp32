@@ -581,6 +581,7 @@ extern bool anyState();
 extern bool notCycleOrHold();
 extern bool isAxisAsda(int axis);
 extern bool isAxisRpm(int axis);
+extern bool isAxisMovable(int axis);
 
 class WebCommand : public Command {
 private:

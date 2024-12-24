@@ -27,6 +27,7 @@
 #include "10vSpindle.h"
 
 namespace Spindles {
+
     void _10v::init() {
         get_pins_and_settings();  // these gets the standard PWM settings, but many need to be changed for BESC
 

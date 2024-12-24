@@ -29,6 +29,12 @@ bool isAxisRpm(int axis) {
 #endif
     return false;
 }
+bool isAxisMovable(int axis) {
+    if (axis == BLOCK_AXIS_ON_PWM_MODE && static_cast<SpindleType>(spindle_type->get()) == SpindleType::PWM) {
+        return true;
+    }
+    return false;
+}
 
 Word::Word(type_t type, permissions_t permissions, const char* description, const char* grblName, const char* fullName) :
     _description(description), _grblName(grblName), _fullName(fullName), _type(type), _permissions(permissions) {}
