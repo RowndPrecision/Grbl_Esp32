@@ -36,23 +36,18 @@ bool isAxisMovable(int axis) {
     return false;
 }
 
-Word::Word(type_t type, permissions_t permissions, const char* description, const char* grblName, const char* fullName) :
-    _description(description), _grblName(grblName), _fullName(fullName), _type(type), _permissions(permissions) {}
+Word::Word(type_t type, permissions_t permissions, const char* description, const char* grblName, const char* fullName) : _description(description), _grblName(grblName), _fullName(fullName), _type(type), _permissions(permissions) {}
 
 Command* Command::List = NULL;
 
-Command::Command(
-    const char* description, type_t type, permissions_t permissions, const char* grblName, const char* fullName, bool (*cmdChecker)()) :
-    Word(type, permissions, description, grblName, fullName), _cmdChecker(cmdChecker) {
+Command::Command(const char* description, type_t type, permissions_t permissions, const char* grblName, const char* fullName, bool (*cmdChecker)()) : Word(type, permissions, description, grblName, fullName), _cmdChecker(cmdChecker) {
     link = List;
     List = this;
 }
 
 Setting* Setting::List = NULL;
 
-Setting::Setting(
-    const char* description, type_t type, permissions_t permissions, const char* grblName, const char* fullName, bool (*checker)(char*)) :
-    Word(type, permissions, description, grblName, fullName), _checker(checker) {
+Setting::Setting(const char* description, type_t type, permissions_t permissions, const char* grblName, const char* fullName, bool (*checker)(char*)) : Word(type, permissions, description, grblName, fullName), _checker(checker) {
     link = List;
     List = this;
 
@@ -80,7 +75,11 @@ Error Setting::check(char* s) {
     if (!_checker) {
         return Error::Ok;
     }
-    return _checker(s) ? Error::Ok : Error::InvalidValue;
+    bool test = _checker(s);
+    if (_checkError != Error::Ok) {
+        return _checkError;
+    }
+    return test ? Error::Ok : Error::InvalidValue;
 }
 
 nvs_handle Setting::_handle = 0;
@@ -93,18 +92,8 @@ void Setting::init() {
     }
 }
 
-IntSetting::IntSetting(const char*   description,
-                       type_t        type,
-                       permissions_t permissions,
-                       const char*   grblName,
-                       const char*   name,
-                       int32_t       defVal,
-                       int32_t       minVal,
-                       int32_t       maxVal,
-                       bool (*checker)(char*) = NULL,
-                       bool currentIsNvm) :
-    Setting(description, type, permissions, grblName, name, checker), _defaultValue(defVal), _currentValue(defVal), _minValue(minVal),
-    _maxValue(maxVal), _currentIsNvm(currentIsNvm) {
+IntSetting::IntSetting(const char* description, type_t type, permissions_t permissions, const char* grblName, const char* name, int32_t defVal, int32_t minVal, int32_t maxVal, bool (*checker)(char*) = NULL, bool currentIsNvm) :
+    Setting(description, type, permissions, grblName, name, checker), _defaultValue(defVal), _currentValue(defVal), _minValue(minVal), _maxValue(maxVal), _currentIsNvm(currentIsNvm) {
     _storedValue = std::numeric_limits<int32_t>::min();
 }
 
@@ -164,6 +153,13 @@ Error IntSetting::setStringValue(char* s) {
 }
 
 Error IntSetting::setValue(int32_t value) {
+    char s[16];
+    snprintf(s, sizeof(s), "%d", value);
+    Error err = check(s);
+    if (err != Error::Ok) {
+        return err;
+    }
+
     int32_t convertedValue = value;
 
     if (convertedValue < _minValue || convertedValue > _maxValue) {
@@ -220,13 +216,7 @@ void IntSetting::addWebui(WebUI::JSONencoder* j) {
     }
 }
 
-AxisMaskSetting::AxisMaskSetting(const char*   description,
-                                 type_t        type,
-                                 permissions_t permissions,
-                                 const char*   grblName,
-                                 const char*   name,
-                                 int32_t       defVal,
-                                 bool (*checker)(char*) = NULL) :
+AxisMaskSetting::AxisMaskSetting(const char* description, type_t type, permissions_t permissions, const char* grblName, const char* name, int32_t defVal, bool (*checker)(char*) = NULL) :
     Setting(description, type, permissions, grblName, name, checker), _defaultValue(defVal), _currentValue(defVal) {}
 
 void AxisMaskSetting::load() {
@@ -346,17 +336,8 @@ void AxisMaskSetting::addWebui(WebUI::JSONencoder* j) {
     }
 }
 
-FloatSetting::FloatSetting(const char*   description,
-                           type_t        type,
-                           permissions_t permissions,
-                           const char*   grblName,
-                           const char*   name,
-                           float         defVal,
-                           float         minVal,
-                           float         maxVal,
-                           bool (*checker)(char*) = NULL) :
-    Setting(description, type, permissions, grblName, name, checker), _defaultValue(defVal), _currentValue(defVal), _minValue(minVal),
-    _maxValue(maxVal) {}
+FloatSetting::FloatSetting(const char* description, type_t type, permissions_t permissions, const char* grblName, const char* name, float defVal, float minVal, float maxVal, bool (*checker)(char*) = NULL) :
+    Setting(description, type, permissions, grblName, name, checker), _defaultValue(defVal), _currentValue(defVal), _minValue(minVal), _maxValue(maxVal) {}
 
 void FloatSetting::load() {
     union {
@@ -414,6 +395,13 @@ Error FloatSetting::setStringValue(char* s) {
 }
 
 Error FloatSetting::setValue(float value) {
+    char s[32];
+    snprintf(s, sizeof(s), "%.6f", value);
+    Error err = check(s);
+    if (err != Error::Ok) {
+        return err;
+    }
+
     float convertedValue = value;
 
     if (convertedValue < _minValue || convertedValue > _maxValue) {
@@ -463,15 +451,8 @@ const char* FloatSetting::getStringValue() {
     return strval;
 }
 
-StringSetting::StringSetting(const char*   description,
-                             type_t        type,
-                             permissions_t permissions,
-                             const char*   grblName,
-                             const char*   name,
-                             const char*   defVal,
-                             int           min,
-                             int           max,
-                             bool (*checker)(char*)) : Setting(description, type, permissions, grblName, name, checker) {
+StringSetting::StringSetting(const char* description, type_t type, permissions_t permissions, const char* grblName, const char* name, const char* defVal, int min, int max, bool (*checker)(char*)) :
+    Setting(description, type, permissions, grblName, name, checker) {
     _defaultValue = defVal;
     _currentValue = defVal;
     _minLength    = min;
@@ -555,14 +536,7 @@ void StringSetting::addWebui(WebUI::JSONencoder* j) {
 
 typedef std::map<const char*, int8_t, cmp_str> enum_opt_t;
 
-EnumSetting::EnumSetting(const char*   description,
-                         type_t        type,
-                         permissions_t permissions,
-                         const char*   grblName,
-                         const char*   name,
-                         int8_t        defVal,
-                         enum_opt_t*   opts,
-                         bool (*checker)(char*) = NULL) :
+EnumSetting::EnumSetting(const char* description, type_t type, permissions_t permissions, const char* grblName, const char* name, int8_t defVal, enum_opt_t* opts, bool (*checker)(char*) = NULL) :
     Setting(description, type, permissions, grblName, name, checker), _defaultValue(defVal), _options(opts) {}
 
 void EnumSetting::load() {
@@ -580,6 +554,33 @@ void EnumSetting::setDefault() {
     if (_storedValue != _currentValue) {
         nvs_erase_key(_handle, _keyName);
     }
+}
+
+uint8_t EnumSetting::stringToEnum(char* s) {
+    enum_opt_t::iterator it = _options->find(s);
+    if (it == _options->end()) {
+        // If we don't find the value in keys, look for it in the numeric values
+
+        // Disallow empty string
+        if (!s || !*s) {
+            return UINT8_MAX;
+        }
+        char*   endptr;
+        uint8_t num = strtol(s, &endptr, 10);
+        // Disallow non-numeric characters in string
+        if (*endptr) {
+            return UINT8_MAX;
+        }
+        for (it = _options->begin(); it != _options->end(); it++) {
+            if (it->second == num) {
+                break;
+            }
+        }
+        if (it == _options->end()) {
+            return UINT8_MAX;
+        }
+    }
+    return it->second;
 }
 
 // For enumerations, we allow the value to be set
@@ -631,9 +632,15 @@ Error EnumSetting::setStringValue(char* s) {
 }
 
 Error EnumSetting::setEnumValue(int8_t value) {
+    const char* result = enumToString(value);
+    char        s[256];  // Make sure the size is sufficient
+    std::strncpy(s, result, sizeof(s) - 1);
+    Error err = check(s);
+    if (err != Error::Ok) {
+        return err;
+    }
     // Look for the value in the _options map using the numeric value
-    auto it = std::find_if(
-        _options->begin(), _options->end(), [value](const std::pair<const char*, int8_t>& option) { return option.second == value; });
+    auto it = std::find_if(_options->begin(), _options->end(), [value](const std::pair<const char*, int8_t>& option) { return option.second == value; });
 
     if (it != _options->end()) {
         // If we find the value in the map
@@ -686,13 +693,7 @@ void EnumSetting::addWebui(WebUI::JSONencoder* j) {
     j->end_object();
 }
 
-FlagSetting::FlagSetting(const char*   description,
-                         type_t        type,
-                         permissions_t permissions,
-                         const char*   grblName,
-                         const char*   name,
-                         bool          defVal,
-                         bool (*checker)(char*) = NULL) :
+FlagSetting::FlagSetting(const char* description, type_t type, permissions_t permissions, const char* grblName, const char* name, bool defVal, bool (*checker)(char*) = NULL) :
     Setting(description, type, permissions, grblName, name, checker), _defaultValue(defVal) {}
 
 void FlagSetting::load() {
@@ -712,6 +713,13 @@ void FlagSetting::setDefault() {
 }
 
 Error FlagSetting::setBoolValue(bool value) {
+    char s[4];
+    strcpy(s, value ? "on" : "off");
+    Error err = check(s);
+    if (err != Error::Ok) {
+        return err;
+    }
+
     _currentValue = value;
 
     // _storedValue is -1, 0, or 1
@@ -736,8 +744,7 @@ Error FlagSetting::setStringValue(char* s) {
     if (err != Error::Ok) {
         return err;
     }
-    _currentValue = (strcasecmp(s, "on") == 0) || (strcasecmp(s, "true") == 0) || (strcasecmp(s, "enabled") == 0) ||
-                    (strcasecmp(s, "yes") == 0) || (strcasecmp(s, "1") == 0);
+    _currentValue = (strcasecmp(s, "on") == 0) || (strcasecmp(s, "true") == 0) || (strcasecmp(s, "enabled") == 0) || (strcasecmp(s, "yes") == 0) || (strcasecmp(s, "1") == 0);
     // _storedValue is -1, 0, or 1
     // _currentValue is 0 or 1
     if (_storedValue != (int8_t)_currentValue) {
@@ -765,24 +772,13 @@ const char* FlagSetting::getCompatibleValue() {
 
 #include <WiFi.h>
 
-IPaddrSetting::IPaddrSetting(const char*   description,
-                             type_t        type,
-                             permissions_t permissions,
-                             const char*   grblName,
-                             const char*   name,
-                             uint32_t      defVal,
-                             bool (*checker)(char*) = NULL) :
+IPaddrSetting::IPaddrSetting(const char* description, type_t type, permissions_t permissions, const char* grblName, const char* name, uint32_t defVal, bool (*checker)(char*) = NULL) :
     Setting(description, type, permissions, grblName, name, checker)  // There are no GRBL IP settings.
     ,
     _defaultValue(defVal), _currentValue(defVal) {}
 
-IPaddrSetting::IPaddrSetting(const char*   description,
-                             type_t        type,
-                             permissions_t permissions,
-                             const char*   grblName,
-                             const char*   name,
-                             const char*   defVal,
-                             bool (*checker)(char*) = NULL) : Setting(description, type, permissions, grblName, name, checker) {
+IPaddrSetting::IPaddrSetting(const char* description, type_t type, permissions_t permissions, const char* grblName, const char* name, const char* defVal, bool (*checker)(char*) = NULL) :
+    Setting(description, type, permissions, grblName, name, checker) {
     IPAddress ipaddr;
     if (ipaddr.fromString(defVal)) {
         _defaultValue = ipaddr;

@@ -35,7 +35,7 @@ BreakBeforeInheritanceComma: 'true'
 BreakBeforeTernaryOperators: 'false'
 BreakConstructorInitializers: AfterColon
 BreakInheritanceList: AfterColon
-ColumnLimit: '140'
+ColumnLimit: '240'
 CommentPragmas: '^ :: '
 CompactNamespaces: 'false'
 Cpp11BracedListStyle: 'false'

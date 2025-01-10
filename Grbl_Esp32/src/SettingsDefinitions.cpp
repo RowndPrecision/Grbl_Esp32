@@ -72,6 +72,7 @@ IntSetting*   spindle_pwm_bit_precision;
 
 EnumSetting* spindle_type;
 
+FlagSetting*  atc_connected;
 FloatSetting* atc_speed;
 FloatSetting* atc_distance;
 FloatSetting* atc_offset;
@@ -135,66 +136,14 @@ typedef struct {
     uint16_t    microsteps;
     uint16_t    stallguard;
 } axis_defaults_t;
-axis_defaults_t axis_defaults[] = { { "X",
-                                      DEFAULT_X_STEPS_PER_MM,
-                                      DEFAULT_X_MAX_RATE,
-                                      DEFAULT_X_ACCELERATION,
-                                      DEFAULT_X_MAX_TRAVEL,
-                                      DEFAULT_X_HOMING_MPOS,
-                                      DEFAULT_X_CURRENT,
-                                      DEFAULT_X_HOLD_CURRENT,
-                                      DEFAULT_X_MICROSTEPS,
-                                      DEFAULT_X_STALLGUARD },
-                                    { "Y",
-                                      DEFAULT_Y_STEPS_PER_MM,
-                                      DEFAULT_Y_MAX_RATE,
-                                      DEFAULT_Y_ACCELERATION,
-                                      DEFAULT_Y_MAX_TRAVEL,
-                                      DEFAULT_Y_HOMING_MPOS,
-                                      DEFAULT_Y_CURRENT,
-                                      DEFAULT_Y_HOLD_CURRENT,
-                                      DEFAULT_Y_MICROSTEPS,
-                                      DEFAULT_Y_STALLGUARD },
-                                    { "Z",
-                                      DEFAULT_Z_STEPS_PER_MM,
-                                      DEFAULT_Z_MAX_RATE,
-                                      DEFAULT_Z_ACCELERATION,
-                                      DEFAULT_Z_MAX_TRAVEL,
-                                      DEFAULT_Z_HOMING_MPOS,
-                                      DEFAULT_Z_CURRENT,
-                                      DEFAULT_Z_HOLD_CURRENT,
-                                      DEFAULT_Z_MICROSTEPS,
-                                      DEFAULT_Z_STALLGUARD },
-                                    { "A",
-                                      DEFAULT_A_STEPS_PER_MM,
-                                      DEFAULT_A_MAX_RATE,
-                                      DEFAULT_A_ACCELERATION,
-                                      DEFAULT_A_MAX_TRAVEL,
-                                      DEFAULT_A_HOMING_MPOS,
-                                      DEFAULT_A_CURRENT,
-                                      DEFAULT_A_HOLD_CURRENT,
-                                      DEFAULT_A_MICROSTEPS,
-                                      DEFAULT_A_STALLGUARD },
-                                    { "B",
-                                      DEFAULT_B_STEPS_PER_MM,
-                                      DEFAULT_B_MAX_RATE,
-                                      DEFAULT_B_ACCELERATION,
-                                      DEFAULT_B_MAX_TRAVEL,
-                                      DEFAULT_B_HOMING_MPOS,
-                                      DEFAULT_B_CURRENT,
-                                      DEFAULT_B_HOLD_CURRENT,
-                                      DEFAULT_B_MICROSTEPS,
-                                      DEFAULT_B_STALLGUARD },
-                                    { "C",
-                                      DEFAULT_C_STEPS_PER_MM,
-                                      DEFAULT_C_MAX_RATE,
-                                      DEFAULT_C_ACCELERATION,
-                                      DEFAULT_C_MAX_TRAVEL,
-                                      DEFAULT_C_HOMING_MPOS,
-                                      DEFAULT_C_CURRENT,
-                                      DEFAULT_C_HOLD_CURRENT,
-                                      DEFAULT_C_MICROSTEPS,
-                                      DEFAULT_C_STALLGUARD } };
+axis_defaults_t axis_defaults[] = {
+    { "X", DEFAULT_X_STEPS_PER_MM, DEFAULT_X_MAX_RATE, DEFAULT_X_ACCELERATION, DEFAULT_X_MAX_TRAVEL, DEFAULT_X_HOMING_MPOS, DEFAULT_X_CURRENT, DEFAULT_X_HOLD_CURRENT, DEFAULT_X_MICROSTEPS, DEFAULT_X_STALLGUARD },
+    { "Y", DEFAULT_Y_STEPS_PER_MM, DEFAULT_Y_MAX_RATE, DEFAULT_Y_ACCELERATION, DEFAULT_Y_MAX_TRAVEL, DEFAULT_Y_HOMING_MPOS, DEFAULT_Y_CURRENT, DEFAULT_Y_HOLD_CURRENT, DEFAULT_Y_MICROSTEPS, DEFAULT_Y_STALLGUARD },
+    { "Z", DEFAULT_Z_STEPS_PER_MM, DEFAULT_Z_MAX_RATE, DEFAULT_Z_ACCELERATION, DEFAULT_Z_MAX_TRAVEL, DEFAULT_Z_HOMING_MPOS, DEFAULT_Z_CURRENT, DEFAULT_Z_HOLD_CURRENT, DEFAULT_Z_MICROSTEPS, DEFAULT_Z_STALLGUARD },
+    { "A", DEFAULT_A_STEPS_PER_MM, DEFAULT_A_MAX_RATE, DEFAULT_A_ACCELERATION, DEFAULT_A_MAX_TRAVEL, DEFAULT_A_HOMING_MPOS, DEFAULT_A_CURRENT, DEFAULT_A_HOLD_CURRENT, DEFAULT_A_MICROSTEPS, DEFAULT_A_STALLGUARD },
+    { "B", DEFAULT_B_STEPS_PER_MM, DEFAULT_B_MAX_RATE, DEFAULT_B_ACCELERATION, DEFAULT_B_MAX_TRAVEL, DEFAULT_B_HOMING_MPOS, DEFAULT_B_CURRENT, DEFAULT_B_HOLD_CURRENT, DEFAULT_B_MICROSTEPS, DEFAULT_B_STALLGUARD },
+    { "C", DEFAULT_C_STEPS_PER_MM, DEFAULT_C_MAX_RATE, DEFAULT_C_ACCELERATION, DEFAULT_C_MAX_TRAVEL, DEFAULT_C_HOMING_MPOS, DEFAULT_C_CURRENT, DEFAULT_C_HOLD_CURRENT, DEFAULT_C_MICROSTEPS, DEFAULT_C_STALLGUARD }
+};
 
 // Construct e.g. X_MAX_RATE from axisName "X" and tail "_MAX_RATE"
 // in dynamically allocated memory that will not be freed.
@@ -220,6 +169,32 @@ static bool checkStartupLine(char* value) {
 static bool postMotorSetting(char* value) {
     if (!value) {
         motors_read_settings();
+    }
+    return true;
+}
+
+static bool checkATCChange(char* value) {
+    // TODO Check for errors
+    atc_connected->_checkError = Error::Ok;
+    if (value) {
+        bool _convertedValue = (strcasecmp(value, "on") == 0) || (strcasecmp(value, "true") == 0) || (strcasecmp(value, "enabled") == 0) || (strcasecmp(value, "yes") == 0) || (strcasecmp(value, "1") == 0);
+        if (atc_connected->get() == _convertedValue) {
+            // grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC: %s", value);
+        } else if (_convertedValue) {
+            if (static_cast<SpindleType>(spindle_type->get()) != SpindleType::ASDA_CN1) {
+                atc_connected->_checkError = Error::AtcUnexpectedConnection;
+                return false;
+            }
+            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC connected");
+        } else {
+            if (static_cast<SpindleType>(spindle_type->get()) != SpindleType::ASDA_CN1) {
+                atc_connected->_checkError = Error::AtcUnexpectedRemoval;
+                return false;
+            }
+            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC removed");
+        }
+    } else {
+        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC: %s", atc_connected->getStringValue());
     }
     return true;
 }
@@ -265,6 +240,15 @@ static bool checkSpindleChange(char* val) {
         Spindles::Spindle::select();  // get new spindle
         motors_set_disable(true);
         return true;
+    }
+    spindle_type->_checkError = Error::Ok;
+    uint8_t spt               = spindle_type->stringToEnum(val);
+    if (spt == UINT8_MAX) {
+        return false;
+    }
+    if (static_cast<SpindleType>(spt) != SpindleType::ASDA_CN1) {
+        spindle_type->_checkError = Error::AtcIncompatibleOperation;
+        return false;
     }
     return true;
 }
@@ -331,29 +315,25 @@ void make_settings() {
     c_axis_settings = axis_settings[C_AXIS];
     for (axis = MAX_N_AXIS - 1; axis >= 0; axis--) {
         def          = &axis_defaults[axis];
-        auto setting = new IntSetting(
-            EXTENDED, WG, makeGrblName(axis, 170), makename(def->name, "StallGuard"), def->stallguard, -64, 255, postMotorSetting);
+        auto setting = new IntSetting(EXTENDED, WG, makeGrblName(axis, 170), makename(def->name, "StallGuard"), def->stallguard, -64, 255, postMotorSetting);
         setting->setAxis(axis);
         axis_settings[axis]->stallguard = setting;
     }
     for (axis = MAX_N_AXIS - 1; axis >= 0; axis--) {
         def          = &axis_defaults[axis];
-        auto setting = new IntSetting(
-            EXTENDED, WG, makeGrblName(axis, 160), makename(def->name, "Microsteps"), def->microsteps, 0, 256, postMotorSetting);
+        auto setting = new IntSetting(EXTENDED, WG, makeGrblName(axis, 160), makename(def->name, "Microsteps"), def->microsteps, 0, 256, postMotorSetting);
         setting->setAxis(axis);
         axis_settings[axis]->microsteps = setting;
     }
     for (axis = MAX_N_AXIS - 1; axis >= 0; axis--) {
         def          = &axis_defaults[axis];
-        auto setting = new FloatSetting(
-            EXTENDED, WG, makeGrblName(axis, 150), makename(def->name, "Current/Hold"), def->hold_current, 0.05, 20.0, postMotorSetting);  // Amps
+        auto setting = new FloatSetting(EXTENDED, WG, makeGrblName(axis, 150), makename(def->name, "Current/Hold"), def->hold_current, 0.05, 20.0, postMotorSetting);  // Amps
         setting->setAxis(axis);
         axis_settings[axis]->hold_current = setting;
     }
     for (axis = MAX_N_AXIS - 1; axis >= 0; axis--) {
         def          = &axis_defaults[axis];
-        auto setting = new FloatSetting(
-            EXTENDED, WG, makeGrblName(axis, 140), makename(def->name, "Current/Run"), def->run_current, 0.0, 20.0, postMotorSetting);  // Amps
+        auto setting = new FloatSetting(EXTENDED, WG, makeGrblName(axis, 140), makename(def->name, "Current/Run"), def->run_current, 0.0, 20.0, postMotorSetting);  // Amps
         setting->setAxis(axis);
         axis_settings[axis]->run_current = setting;
     }
@@ -372,9 +352,8 @@ void make_settings() {
     }
 
     for (axis = MAX_N_AXIS - 1; axis >= 0; axis--) {
-        def = &axis_defaults[axis];
-        auto setting =
-            new FloatSetting(GRBL, WG, makeGrblName(axis, 120), makename(def->name, "Acceleration"), def->acceleration, 1.0, 100000.0);
+        def          = &axis_defaults[axis];
+        auto setting = new FloatSetting(GRBL, WG, makeGrblName(axis, 120), makename(def->name, "Acceleration"), def->acceleration, 1.0, 100000.0);
         setting->setAxis(axis);
         axis_settings[axis]->acceleration = setting;
     }
@@ -385,14 +364,15 @@ void make_settings() {
         axis_settings[axis]->max_rate = setting;
     }
     for (axis = MAX_N_AXIS - 1; axis >= 0; axis--) {
-        def = &axis_defaults[axis];
-        auto setting =
-            new FloatSetting(GRBL, WG, makeGrblName(axis, 100), makename(def->name, "StepsPerMm"), def->steps_per_mm, 1.0, 100000.0);
+        def          = &axis_defaults[axis];
+        auto setting = new FloatSetting(GRBL, WG, makeGrblName(axis, 100), makename(def->name, "StepsPerMm"), def->steps_per_mm, 1.0, 100000.0);
         setting->setAxis(axis);
         axis_settings[axis]->steps_per_mm = setting;
     }
 
     // Tool settings
+
+    atc_connected = new FlagSetting(EXTENDED, WG, "68", "ATC/state", false, checkATCChange);
 
     atc_speed    = new FloatSetting(EXTENDED, WG, "67", "ATC/speed", DEFAULT_ATC_SPEED, 0.0, DEFAULT_ATC_SPEED_MAX, NULL);
     atc_distance = new FloatSetting(EXTENDED, WG, "66", "ATC/distance", DEFAULT_ATC_DISTANCE, 0.0, DEFAULT_ATC_DISTANCE_MAX, NULL);
@@ -419,34 +399,25 @@ void make_settings() {
     // Spindle Settings
     chuck_direction_invert = new FlagSetting(EXTENDED, WG, "41", "Chuck/Dir/Invert", DEFAULT_INVERT_CHUCK_DIRECTION_PIN, checkSpindleChange);
 
-    spindle_direction_invert =
-        new FlagSetting(EXTENDED, WG, "40", "Spindle/Dir/Invert", DEFAULT_INVERT_SPINDLE_DIRECTION_PIN, checkSpindleChange);
+    spindle_direction_invert = new FlagSetting(EXTENDED, WG, "40", "Spindle/Dir/Invert", DEFAULT_INVERT_SPINDLE_DIRECTION_PIN, checkSpindleChange);
 
     spindle_output_invert = new FlagSetting(EXTENDED, WG, "39", "Spindle/PWM/Invert", DEFAULT_INVERT_SPINDLE_OUTPUT_PIN, checkSpindleChange);
 
-    spindle_enable_invert =
-        new FlagSetting(EXTENDED, WG, "38", "Spindle/Enable/Invert", DEFAULT_INVERT_SPINDLE_ENABLE_PIN, checkSpindleChange);
+    spindle_enable_invert = new FlagSetting(EXTENDED, WG, "38", "Spindle/Enable/Invert", DEFAULT_INVERT_SPINDLE_ENABLE_PIN, checkSpindleChange);
 
-    spindle_type =
-        new EnumSetting(NULL, EXTENDED, WG, "37", "Spindle/Type", static_cast<int8_t>(SPINDLE_TYPE), &spindleTypes, checkSpindleChange);
+    spindle_type = new EnumSetting(NULL, EXTENDED, WG, "37", "Spindle/Type", static_cast<int8_t>(SPINDLE_TYPE), &spindleTypes, checkSpindleChange);
 
-    spindle_pwm_max_value =
-        new FloatSetting(EXTENDED, WG, "36", "Spindle/PWM/Max", DEFAULT_SPINDLE_MAX_VALUE, 0.0, 100.0, checkSpindleChange);
-    spindle_pwm_min_value =
-        new FloatSetting(EXTENDED, WG, "35", "Spindle/PWM/Min", DEFAULT_SPINDLE_MIN_VALUE, 0.0, 100.0, checkSpindleChange);
-    spindle_pwm_off_value = new FloatSetting(
-        EXTENDED, WG, "34", "Spindle/PWM/Off", DEFAULT_SPINDLE_OFF_VALUE, 0.0, 100.0, checkSpindleChange);  // these are percentages
+    spindle_pwm_max_value = new FloatSetting(EXTENDED, WG, "36", "Spindle/PWM/Max", DEFAULT_SPINDLE_MAX_VALUE, 0.0, 100.0, checkSpindleChange);
+    spindle_pwm_min_value = new FloatSetting(EXTENDED, WG, "35", "Spindle/PWM/Min", DEFAULT_SPINDLE_MIN_VALUE, 0.0, 100.0, checkSpindleChange);
+    spindle_pwm_off_value = new FloatSetting(EXTENDED, WG, "34", "Spindle/PWM/Off", DEFAULT_SPINDLE_OFF_VALUE, 0.0, 100.0, checkSpindleChange);  // these are percentages
     // IntSetting spindle_pwm_bit_precision(EXTENDED, WG, "Spindle/PWM/Precision", DEFAULT_SPINDLE_BIT_PRECISION, 1, 16);
     spindle_pwm_freq = new FloatSetting(EXTENDED, WG, "33", "Spindle/PWM/Frequency", DEFAULT_SPINDLE_FREQ, 0, 100000, checkSpindleChange);
 
-    spindle_delay_spinup =
-        new FloatSetting(EXTENDED, WG, NULL, "Spindle/Delay/SpinUp", DEFAULT_SPINDLE_DELAY_SPINUP, 0, 30, checkSpindleChange);
-    spindle_delay_spindown =
-        new FloatSetting(EXTENDED, WG, NULL, "Spindle/Delay/SpinDown", DEFAULT_SPINDLE_DELAY_SPINUP, 0, 30, checkSpindleChange);
-    coolant_start_delay = new FloatSetting(EXTENDED, WG, NULL, "Coolant/Delay/TurnOn", DEFAULT_COOLANT_DELAY_TURNON, 0, 30);
+    spindle_delay_spinup   = new FloatSetting(EXTENDED, WG, NULL, "Spindle/Delay/SpinUp", DEFAULT_SPINDLE_DELAY_SPINUP, 0, 30, checkSpindleChange);
+    spindle_delay_spindown = new FloatSetting(EXTENDED, WG, NULL, "Spindle/Delay/SpinDown", DEFAULT_SPINDLE_DELAY_SPINUP, 0, 30, checkSpindleChange);
+    coolant_start_delay    = new FloatSetting(EXTENDED, WG, NULL, "Coolant/Delay/TurnOn", DEFAULT_COOLANT_DELAY_TURNON, 0, 30);
 
-    spindle_enbl_off_with_zero_speed =
-        new FlagSetting(GRBL, WG, NULL, "Spindle/Enable/OffWithSpeed", DEFAULT_SPINDLE_ENABLE_OFF_WITH_ZERO_SPEED, checkSpindleChange);
+    spindle_enbl_off_with_zero_speed = new FlagSetting(GRBL, WG, NULL, "Spindle/Enable/OffWithSpeed", DEFAULT_SPINDLE_ENABLE_OFF_WITH_ZERO_SPEED, checkSpindleChange);
 
     // GRBL Numbered Settings
     laser_mode = new FlagSetting(GRBL, WG, "32", "GCode/LaserMode", DEFAULT_LASER_MODE);
@@ -491,7 +462,7 @@ void make_settings() {
     stepper_idle_lock_time       = new IntSetting(GRBL, WG, "1", "Stepper/IdleTime", DEFAULT_STEPPER_IDLE_LOCK_TIME, 0, 255);
     pulse_microseconds           = new IntSetting(GRBL, WG, "0", "Stepper/Pulse", DEFAULT_STEP_PULSE_MICROSECONDS, 3, 1000);
     direction_delay_microseconds = new IntSetting(EXTENDED, WG, NULL, "Stepper/Direction/Delay", STEP_PULSE_DELAY, 0, 1000);
-    enable_delay_microseconds = new IntSetting(EXTENDED, WG, NULL, "Stepper/Enable/Delay", DEFAULT_STEP_ENABLE_DELAY, 0, 1000);  // microseconds
+    enable_delay_microseconds    = new IntSetting(EXTENDED, WG, NULL, "Stepper/Enable/Delay", DEFAULT_STEP_ENABLE_DELAY, 0, 1000);  // microseconds
 
     stallguard_debug_mask = new AxisMaskSetting(EXTENDED, WG, NULL, "Report/StallGuard", 0, postMotorSetting);
 

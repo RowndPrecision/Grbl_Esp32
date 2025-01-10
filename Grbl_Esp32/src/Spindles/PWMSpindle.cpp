@@ -201,7 +201,7 @@ namespace Spindles {
         grbl_msg_sendf(CLIENT_ALL,
                        MsgLevel::Info,
                        "%s spindle Output:%s, Enbl:%s, Dir:%s, Freq:%dHz, Res:%dbits, max rpm:%d, reveseable:%d",
-                       spindle_type->getGrblName(),
+                       spindle_type->getStringValue(),
                        pinName(_output_pin).c_str(),
                        pinName(_enable_pin).c_str(),
                        pinName(_direction_pin).c_str(),

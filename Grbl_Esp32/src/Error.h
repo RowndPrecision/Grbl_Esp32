@@ -85,6 +85,10 @@ enum class Error : uint8_t {
     Eol                         = 111,
     AnotherInterfaceBusy        = 120,
     JogCancelled                = 130,
+    AtcNotConnected             = 140,  // ATC is required but not connected
+    AtcIncompatibleOperation    = 141,  // The requested operation conflicts with the ATC state
+    AtcUnexpectedConnection     = 142,  // ATC reported connected, but action is not possible
+    AtcUnexpectedRemoval        = 143,  // ATC reported removed, but action is not possible
     AsdaMode                    = 150,  // Current servo mode is not compatible with the G Code input
     AsdaAlarm                   = 151,  // Serve fell in to alarm mode
 };

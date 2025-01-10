@@ -571,24 +571,32 @@ Error gc_execute_line(char* line, uint8_t client) {
                         mg_word_bit               = ModalGroup::MM5;
                         break;
                     case 100:
-                        spindle_type->setEnumValue((int8_t)SpindleType::ASDA_CN1);
-                        mg_word_bit = ModalGroup::MM10;
+                        gc_block.modal.RowndAction = SpecialActions::ModeSwitchLathe;
+                        mg_word_bit                = ModalGroup::MM10;
                         break;
                     case 101:
-                        spindle_type->setEnumValue((int8_t)SpindleType::PWM);
-                        mg_word_bit = ModalGroup::MM10;
+                        gc_block.modal.RowndAction = SpecialActions::ModeSwitch4thAxis;
+                        mg_word_bit                = ModalGroup::MM10;
                         break;
                     case 102:
-                        spindle_type->setEnumValue((int8_t)SpindleType::LASER);
-                        mg_word_bit = ModalGroup::MM10;
+                        gc_block.modal.RowndAction = SpecialActions::ModeSwitchLaser;
+                        mg_word_bit                = ModalGroup::MM10;
+                        break;
+                    case 120:
+                        gc_block.modal.RowndAction = SpecialActions::DisconnectATC;
+                        mg_word_bit                = ModalGroup::MM10;
+                        break;
+                    case 121:
+                        gc_block.modal.RowndAction = SpecialActions::ConnectATC;
+                        mg_word_bit                = ModalGroup::MM10;
                         break;
                     case 150:
-                        led_state->setBoolValue(false);
-                        mg_word_bit = ModalGroup::MM10;
+                        gc_block.modal.RowndAction = SpecialActions::LEDOFF;
+                        mg_word_bit                = ModalGroup::MM10;
                         break;
                     case 151:
-                        led_state->setBoolValue(true);
-                        mg_word_bit = ModalGroup::MM10;
+                        gc_block.modal.RowndAction = SpecialActions::LEDON;
+                        mg_word_bit                = ModalGroup::MM10;
                         break;
                     default:
                         FAIL(Error::GcodeUnsupportedCommand);  // [Unsupported M command]
@@ -907,14 +915,50 @@ Error gc_execute_line(char* line, uint8_t client) {
             FAIL(Error::GcodeInvalidLineNumber);  // [Exceeds max line number]
         }
     }
-    // bit_false(value_words,bit(GCodeWord::N)); // NOTE: Single-meaning value word. Set at end of error-checking.
+    bit_false(value_words, bit(GCodeWord::N));  // NOTE: Single-meaning value word. Set at end of error-checking.
     // Track for unused words at the end of error-checking.
     // NOTE: Single-meaning value words are removed all at once at the end of error-checking, because
     // they are always used when present. This was done to save a few bytes of flash. For clarity, the
     // single-meaning value words may be removed as they are used. Also, axis words are treated in the
     // same way. If there is an explicit/implicit axis command, XYZ words are always used and are
     // are removed at the end of error-checking.
-    // [1. Comments ]: MSG's NOT SUPPORTED. Comment handling performed by protocol.
+    // [1. Comments ]: MSG's NOT SUPPORTED. Comment handling performed by protocol. Will be used for
+    // special operations defined by RowndCNC
+    if (gc_block.modal.RowndAction != SpecialActions::None) {
+        // [Unused words] & [Unsupported Commands]
+        if (value_words) {
+            FAIL(Error::GcodeUnsupportedCommand);
+        }
+        if (command_words & ~(bit(ModalGroup::MM10))) {
+            FAIL(Error::GcodeUnsupportedCommand)
+        };
+        switch (gc_block.modal.RowndAction) {
+            case SpecialActions::ModeSwitchLathe:
+                return spindle_type->setEnumValue((int8_t)SpindleType::ASDA_CN1);
+                break;
+            case SpecialActions::ModeSwitch4thAxis:
+                return spindle_type->setEnumValue((int8_t)SpindleType::PWM);
+                break;
+            case SpecialActions::ModeSwitchLaser:
+                return spindle_type->setEnumValue((int8_t)SpindleType::LASER);
+                break;
+            case SpecialActions::DisconnectATC:
+                return atc_connected->setBoolValue(false);
+                break;
+            case SpecialActions::ConnectATC:
+                return atc_connected->setBoolValue(true);
+                break;
+            case SpecialActions::LEDOFF:
+                return led_state->setBoolValue(false);
+                break;
+            case SpecialActions::LEDON:
+                return led_state->setBoolValue(true);
+                break;
+            default:
+                break;
+        }
+    }
+
     // [2. Set feed rate mode ]: G93 F word missing with G1,G2/3 active, implicitly or explicitly. Feed rate
     //   is not defined after switching to G94 from G93.
     // NOTE: For jogging, ignore prior feed rate mode. Enforce G94 and check for required F word.
@@ -988,8 +1032,8 @@ Error gc_execute_line(char* line, uint8_t client) {
         }
         bit_false(value_words, bit(GCodeWord::P));
     }
-    if ((gc_block.modal.io_control == IoControl::DigitalOnSync) || (gc_block.modal.io_control == IoControl::DigitalOffSync) ||
-        (gc_block.modal.io_control == IoControl::DigitalOnImmediate) || (gc_block.modal.io_control == IoControl::DigitalOffImmediate)) {
+    if ((gc_block.modal.io_control == IoControl::DigitalOnSync) || (gc_block.modal.io_control == IoControl::DigitalOffSync) || (gc_block.modal.io_control == IoControl::DigitalOnImmediate) ||
+        (gc_block.modal.io_control == IoControl::DigitalOffImmediate)) {
         if (bit_isfalse(value_words, bit(GCodeWord::P))) {
             FAIL(Error::GcodeValueWordMissing);  // [P word missing]
         }
@@ -1052,11 +1096,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                 ToolTable->set_tool_selected(tool_active->get(-1));
             } else {
                 if (gc_block.values.h > tool_count->get()) {
-                    grbl_msg_sendf(CLIENT_SERIAL,
-                                   MsgLevel::Info,
-                                   "H parameter (%d) can't be more than max tool count: %d",
-                                   gc_block.values.h,
-                                   tool_count->get());
+                    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "H parameter (%d) can't be more than max tool count: %d", gc_block.values.h, tool_count->get());
                     FAIL(Error::GcodeMaxValueExceeded);
                 }
                 ToolTable->set_tool_selected(gc_block.values.h - 1);
@@ -1200,8 +1240,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                     if (gc_block.values.l == 20) {
                         // L20: Update coordinate system axis at current position (with modifiers) with programmed value
                         // WPos = MPos - WCS - G92 - TLO  ->  WCS = MPos - G92 - TLO - WPos
-                        coord_data[idx] = gc_state.position[idx] - gc_state.coord_offset[idx] - gc_block.values.xyz[idx] -
-                                          gc_state.tool_length_offset[idx];
+                        coord_data[idx] = gc_state.position[idx] - gc_state.coord_offset[idx] - gc_block.values.xyz[idx] - gc_state.tool_length_offset[idx];
                     } else {
                         // L2: Update coordinate system axis to programmed value.
                         coord_data[idx] = gc_block.values.xyz[idx];
@@ -1219,8 +1258,7 @@ Error gc_execute_line(char* line, uint8_t client) {
             for (idx = 0; idx < n_axis; idx++) {  // Axes indices are consistent, so loop may be used.
                 if (bit_istrue(axis_words, bit(idx))) {
                     // WPos = MPos - WCS - G92 - TLO  ->  G92 = MPos - WCS - TLO - WPos
-                    gc_block.values.xyz[idx] =
-                        gc_state.position[idx] - block_coord_system[idx] - gc_block.values.xyz[idx] - gc_state.tool_length_offset[idx];
+                    gc_block.values.xyz[idx] = gc_state.position[idx] - block_coord_system[idx] - gc_block.values.xyz[idx] - gc_state.tool_length_offset[idx];
                 } else {
                     gc_block.values.xyz[idx] = gc_state.coord_offset[idx];
                 }
@@ -1242,8 +1280,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                             if (gc_block.non_modal_command != NonModal::AbsoluteOverride) {
                                 // Apply coordinate offsets based on distance mode.
                                 if (gc_block.modal.distance == Distance::Absolute) {
-                                    gc_block.values.xyz[idx] +=
-                                        block_coord_system[idx] + gc_state.coord_offset[idx] + gc_state.tool_length_offset[idx];
+                                    gc_block.values.xyz[idx] += block_coord_system[idx] + gc_state.coord_offset[idx] + gc_state.tool_length_offset[idx];
                                 } else {  // Incremental mode
                                     gc_block.values.xyz[idx] += gc_state.position[idx];
                                 }
@@ -1506,8 +1543,7 @@ Error gc_execute_line(char* line, uint8_t client) {
     }
     if (axis_command != AxisCommand::None) {
         bit_false(value_words,
-                  (bit(GCodeWord::X) | bit(GCodeWord::Y) | bit(GCodeWord::Z) | bit(GCodeWord::A) | bit(GCodeWord::B) |
-                   bit(GCodeWord::C)));  // Remove axis words.
+                  (bit(GCodeWord::X) | bit(GCodeWord::Y) | bit(GCodeWord::Z) | bit(GCodeWord::A) | bit(GCodeWord::B) | bit(GCodeWord::C)));  // Remove axis words.
     }
     if (value_words) {
         FAIL(Error::GcodeUnusedWords);  // [Unused words]
@@ -1548,8 +1584,7 @@ Error gc_execute_line(char* line, uint8_t client) {
     }
     // If in laser mode, setup laser power based on current and past parser conditions.
     if (spindle->inLaserMode()) {
-        if (!((gc_block.modal.motion == Motion::Linear) || (gc_block.modal.motion == Motion::CwArc) ||
-              (gc_block.modal.motion == Motion::CcwArc))) {
+        if (!((gc_block.modal.motion == Motion::Linear) || (gc_block.modal.motion == Motion::CwArc) || (gc_block.modal.motion == Motion::CcwArc))) {
             gc_parser_flags |= GCParserLaserDisable;
         }
         // Any motion mode with axis words is allowed to be passed from a spindle speed update.
@@ -1561,8 +1596,7 @@ Error gc_execute_line(char* line, uint8_t client) {
             // M3 constant power laser requires planner syncs to update the laser when changing between
             // a G1/2/3 motion mode state and vice versa when there is no motion in the line.
             if (gc_state.modal.spindle == SpindleState::Cw) {
-                if ((gc_state.modal.motion == Motion::Linear) || (gc_state.modal.motion == Motion::CwArc) ||
-                    (gc_state.modal.motion == Motion::CcwArc)) {
+                if ((gc_state.modal.motion == Motion::Linear) || (gc_state.modal.motion == Motion::CwArc) || (gc_state.modal.motion == Motion::CcwArc)) {
                     if (bit_istrue(gc_parser_flags, GCParserLaserDisable)) {
                         gc_parser_flags |= GCParserLaserForceSync;  // Change from G1/2/3 motion mode.
                     }
@@ -1655,8 +1689,8 @@ Error gc_execute_line(char* line, uint8_t client) {
     }
     pl_data->coolant = gc_state.modal.coolant;  // Set state for planner use.
     // turn on/off an i/o pin
-    if ((gc_block.modal.io_control == IoControl::DigitalOnSync) || (gc_block.modal.io_control == IoControl::DigitalOffSync) ||
-        (gc_block.modal.io_control == IoControl::DigitalOnImmediate) || (gc_block.modal.io_control == IoControl::DigitalOffImmediate)) {
+    if ((gc_block.modal.io_control == IoControl::DigitalOnSync) || (gc_block.modal.io_control == IoControl::DigitalOffSync) || (gc_block.modal.io_control == IoControl::DigitalOnImmediate) ||
+        (gc_block.modal.io_control == IoControl::DigitalOffImmediate)) {
         if (gc_block.values.p < MaxUserDigitalPin) {
             if ((gc_block.modal.io_control == IoControl::DigitalOnSync) || (gc_block.modal.io_control == IoControl::DigitalOffSync)) {
                 protocol_buffer_synchronize();
@@ -1795,15 +1829,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                 limitsCheckSoft(gc_block.values.xyz);
                 cartesian_to_motors(gc_block.values.xyz, pl_data, gc_state.position);
             } else if ((gc_state.modal.motion == Motion::CwArc) || (gc_state.modal.motion == Motion::CcwArc)) {
-                mc_arc(gc_block.values.xyz,
-                       pl_data,
-                       gc_state.position,
-                       gc_block.values.ijk,
-                       gc_block.values.r,
-                       axis_0,
-                       axis_1,
-                       axis_linear,
-                       bit_istrue(gc_parser_flags, GCParserArcIsClockwise));
+                mc_arc(gc_block.values.xyz, pl_data, gc_state.position, gc_block.values.ijk, gc_block.values.r, axis_0, axis_1, axis_linear, bit_istrue(gc_parser_flags, GCParserArcIsClockwise));
             } else {
                 // NOTE: gc_block.values.xyz is returned from mc_probe_cycle with the updated position value. So
                 // upon a successful probing cycle, the machine position and the returned value should be the same.

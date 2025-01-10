@@ -33,19 +33,9 @@ bool limitsCheckTravel() {
 // This will always return true to prevent the normal Grbl homing cycle
 bool user_defined_homing(uint8_t cycle_mask) {
     grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "home usr def mask: %d", cycle_mask);
-    grbl_msg_sendf(CLIENT_SERIAL,
-                   MsgLevel::Info,
-                   "b1: %d, b2: %d, b3: %d",
-                   bitnum_istrue(cycle_mask, X_AXIS),
-                   bitnum_istrue(cycle_mask, Z_AXIS),
-                   cycle_mask == 0);
+    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "b1: %d, b2: %d, b3: %d", bitnum_istrue(cycle_mask, X_AXIS), bitnum_istrue(cycle_mask, Z_AXIS), cycle_mask == 0);
     if (bitnum_istrue(cycle_mask, X_AXIS) || bitnum_istrue(cycle_mask, Z_AXIS) || cycle_mask == 0) {
-        grbl_msg_sendf(CLIENT_SERIAL,
-                       MsgLevel::Info,
-                       "b1: %d, b2: %d, b3: %d",
-                       bitnum_istrue(cycle_mask, X_AXIS),
-                       bitnum_istrue(cycle_mask, Z_AXIS),
-                       cycle_mask == 0);
+        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "b1: %d, b2: %d, b3: %d", bitnum_istrue(cycle_mask, X_AXIS), bitnum_istrue(cycle_mask, Z_AXIS), cycle_mask == 0);
         return false;
     }
 
@@ -68,7 +58,9 @@ bool kinematics_pre_homing(uint8_t cycle_mask) {
   to perform appropriate actions for your machine.
 */
 Error user_tool_change(uint8_t new_tool) {
-    Error oPut = Error::Ok;
+    if (!atc_connected->get()) {
+        return Error::AtcNotConnected;
+    }
 
     char tc_line[20];
 
@@ -76,17 +68,19 @@ Error user_tool_change(uint8_t new_tool) {
 
     tool_active->setValue(new_tool);
 
-    snprintf(tc_line,
-             sizeof(tc_line),
-             "G1G90F%.2fA%.2f\r\n",
-             atc_speed->get(),
-             atc_distance->get() * tool_active->get(-1) + atc_distance->get() * atc_offset->get());
+    snprintf(tc_line, sizeof(tc_line), "G1G90F%.2fA%.2f\r\n", atc_speed->get(), atc_distance->get() * tool_active->get(-1) + atc_distance->get() * atc_offset->get());
 
     grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "atc line: %s", tc_line);
 
-    WebUI::inputBuffer.push(tc_line);  // It's more efficient to add to the buffer instead of executing immediately.
+    protocol_buffer_synchronize();
 
-    return oPut;
+    report_status_message(execute_line(tc_line, CLIENT_SERIAL, WebUI::AuthenticationLevel::LEVEL_GUEST), CLIENT_SERIAL);
+
+    // WebUI::inputBuffer.push(tc_line);  // It's more efficient to add to the buffer instead of executing immediately.
+
+    protocol_buffer_synchronize();
+
+    return Error::Ok;
 }
 
 /*

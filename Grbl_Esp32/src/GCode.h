@@ -59,7 +59,7 @@ enum class ModalGroup : uint8_t {
 // ideal, just be careful with values that state 'do not alter' and check both report.c and gcode.c
 // to see how they are used, if you need to alter them.
 
-// Modal Group G0: Non-modal actions
+// Modal Group MG0: Non-modal actions
 
 enum class NonModal : uint8_t {
     NoAction              = 0,    // (Default: Must be zero)
@@ -76,7 +76,7 @@ enum class NonModal : uint8_t {
     ResetCoordinateOffset = 102,  //G92.1 (Do not alter value)
 };
 
-// Modal Group G1: Motion modes
+// Modal Group MG1: Motion modes
 enum class Motion : uint8_t {
     Seek               = 0,    // G0 (Default: Must be zero)
     Linear             = 1,    // G1 (Do not alter value)
@@ -89,26 +89,26 @@ enum class Motion : uint8_t {
     None               = 80,   // G80 (Do not alter value)
 };
 
-// Modal Group G2: Plane select
+// Modal Group MG2: Plane select
 enum class Plane : uint8_t {
     XY = 0,  // G17 (Default: Must be zero)
     ZX = 1,  // G18 (Do not alter value)
     YZ = 2,  // G19 (Do not alter value)
 };
 
-// Modal Group G3: Distance mode
+// Modal Group MG3: Distance mode
 enum class Distance : uint8_t {
     Absolute    = 0,  // G90 (Default: Must be zero)
     Incremental = 1,  // G91 (Do not alter value)
 };
 
-// Modal Group G4: Arc IJK distance mode
+// Modal Group MG4: Arc IJK distance mode
 enum class ArcDistance : uint8_t {
     Incremental = 0,  // G91.1 (Default: Must be zero)
     Absolute    = 1,
 };
 
-// Modal Group M4: Program flow
+// Modal Group MM4: Program flow
 enum class ProgramFlow : uint8_t {
     Running      = 0,   // (Default: Must be zero)
     Paused       = 3,   // M0
@@ -117,30 +117,30 @@ enum class ProgramFlow : uint8_t {
     CompletedM30 = 30,  // M30 (Do not alter value)
 };
 
-// Modal Group G5: Feed rate mode
+// Modal Group MG5: Feed rate mode
 enum class FeedRate : uint8_t {
     UnitsPerMin = 0,  // G94 (Default: Must be zero)
     InverseTime = 1,  // G93 (Do not alter value)
 };
 
-// Modal Group G6: Units mode
+// Modal Group MG6: Units mode
 enum class Units : uint8_t {
     Mm     = 0,  // G21 (Default: Must be zero)
     Inches = 1,  // G20 (Do not alter value)
 };
 
-// Modal Group G7: Cutter radius compensation mode
+// Modal Group MG7: Cutter radius compensation mode
 enum class CutterCompensation : uint8_t {
     Disable = 0,  // G40 (Default: Must be zero)
     Enable  = 1,
 };
 
-// Modal Group G13: Control mode
+// Modal Group MG13: Control mode
 enum class ControlMode : uint8_t {
     ExactPath = 0,  // G61 (Default: Must be zero)
 };
 
-// Modal Group M7: Spindle control
+// Modal Group MM7: Spindle control
 enum class SpindleState : uint8_t {
     Disable = 0,  // M5 (Default: Must be zero)
     Cw      = 1,  // M3
@@ -164,10 +164,22 @@ struct CoolantState {
     uint8_t Flood : 1;
 };
 
-// Modal Group M8: Coolant control
-// Modal Group M9: Override control
+// Modal Group MM8: Coolant control
+// Modal Group MM9: Override control
 
-// Modal Group M10: User I/O control
+// Modal Group MM10: User Defined Functions
+enum class SpecialActions : uint8_t {
+    None              = 0,  // Default. This means its safe to continue to the regular program flow
+    ModeSwitchLathe   = 1,  // M100
+    ModeSwitch4thAxis = 2,  // M101
+    ModeSwitchLaser   = 3,  // M102
+    DisconnectATC     = 4,  // M120
+    ConnectATC        = 5,  // M121
+    LEDOFF            = 6,  // M150
+    LEDON             = 7,  // M151
+};
+
+// Modal Group MM5: User I/O control
 enum class IoControl : uint8_t {
     DigitalOnSync       = 1,  // M62
     DigitalOffSync      = 2,  // M63
@@ -179,7 +191,7 @@ enum class IoControl : uint8_t {
 
 static const int MaxUserDigitalPin = 4;
 
-// Modal Group G8: Tool length offset
+// Modal Group MG8: Tool length offset
 enum class ToolLengthOffset : uint8_t {
     Cancel         = 0,  // G49 (Default: Must be zero)
     EnableStandart = 1,  // G43 for rownd
@@ -191,7 +203,7 @@ enum class ToolChange : uint8_t {
     Enable  = 1,
 };
 
-// Modal Group G12: Active work coordinate system
+// Modal Group MG12: Active work coordinate system
 // N/A: Stores coordinate system value (54-59) to change to.
 
 // Parameter word mapping.
@@ -275,12 +287,13 @@ typedef struct {
     ToolLengthOffset tool_length;   // {G43.1,G49}
     CoordIndex       coord_select;  // {G54,G55,G56,G57,G58,G59}
     // uint8_t control;      // {G61} NOTE: Don't track. Only default supported.
-    ProgramFlow  program_flow;  // {M0,M1,M2,M30}
-    CoolantState coolant;       // {M7,M8,M9}
-    SpindleState spindle;       // {M3,M4,M5}
-    ToolChange   tool_change;   // {M6}
-    IoControl    io_control;    // {M62, M63, M67}
-    Override     override;      // {M56}
+    ProgramFlow    program_flow;  // {M0,M1,M2,M30}
+    CoolantState   coolant;       // {M7,M8,M9}
+    SpindleState   spindle;       // {M3,M4,M5}
+    ToolChange     tool_change;   // {M6}
+    IoControl      io_control;    // {M62, M63, M67}
+    Override       override;      // {M56}
+    SpecialActions RowndAction;   // {M100-M199}
 } gc_modal_t;
 
 typedef struct {

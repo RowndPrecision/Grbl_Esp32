@@ -74,6 +74,7 @@ extern IntSetting*   spindle_pwm_bit_precision;
 
 extern EnumSetting* spindle_type;
 
+extern FlagSetting*  atc_connected;
 extern FloatSetting* atc_speed;
 extern FloatSetting* atc_distance;
 extern FloatSetting* atc_offset;

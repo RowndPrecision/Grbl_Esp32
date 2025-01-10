@@ -107,6 +107,8 @@ public:
     static Setting*   List;
     Setting*          next() { return link; }
 
+    Error _checkError = Error::Ok;  // DO NOT use unless you are absolutely certain of its purpose and implications.
+
     Error check(char* s);
 
     static Error report_nvs_stats(const char* value, WebUI::AuthenticationLevel auth_level, WebUI::ESPResponseStream* out) {
@@ -165,26 +167,9 @@ private:
     bool    _currentIsNvm;
 
 public:
-    IntSetting(const char*   description,
-               type_t        type,
-               permissions_t permissions,
-               const char*   grblName,
-               const char*   name,
-               int32_t       defVal,
-               int32_t       minVal,
-               int32_t       maxVal,
-               bool (*checker)(char*),
-               bool currentIsNvm = false);
+    IntSetting(const char* description, type_t type, permissions_t permissions, const char* grblName, const char* name, int32_t defVal, int32_t minVal, int32_t maxVal, bool (*checker)(char*), bool currentIsNvm = false);
 
-    IntSetting(type_t        type,
-               permissions_t permissions,
-               const char*   grblName,
-               const char*   name,
-               int32_t       defVal,
-               int32_t       minVal,
-               int32_t       maxVal,
-               bool (*checker)(char*) = NULL,
-               bool currentIsNvm      = false) :
+    IntSetting(type_t type, permissions_t permissions, const char* grblName, const char* name, int32_t defVal, int32_t minVal, int32_t maxVal, bool (*checker)(char*) = NULL, bool currentIsNvm = false) :
         IntSetting(NULL, type, permissions, grblName, name, defVal, minVal, maxVal, checker, currentIsNvm) {}
 
     void        load();
@@ -206,17 +191,9 @@ private:
     int32_t _storedValue;
 
 public:
-    AxisMaskSetting(const char*   description,
-                    type_t        type,
-                    permissions_t permissions,
-                    const char*   grblName,
-                    const char*   name,
-                    int32_t       defVal,
-                    bool (*checker)(char*));
+    AxisMaskSetting(const char* description, type_t type, permissions_t permissions, const char* grblName, const char* name, int32_t defVal, bool (*checker)(char*));
 
-    AxisMaskSetting(
-        type_t type, permissions_t permissions, const char* grblName, const char* name, int32_t defVal, bool (*checker)(char*) = NULL) :
-        AxisMaskSetting(NULL, type, permissions, grblName, name, defVal, checker) {}
+    AxisMaskSetting(type_t type, permissions_t permissions, const char* grblName, const char* name, int32_t defVal, bool (*checker)(char*) = NULL) : AxisMaskSetting(NULL, type, permissions, grblName, name, defVal, checker) {}
 
     void        load();
     void        setDefault();
@@ -390,24 +367,10 @@ private:
     float _maxValue;
 
 public:
-    FloatSetting(const char*   description,
-                 type_t        type,
-                 permissions_t permissions,
-                 const char*   grblName,
-                 const char*   name,
-                 float         defVal,
-                 float         minVal,
-                 float         maxVal,
-                 bool (*checker)(char*));
+    FloatSetting(const char* description, type_t type, permissions_t permissions, const char* grblName, const char* name, float defVal, float minVal, float maxVal, bool (*checker)(char*));
 
-    FloatSetting(type_t        type,
-                 permissions_t permissions,
-                 const char*   grblName,
-                 const char*   name,
-                 float         defVal,
-                 float         minVal,
-                 float         maxVal,
-                 bool (*checker)(char*) = NULL) : FloatSetting(NULL, type, permissions, grblName, name, defVal, minVal, maxVal, checker) {}
+    FloatSetting(type_t type, permissions_t permissions, const char* grblName, const char* name, float defVal, float minVal, float maxVal, bool (*checker)(char*) = NULL) :
+        FloatSetting(NULL, type, permissions, grblName, name, defVal, minVal, maxVal, checker) {}
 
     void load();
     void setDefault();
@@ -431,19 +394,9 @@ private:
     void   _setStoredValue(const char* s);
 
 public:
-    StringSetting(const char*   description,
-                  type_t        type,
-                  permissions_t permissions,
-                  const char*   grblName,
-                  const char*   name,
-                  const char*   defVal,
-                  int           min,
-                  int           max,
-                  bool (*checker)(char*));
+    StringSetting(const char* description, type_t type, permissions_t permissions, const char* grblName, const char* name, const char* defVal, int min, int max, bool (*checker)(char*));
 
-    StringSetting(
-        type_t type, permissions_t permissions, const char* grblName, const char* name, const char* defVal, bool (*checker)(char*) = NULL) :
-        StringSetting(NULL, type, permissions, grblName, name, defVal, 0, 0, checker) {};
+    StringSetting(type_t type, permissions_t permissions, const char* grblName, const char* name, const char* defVal, bool (*checker)(char*) = NULL) : StringSetting(NULL, type, permissions, grblName, name, defVal, 0, 0, checker) {};
 
     void        load();
     void        setDefault();
@@ -468,22 +421,9 @@ private:
     const char*                             enumToString(int8_t value);
 
 public:
-    EnumSetting(const char*   description,
-                type_t        type,
-                permissions_t permissions,
-                const char*   grblName,
-                const char*   name,
-                int8_t        defVal,
-                enum_opt_t*   opts,
-                bool (*checker)(char*));
+    EnumSetting(const char* description, type_t type, permissions_t permissions, const char* grblName, const char* name, int8_t defVal, enum_opt_t* opts, bool (*checker)(char*));
 
-    EnumSetting(type_t        type,
-                permissions_t permissions,
-                const char*   grblName,
-                const char*   name,
-                int8_t        defVal,
-                enum_opt_t*   opts,
-                bool (*checker)(char*) = NULL) : EnumSetting(NULL, type, permissions, grblName, name, defVal, opts, checker) {}
+    EnumSetting(type_t type, permissions_t permissions, const char* grblName, const char* name, int8_t defVal, enum_opt_t* opts, bool (*checker)(char*) = NULL) : EnumSetting(NULL, type, permissions, grblName, name, defVal, opts, checker) {}
 
     void        load();
     void        setDefault();
@@ -492,6 +432,7 @@ public:
     Error       setEnumValue(int8_t value);
     const char* getStringValue();
     const char* getDefaultString();
+    uint8_t     stringToEnum(char* s);
 
     int8_t get() { return _currentValue; }
 };
@@ -503,15 +444,8 @@ private:
     bool   _currentValue;
 
 public:
-    FlagSetting(const char*   description,
-                type_t        type,
-                permissions_t permissions,
-                const char*   grblName,
-                const char*   name,
-                bool          defVal,
-                bool (*checker)(char*));
-    FlagSetting(type_t type, permissions_t permissions, const char* grblName, const char* name, bool defVal, bool (*checker)(char*) = NULL) :
-        FlagSetting(NULL, type, permissions, grblName, name, defVal, checker) {}
+    FlagSetting(const char* description, type_t type, permissions_t permissions, const char* grblName, const char* name, bool defVal, bool (*checker)(char*));
+    FlagSetting(type_t type, permissions_t permissions, const char* grblName, const char* name, bool defVal, bool (*checker)(char*) = NULL) : FlagSetting(NULL, type, permissions, grblName, name, defVal, checker) {}
 
     void load();
     void setDefault();
@@ -534,20 +468,8 @@ private:
     uint32_t _storedValue;
 
 public:
-    IPaddrSetting(const char*   description,
-                  type_t        type,
-                  permissions_t permissions,
-                  const char*   grblName,
-                  const char*   name,
-                  uint32_t      defVal,
-                  bool (*checker)(char*));
-    IPaddrSetting(const char*   description,
-                  type_t        type,
-                  permissions_t permissions,
-                  const char*   grblName,
-                  const char*   name,
-                  const char*   defVal,
-                  bool (*checker)(char*));
+    IPaddrSetting(const char* description, type_t type, permissions_t permissions, const char* grblName, const char* name, uint32_t defVal, bool (*checker)(char*));
+    IPaddrSetting(const char* description, type_t type, permissions_t permissions, const char* grblName, const char* name, const char* defVal, bool (*checker)(char*));
 
     void        load();
     void        setDefault();
@@ -589,20 +511,10 @@ private:
     const char* password;
 
 public:
-    WebCommand(const char*   description,
-               type_t        type,
-               permissions_t permissions,
-               const char*   grblName,
-               const char*   name,
-               Error (*action)(char*, WebUI::AuthenticationLevel),
-               bool (*cmdChecker)()) : Command(description, type, permissions, grblName, name, cmdChecker), _action(action) {}
+    WebCommand(const char* description, type_t type, permissions_t permissions, const char* grblName, const char* name, Error (*action)(char*, WebUI::AuthenticationLevel), bool (*cmdChecker)()) :
+        Command(description, type, permissions, grblName, name, cmdChecker), _action(action) {}
 
-    WebCommand(const char*   description,
-               type_t        type,
-               permissions_t permissions,
-               const char*   grblName,
-               const char*   name,
-               Error (*action)(char*, WebUI::AuthenticationLevel)) :
+    WebCommand(const char* description, type_t type, permissions_t permissions, const char* grblName, const char* name, Error (*action)(char*, WebUI::AuthenticationLevel)) :
         WebCommand(description, type, permissions, grblName, name, action, idleOrAlarm) {}
 
     Error action(char* value, WebUI::AuthenticationLevel auth_level, WebUI::ESPResponseStream* response);
@@ -613,16 +525,10 @@ private:
     Error (*_action)(const char*, WebUI::AuthenticationLevel, WebUI::ESPResponseStream*);
 
 public:
-    GrblCommand(const char* grblName,
-                const char* name,
-                Error (*action)(const char*, WebUI::AuthenticationLevel, WebUI::ESPResponseStream*),
-                bool (*cmdChecker)(),
-                permissions_t auth) : Command(NULL, GRBLCMD, auth, grblName, name, cmdChecker), _action(action) {}
+    GrblCommand(const char* grblName, const char* name, Error (*action)(const char*, WebUI::AuthenticationLevel, WebUI::ESPResponseStream*), bool (*cmdChecker)(), permissions_t auth) :
+        Command(NULL, GRBLCMD, auth, grblName, name, cmdChecker), _action(action) {}
 
-    GrblCommand(const char* grblName,
-                const char* name,
-                Error (*action)(const char*, WebUI::AuthenticationLevel, WebUI::ESPResponseStream*),
-                bool (*cmdChecker)()) : GrblCommand(grblName, name, action, cmdChecker, WG) {}
+    GrblCommand(const char* grblName, const char* name, Error (*action)(const char*, WebUI::AuthenticationLevel, WebUI::ESPResponseStream*), bool (*cmdChecker)()) : GrblCommand(grblName, name, action, cmdChecker, WG) {}
     Error action(char* value, WebUI::AuthenticationLevel auth_level, WebUI::ESPResponseStream* response);
 };
 
