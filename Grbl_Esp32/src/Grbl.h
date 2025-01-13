@@ -21,8 +21,8 @@
 */
 
 // Grbl versioning system
-const char* const CNC_VERSION        = "3.5.1";
-const char* const CNC_VERSION_BUILD  = "20241224";
+const char* const CNC_VERSION        = "3.5.2";
+const char* const CNC_VERSION_BUILD  = "20250113";
 const char* const GRBL_VERSION       = "1.3a";
 const char* const GRBL_VERSION_BUILD = "20211103";
 
@@ -97,8 +97,9 @@ void run_once();
 
 void  machine_init();                      // weak definition in Grbl.cpp
 void  display_init();                      // weak definition in Grbl.cpp
-void  user_m30();                          // weak definition in Grbl.cpp/
+void  user_m30();                          // weak definition in Grbl.cpp
 Error user_tool_change(uint8_t new_tool);  // weak definition in Grbl.cpp
+Error rownd_G33();                         // weak definition in Grbl.cpp
 
 bool user_defined_homing(uint8_t cycle_mask);  // weak definition in Limits.cpp
 

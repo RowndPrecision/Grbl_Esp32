@@ -246,7 +246,7 @@ static bool checkSpindleChange(char* val) {
     if (spt == UINT8_MAX) {
         return false;
     }
-    if (static_cast<SpindleType>(spt) != SpindleType::ASDA_CN1) {
+    if (atc_connected->get() && static_cast<SpindleType>(spt) != SpindleType::ASDA_CN1) {
         spindle_type->_checkError = Error::AtcIncompatibleOperation;
         return false;
     }

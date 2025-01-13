@@ -33,7 +33,7 @@ void grbl_init() {
     client_init();  // Setup serial baud rate and interrupts
     display_init();
 
-    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "CNCLathe Ver %s Date %s", CNC_VERSION, CNC_VERSION_BUILD);  // print grbl_esp32 verion info
+    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "CNCLathe Ver %s Date %s", CNC_VERSION, CNC_VERSION_BUILD);      // print grbl_esp32 verion info
     grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Grbl_ESP32 Ver %s Date %s", GRBL_VERSION, GRBL_VERSION_BUILD);  // print grbl_esp32 verion info
     grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Compiled with ESP32 SDK:%s", ESP.getSdkVersion());              // print the SDK version
 // show the map name at startup
@@ -135,6 +135,9 @@ void __attribute__((weak)) user_m30() {}
 Error __attribute__((weak)) user_tool_change(uint8_t new_tool) {
     return Error::Ok;
 }
+
+Error __attribute__((weak)) rownd_G33() {}
+
 /*
   setup() and loop() in the Arduino .ino implements this control flow:
 
