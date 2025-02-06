@@ -62,6 +62,8 @@ Error user_tool_change(uint8_t new_tool) {
         return Error::AtcNotConnected;
     }
 
+    bool is_absolute = gc_state.modal.distance == Distance::Absolute;
+
     char tc_line[20];
 
     grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Active Tool No: %d | New Tool No: %d", tool_active->get(), new_tool);
@@ -74,13 +76,95 @@ Error user_tool_change(uint8_t new_tool) {
 
     protocol_buffer_synchronize();
 
-    report_status_message(execute_line(tc_line, CLIENT_SERIAL, WebUI::AuthenticationLevel::LEVEL_GUEST), CLIENT_SERIAL);
-
     // WebUI::inputBuffer.push(tc_line);  // It's more efficient to add to the buffer instead of executing immediately.
+
+    Error oPut = execute_line(tc_line, CLIENT_SERIAL, WebUI::AuthenticationLevel::LEVEL_GUEST);
+
+#ifdef ROWND_REPORT
+    report_status_message(oPut, CLIENT_SERIAL);
+#endif
 
     protocol_buffer_synchronize();
 
+    if (is_absolute) {
+        gc_state.modal.distance = Distance::Absolute;
+    } else {
+        gc_state.modal.distance = Distance::Incremental;
+    }
+
+#ifdef ROWND_REPORT
     return Error::Ok;
+#else
+    return oPut;
+#endif
+}
+
+Error rownd_G33(parser_block_t* gc_block, float* position) {
+    float pos_diff[MAX_N_AXIS];
+    char  g33_line[50];
+    bool  is_lathe    = static_cast<SpindleType>(spindle_type->get()) == SpindleType::ASDA_CN1;
+    bool  is_absolute = gc_block->modal.distance == Distance::Absolute;
+    float feed_in     = 0;
+    float feed_out    = 0;
+    float revolution  = 0;
+    float total_dist  = 0;
+
+    if (is_lathe) {
+        gc_state.Rownd_special = true;
+        spindle_type->setEnumValue((int8_t)SpindleType::PWM);
+        gc_state.Rownd_special = false;
+    } else {
+        return Error::AsdaMode;
+    }
+
+    for (size_t idx = 0; idx < MAX_N_AXIS; ++idx) {
+        pos_diff[idx] = gc_block->values.xyz[idx] - position[idx];
+        total_dist += pos_diff[idx];
+    }
+
+    protocol_buffer_synchronize();
+
+    if (gc_block->values.f > 0) {
+        feed_in = gc_block->values.f;
+    } else if (gc_block->values.ijk[Z_AXIS] > 0) {
+        feed_in = gc_block->values.ijk[Z_AXIS];
+    } else {
+        return Error::GcodeValueWordMissing;
+    }
+
+    revolution = total_dist / feed_in;
+
+    pos_diff[DEFAULT_SWAP_C] = revolution * 360.0f;
+
+    feed_out = (gc_block->values.s * 360.0) * ((pos_diff[DEFAULT_SWAP_C] + total_dist) / pos_diff[DEFAULT_SWAP_C]);
+
+    if (is_absolute) {
+        snprintf(g33_line, sizeof(g33_line), "G1G90F%.2fX%.2fZ%.2fC%.2f\r\n", feed_out, gc_block->values.xyz[X_AXIS], gc_block->values.xyz[Z_AXIS], position[DEFAULT_SWAP_C] + pos_diff[DEFAULT_SWAP_C]);
+    } else {
+        snprintf(g33_line, sizeof(g33_line), "G1G91F%.2fX%.2fZ%.2fC%.2f\r\n", feed_out, pos_diff[X_AXIS], pos_diff[Z_AXIS], pos_diff[DEFAULT_SWAP_C]);
+    }
+
+    // grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g33 line: %s", g33_line);
+
+    Error oPut = execute_line(g33_line, CLIENT_SERIAL, WebUI::AuthenticationLevel::LEVEL_GUEST);
+
+    // grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g33 out: %i", oPut);
+
+    if (is_lathe) {
+        gc_state.Rownd_special = true;
+        spindle_type->setEnumValue((int8_t)SpindleType::ASDA_CN1);
+        gc_state.Rownd_special = false;
+    }
+
+#ifdef ROWND_REPORT
+    report_status_message(oPut, CLIENT_SERIAL);
+#endif
+
+#ifdef ROWND_REPORT
+    return Error::Ok;
+#else
+    return oPut;
+#endif
 }
 
 /*

@@ -388,6 +388,9 @@ void report_gcode_modes(uint8_t client) {
         case Motion::CcwArc:
             mode = "G3";
             break;
+        case Motion::G33:
+            mode = "G33";
+            break;
         case Motion::ProbeToward:
             mode = "G38.1";
             break;
@@ -399,6 +402,9 @@ void report_gcode_modes(uint8_t client) {
             break;
         case Motion::ProbeAwayNoError:
             mode = "G38.4";
+            break;
+        case Motion::G76:
+            mode = "G76";
             break;
     }
     strcat(modes_rpt, mode);

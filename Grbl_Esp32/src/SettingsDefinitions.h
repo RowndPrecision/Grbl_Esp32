@@ -66,6 +66,11 @@ extern FlagSetting*  spindle_enable_invert;
 extern FlagSetting*  spindle_output_invert;
 extern FlagSetting*  spindle_direction_invert;
 extern FlagSetting*  chuck_direction_invert;
+extern FlagSetting*  chuck_output_invert;
+extern FlagSetting*  chuck_enable_invert;
+extern FlagSetting*  laser_output_invert;
+extern FlagSetting*  laser_enable_invert;
+extern FlagSetting*  laser_direction_invert;
 
 extern FloatSetting* spindle_pwm_off_value;
 extern FloatSetting* spindle_pwm_min_value;

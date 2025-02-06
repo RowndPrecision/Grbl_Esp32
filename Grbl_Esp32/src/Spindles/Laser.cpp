@@ -56,7 +56,7 @@ namespace Spindles {
 #    endif
 #endif
 
-        _invert_pwm = spindle_output_invert->get();
+        _invert_pwm = laser_output_invert->get();
 
 #ifdef LASER_ENABLE_PIN
         _enable_pin = LASER_ENABLE_PIN;
@@ -97,6 +97,28 @@ namespace Spindles {
         _pwm_chan_num = 0;  // Channel 0 is reserved for spindle use
     }
 
+    void Laser::set_enable_pin(bool enable) {
+        if (_enable_pin == UNDEFINED_PIN) {
+            return;
+        }
+
+        if (_off_with_zero_speed && sys.spindle_speed == 0) {
+            enable = false;
+        }
+
+        if (laser_enable_invert->get()) {
+            enable = !enable;
+        }
+
+        digitalWrite(_enable_pin, enable);
+    }
+
+    void Laser::set_dir_pin(bool Clockwise) {
+        if (laser_direction_invert->get())
+            Clockwise = !Clockwise;
+        digitalWrite(_direction_pin, Clockwise);
+    }
+
     void Laser::deinit() {
         stop();
 
@@ -114,12 +136,12 @@ namespace Spindles {
 #ifdef SPINDLE_OUTPUT_PIN
         gpio_reset_pin(SPINDLE_OUTPUT_PIN);
         pinMode(SPINDLE_OUTPUT_PIN, OUTPUT);
-        digitalWrite(SPINDLE_OUTPUT_PIN, 0);
+        digitalWrite(SPINDLE_OUTPUT_PIN, laser_output_invert->get());
 #endif
 #ifdef SPINDLE_ENABLE_PIN
         // gpio_reset_pin(SPINDLE_ENABLE_PIN);  // TODO might not be needed
         pinMode(SPINDLE_ENABLE_PIN, OUTPUT);
-        set_enable_pin(0);
+        set_enable_pin(laser_enable_invert);
 #endif
 
 #ifdef SPINDLE_DIR_PIN

@@ -15,7 +15,7 @@ namespace Spindles {
         _output_pin = UNDEFINED_PIN;
 #endif
 
-        _invert_pwm = spindle_output_invert->get();
+        _invert_pwm = chuck_output_invert->get();
 
 #ifdef ASDA_CN1_S_P_PIN
         digitalWrite(ASDA_CN1_S_P_PIN, true);
@@ -171,6 +171,22 @@ namespace Spindles {
         set_enable_pin(false);
     }
 
+    void AsdaCN1::set_enable_pin(bool enable) {
+        if (_enable_pin == UNDEFINED_PIN) {
+            return;
+        }
+
+        if (_off_with_zero_speed && sys.spindle_speed == 0) {
+            enable = false;
+        }
+
+        if (chuck_enable_invert->get()) {
+            enable = !enable;
+        }
+
+        digitalWrite(_enable_pin, enable);
+    }
+
     void AsdaCN1::set_dir_pin(bool Clockwise) {
         if (chuck_direction_invert->get())
             Clockwise = !Clockwise;
@@ -182,7 +198,7 @@ namespace Spindles {
 #ifdef ASDA_CN1_OUTPUT_PIN
         gpio_reset_pin(ASDA_CN1_OUTPUT_PIN);
         pinMode(ASDA_CN1_OUTPUT_PIN, OUTPUT);
-        digitalWrite(ASDA_CN1_OUTPUT_PIN, 0);
+        digitalWrite(ASDA_CN1_OUTPUT_PIN, chuck_output_invert->get());
 #endif
 
 #ifdef ASDA_CN1_ENABLE_PIN

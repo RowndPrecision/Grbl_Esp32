@@ -13,6 +13,11 @@
 #define I2S_OUT_BCK             GPIO_NUM_22
 #define I2S_OUT_WS              GPIO_NUM_23
 #define I2S_OUT_DATA            GPIO_NUM_21
+#define I2S_OUT_EN              GPIO_NUM_19
+
+#define RS485_RX                GPIO_NUM_33
+#define RS485_TX                GPIO_NUM_32
+#define RS485_CTRL              GPIO_NUM_12
 
 #define DEFAULT_PLANE   Plane::ZX  // ZX for lathe
 
@@ -30,8 +35,7 @@
 #define Z_STEP_PIN              GPIO_NUM_25
 #define Z_DIRECTION_PIN         GPIO_NUM_26
 
-// #define STEPPERS_DISABLE_PIN    I2SO(0)
-#define STEPPERS_DISABLE_PIN    GPIO_NUM_18
+#define STEPPERS_DISABLE_PIN    I2SO(0)
 
 #define Y_STEP_PIN          GPIO_NUM_2
 #define Y_DIRECTION_PIN     GPIO_NUM_15
@@ -45,7 +49,7 @@
 
 #define X_LIMIT_PIN                 GPIO_NUM_36
 #define Z_LIMIT_PIN                 GPIO_NUM_39
-// #define A_LIMIT_PIN                 GPIO_NUM_18
+#define A_LIMIT_PIN                 GPIO_NUM_18
 #define PROBE_PIN                   GPIO_NUM_34
 #define CONTROL_SAFETY_DOOR_PIN     GPIO_NUM_35
 
@@ -57,6 +61,7 @@
 #define DEFAULT_HOMING_CYCLE_5  0
 
 #define SPINDLE_TYPE            SpindleType::PWM
+#define DEFAULT_SPINDLE_FREQ    3500.0f
 
 #define SPINDLE_OUTPUT_PIN      GPIO_NUM_17
 #define SPINDLE_DIR_PIN         I2SO(5)
@@ -66,6 +71,8 @@
 #define ASDA_CN1_S_P_PIN        I2SO(1)
 #define ASDA_CN1_ENABLE_PIN     I2SO(2)
 #define ASDA_CN1_DIR_PIN        I2SO(3)
+
+// TODO add mist
 
 #define LED_PIN     I2SO(4)
 #define DEFAULT_LED_STATE 1
@@ -77,7 +84,6 @@
 
 #define DEFAULT_INVERT_CHUCK_DIRECTION_PIN    false
 
-// #define MONITOR_PIN 13
 
 #define DEFAULT_MONITOR_FILTER_RANGE 3
 #define DEFAULT_MONITOR_FILTER_MIDDLE 1950

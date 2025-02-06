@@ -174,7 +174,7 @@ namespace Spindles {
         // gpio_reset_pin(SPINDLE_OUTPUT_PIN);
         // pinMode(SPINDLE_OUTPUT_PIN, INPUT);
         pinMode(SPINDLE_OUTPUT_PIN, OUTPUT);
-        digitalWrite(SPINDLE_OUTPUT_PIN, 0);
+        digitalWrite(SPINDLE_OUTPUT_PIN, spindle_output_invert->get());
 #endif
 #ifdef SPINDLE_ENABLE_PIN
         // gpio_reset_pin(SPINDLE_ENABLE_PIN);

@@ -103,21 +103,21 @@ static atomic_uint_least32_t i2s_out_port_data = ATOMIC_VAR_INIT(0);
 
 // inner lock
 static portMUX_TYPE i2s_out_spinlock = portMUX_INITIALIZER_UNLOCKED;
-#define I2S_OUT_ENTER_CRITICAL()                                                                                                           \
-    do {                                                                                                                                   \
-        if (xPortInIsrContext()) {                                                                                                         \
-            portENTER_CRITICAL_ISR(&i2s_out_spinlock);                                                                                     \
-        } else {                                                                                                                           \
-            portENTER_CRITICAL(&i2s_out_spinlock);                                                                                         \
-        }                                                                                                                                  \
+#define I2S_OUT_ENTER_CRITICAL()                                                                                                                                                                                                               \
+    do {                                                                                                                                                                                                                                       \
+        if (xPortInIsrContext()) {                                                                                                                                                                                                             \
+            portENTER_CRITICAL_ISR(&i2s_out_spinlock);                                                                                                                                                                                         \
+        } else {                                                                                                                                                                                                                               \
+            portENTER_CRITICAL(&i2s_out_spinlock);                                                                                                                                                                                             \
+        }                                                                                                                                                                                                                                      \
     } while (0)
-#define I2S_OUT_EXIT_CRITICAL()                                                                                                            \
-    do {                                                                                                                                   \
-        if (xPortInIsrContext()) {                                                                                                         \
-            portEXIT_CRITICAL_ISR(&i2s_out_spinlock);                                                                                      \
-        } else {                                                                                                                           \
-            portEXIT_CRITICAL(&i2s_out_spinlock);                                                                                          \
-        }                                                                                                                                  \
+#define I2S_OUT_EXIT_CRITICAL()                                                                                                                                                                                                                \
+    do {                                                                                                                                                                                                                                       \
+        if (xPortInIsrContext()) {                                                                                                                                                                                                             \
+            portEXIT_CRITICAL_ISR(&i2s_out_spinlock);                                                                                                                                                                                          \
+        } else {                                                                                                                                                                                                                               \
+            portEXIT_CRITICAL(&i2s_out_spinlock);                                                                                                                                                                                              \
+        }                                                                                                                                                                                                                                      \
     } while (0)
 #define I2S_OUT_ENTER_CRITICAL_ISR() portENTER_CRITICAL_ISR(&i2s_out_spinlock)
 #define I2S_OUT_EXIT_CRITICAL_ISR() portEXIT_CRITICAL_ISR(&i2s_out_spinlock)
@@ -138,21 +138,21 @@ static volatile i2s_out_pulser_status_t i2s_out_pulser_status = PASSTHROUGH;
 
 // outer lock
 static portMUX_TYPE i2s_out_pulser_spinlock = portMUX_INITIALIZER_UNLOCKED;
-#define I2S_OUT_PULSER_ENTER_CRITICAL()                                                                                                    \
-    do {                                                                                                                                   \
-        if (xPortInIsrContext()) {                                                                                                         \
-            portENTER_CRITICAL_ISR(&i2s_out_pulser_spinlock);                                                                              \
-        } else {                                                                                                                           \
-            portENTER_CRITICAL(&i2s_out_pulser_spinlock);                                                                                  \
-        }                                                                                                                                  \
+#define I2S_OUT_PULSER_ENTER_CRITICAL()                                                                                                                                                                                                        \
+    do {                                                                                                                                                                                                                                       \
+        if (xPortInIsrContext()) {                                                                                                                                                                                                             \
+            portENTER_CRITICAL_ISR(&i2s_out_pulser_spinlock);                                                                                                                                                                                  \
+        } else {                                                                                                                                                                                                                               \
+            portENTER_CRITICAL(&i2s_out_pulser_spinlock);                                                                                                                                                                                      \
+        }                                                                                                                                                                                                                                      \
     } while (0)
-#define I2S_OUT_PULSER_EXIT_CRITICAL()                                                                                                     \
-    do {                                                                                                                                   \
-        if (xPortInIsrContext()) {                                                                                                         \
-            portEXIT_CRITICAL_ISR(&i2s_out_pulser_spinlock);                                                                               \
-        } else {                                                                                                                           \
-            portEXIT_CRITICAL(&i2s_out_pulser_spinlock);                                                                                   \
-        }                                                                                                                                  \
+#define I2S_OUT_PULSER_EXIT_CRITICAL()                                                                                                                                                                                                         \
+    do {                                                                                                                                                                                                                                       \
+        if (xPortInIsrContext()) {                                                                                                                                                                                                             \
+            portEXIT_CRITICAL_ISR(&i2s_out_pulser_spinlock);                                                                                                                                                                                   \
+        } else {                                                                                                                                                                                                                               \
+            portEXIT_CRITICAL(&i2s_out_pulser_spinlock);                                                                                                                                                                                       \
+        }                                                                                                                                                                                                                                      \
     } while (0)
 #define I2S_OUT_PULSER_ENTER_CRITICAL_ISR() portENTER_CRITICAL_ISR(&i2s_out_pulser_spinlock)
 #define I2S_OUT_PULSER_EXIT_CRITICAL_ISR() portEXIT_CRITICAL_ISR(&i2s_out_pulser_spinlock)
@@ -422,7 +422,7 @@ static int IRAM_ATTR i2s_fillout_dma_buffer(lldesc_t* dma_desc) {
     } else {
         // Stepper paused (passthrough state, static I2S control mode)
         // In the passthrough mode, there is no need to fill the buffer with port_data.
-        i2s_clear_dma_buffer(dma_desc, 0);  // Essentially, no clearing is required. I'll make sure I know when I've written something.
+        i2s_clear_dma_buffer(dma_desc, 0);         // Essentially, no clearing is required. I'll make sure I know when I've written something.
         o_dma.rw_pos                         = 0;  // If someone calls i2s_out_push_sample, make sure there is no buffer overflow
         i2s_out_remain_time_until_next_pulse = 0;
     }
@@ -728,6 +728,10 @@ int IRAM_ATTR i2s_out_init(i2s_out_init_t& init_param) {
 
     // Route the i2s pins to the appropriate GPIO
     i2s_out_gpio_attach(init_param.ws_pin, init_param.bck_pin, init_param.data_pin);
+#ifdef I2S_OUT_EN
+    pinMode(I2S_OUT_EN, OUTPUT);
+    digitalWrite(I2S_OUT_EN, false);
+#endif
 
     /**
    * Each i2s transfer will take

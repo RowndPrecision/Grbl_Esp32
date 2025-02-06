@@ -87,4 +87,5 @@ std::map<Error, const char*> ErrorNames = {
     { Error::AtcUnexpectedRemoval, "Unexpected ATC removal" },
     { Error::AsdaMode, "Incompatible servo mode" },
     { Error::AsdaAlarm, "Servo ALARM" },
+    { Error::InvalidWorkPlane, "Work Plane miss match" },
 };

@@ -64,6 +64,11 @@ FlagSetting*     spindle_enable_invert;
 FlagSetting*     spindle_output_invert;
 FlagSetting*     spindle_direction_invert;
 FlagSetting*     chuck_direction_invert;
+FlagSetting*     chuck_output_invert;
+FlagSetting*     chuck_enable_invert;
+FlagSetting*     laser_output_invert;
+FlagSetting*     laser_enable_invert;
+FlagSetting*     laser_direction_invert;
 
 FloatSetting* spindle_pwm_off_value;
 FloatSetting* spindle_pwm_min_value;
@@ -246,7 +251,7 @@ static bool checkSpindleChange(char* val) {
     if (spt == UINT8_MAX) {
         return false;
     }
-    if (atc_connected->get() && static_cast<SpindleType>(spt) != SpindleType::ASDA_CN1) {
+    if (atc_connected->get() && static_cast<SpindleType>(spt) != SpindleType::ASDA_CN1 && !gc_state.Rownd_special) {
         spindle_type->_checkError = Error::AtcIncompatibleOperation;
         return false;
     }
@@ -389,7 +394,7 @@ void make_settings() {
 
     // special variables
 
-    axis_convet_multiplier = new FloatSetting(GRBL, WG, NULL, "AxisConvertMultiplier", POSITIONABLE_AXIS_CONVERT, 0, 100000);
+    axis_convet_multiplier = new FloatSetting(GRBL, WG, "46", "AxisConvertMultiplier", POSITIONABLE_AXIS_CONVERT, 0, 100000);
 
     led_state   = new FlagSetting(EXTENDED, WG, "45", "led/state", DEFAULT_LED_STATE, checkLedChange);
     led_inverse = new FlagSetting(EXTENDED, WG, "44", "led/inverse", DEFAULT_LED_INVERSE, checkLedChange);
@@ -397,6 +402,16 @@ void make_settings() {
     led_init();
 
     // Spindle Settings
+    laser_output_invert = new FlagSetting(EXTENDED, WG, "49", "Laser/PWM/Invert", DEFAULT_INVERT_SPINDLE_OUTPUT_PIN, checkSpindleChange);
+
+    laser_enable_invert = new FlagSetting(EXTENDED, WG, "48", "Laser/Enable/Invert", DEFAULT_INVERT_SPINDLE_ENABLE_PIN, checkSpindleChange);
+
+    laser_direction_invert = new FlagSetting(EXTENDED, WG, "47", "Laser/Dir/Invert", DEFAULT_INVERT_CHUCK_DIRECTION_PIN, checkSpindleChange);
+
+    chuck_output_invert = new FlagSetting(EXTENDED, WG, "43", "Chuck/PWM/Invert", DEFAULT_INVERT_SPINDLE_OUTPUT_PIN, checkSpindleChange);
+
+    chuck_enable_invert = new FlagSetting(EXTENDED, WG, "42", "Chuck/Enable/Invert", DEFAULT_INVERT_SPINDLE_ENABLE_PIN, checkSpindleChange);
+
     chuck_direction_invert = new FlagSetting(EXTENDED, WG, "41", "Chuck/Dir/Invert", DEFAULT_INVERT_CHUCK_DIRECTION_PIN, checkSpindleChange);
 
     spindle_direction_invert = new FlagSetting(EXTENDED, WG, "40", "Spindle/Dir/Invert", DEFAULT_INVERT_SPINDLE_DIRECTION_PIN, checkSpindleChange);

@@ -24,5 +24,6 @@ namespace Spindles {
 
     protected:
         virtual void set_dir_pin(bool Clockwise);
+        virtual void set_enable_pin(bool enable_pin);
     };
 }

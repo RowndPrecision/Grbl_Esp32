@@ -136,7 +136,251 @@ Error __attribute__((weak)) user_tool_change(uint8_t new_tool) {
     return Error::Ok;
 }
 
-Error __attribute__((weak)) rownd_G33() {}
+Error __attribute__((weak)) rownd_G33(parser_block_t* gc_block, float* position) {
+    return Error::Ok;
+}
+
+// Error __attribute__((weak)) rownd_G76(parser_block_t* gc_block, float* position) {
+//     return Error::Ok;
+// }
+
+Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, float* position) {
+    // float pos_diff[MAX_N_AXIS];
+    float pos_start[MAX_N_AXIS];
+    char  g76_line[50];
+    bool  is_lathe      = static_cast<SpindleType>(spindle_type->get()) == SpindleType::ASDA_CN1;
+    bool  is_absolute   = gc_block->modal.distance == Distance::Absolute;
+    float feed_out      = 0;
+    float rev_total     = 0;
+    float rev_enter     = 0;
+    float rev_exit      = 0;
+    float rev_thread    = 0;
+    float total_dist    = 0;
+    float depth_line    = 0;
+    int   pass_count    = 0;
+    int   current_pass  = 0;
+    float depth_last    = 0;
+    float depth_current = 0;
+    Error oPut          = Error::Ok;
+
+    if (is_lathe) {
+        gc_state.Rownd_special = true;
+        spindle_type->setEnumValue((int8_t)SpindleType::PWM);
+        gc_state.Rownd_special = false;
+    } else {
+        return Error::AsdaMode;
+    }
+
+    protocol_buffer_synchronize();
+
+    // calculate variables 1 (for loop)
+
+    // No tapered threading only works on Z axis
+    for (size_t idx = 0; idx < MAX_N_AXIS; ++idx) {
+        pos_start[idx] = position[idx];
+        // pos_diff[idx]  = gc_block->values.xyz[idx] - pos_start[idx];
+        // total_dist += pos_diff[idx];
+    }
+
+    if (g76_params->degression < 1)
+        g76_params->degression = 1;
+
+    total_dist = gc_block->values.xyz[Z_AXIS] - pos_start[Z_AXIS];
+
+    rev_total  = total_dist / g76_params->pitch;
+    rev_thread = rev_total;
+
+    if (bit_istrue(g76_params->chamfer_mode, G76_taperModes::Entry)) {
+        rev_enter = g76_params->chamfer_angle / g76_params->pitch;
+        rev_thread -= rev_enter;
+    }
+    if (bit_istrue(g76_params->chamfer_mode, G76_taperModes::Exit)) {
+        rev_exit = g76_params->chamfer_angle / g76_params->pitch;
+        rev_thread -= rev_exit;
+    }
+
+    feed_out = ((gc_block->values.s * 360.0) / axis_convet_multiplier->get()) * (((rev_total * 360.0) + total_dist) / (rev_total * 360.0));
+
+    depth_line = g76_params->depth_thread - g76_params->offset_peak;
+
+    pass_count    = 0;
+    depth_current = 0;
+    depth_last    = g76_params->depth_first_cut;
+
+    if (g76_params->depth_thread > 0) {
+        while (depth_current < (depth_line - g76_params->depth_last_cut)) {
+            depth_current += depth_last;
+            depth_last /= g76_params->degression;
+            if (depth_last < g76_params->depth_minimum_cut)
+                depth_last = g76_params->depth_minimum_cut;
+            pass_count++;
+        }
+    } else if (g76_params->depth_thread < 0) {
+        while (depth_current > (depth_line - g76_params->depth_last_cut)) {
+            depth_current += depth_last;
+            depth_last /= g76_params->degression;
+            if (depth_last > g76_params->depth_minimum_cut)
+                depth_last = g76_params->depth_minimum_cut;
+            pass_count++;
+        }
+    } else {
+        return Error::BadNumberFormat;
+    }
+
+    if (g76_params->depth_last_cut != 0)
+        pass_count++;
+
+    depth_current = 0;
+
+    depth_last = g76_params->depth_first_cut;
+
+    for (int pass = 1; pass <= pass_count + g76_params->spring_pass; pass++) {
+        if (pass > pass_count) {
+            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 spring pass: %i", pass - pass_count);
+        } else {
+            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 pass: %i", pass);
+        }
+
+        // calculations
+        if ((g76_params->depth_thread > 0 && depth_last < g76_params->depth_minimum_cut) || (g76_params->depth_thread < 0 && depth_last > g76_params->depth_minimum_cut))
+            depth_last = g76_params->depth_minimum_cut;
+
+        depth_current += depth_last;
+
+        if ((g76_params->depth_thread > 0 && depth_current < depth_line) || (g76_params->depth_thread < 0 && depth_current > depth_line))
+            depth_current = depth_line;
+
+        // entering
+
+        if (is_absolute) {
+            snprintf(g76_line, sizeof(g76_line), "G1G90F%.2fX%.2fZ%.2fC%.2f\r\n", feed_out, pos_start[X_AXIS] - depth_current, pos_start[Z_AXIS] + ((total_dist * rev_enter) / rev_total), pos_start[DEFAULT_SWAP_C] + (rev_enter * 360.0));
+        } else {
+            snprintf(g76_line, sizeof(g76_line), "G1G91F%.2fX%.2fZ%.2fC%.2f\r\n", feed_out, -depth_current, ((total_dist * rev_enter) / rev_total), (rev_enter * 360.0));
+        }
+
+        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 enter: %s", g76_line);
+
+        oPut = execute_line(g76_line, CLIENT_SERIAL, WebUI::AuthenticationLevel::LEVEL_GUEST);
+
+        if (oPut != Error::Ok) {
+            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 enter error: %i", oPut);
+            return oPut;
+        }
+
+        // threading
+
+        if (is_absolute) {
+            snprintf(g76_line,
+                     sizeof(g76_line),
+                     "G1G90F%.2fX%.2fZ%.2fC%.2f\r\n",
+                     feed_out,
+                     pos_start[X_AXIS] - depth_current,
+                     pos_start[Z_AXIS] + ((total_dist * rev_thread) / rev_total),
+                     pos_start[DEFAULT_SWAP_C] + ((rev_thread + rev_enter) * 360.0));
+        } else {
+            snprintf(g76_line, sizeof(g76_line), "G1G91F%.2fX%.2fZ%.2fC%.2f\r\n", feed_out, 0, ((total_dist * rev_thread) / rev_total), (rev_thread * 360.0));
+        }
+
+        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 thread: %s", g76_line);
+
+        oPut = execute_line(g76_line, CLIENT_SERIAL, WebUI::AuthenticationLevel::LEVEL_GUEST);
+
+        if (oPut != Error::Ok) {
+            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 thread error: %i", oPut);
+            return oPut;
+        }
+
+        // exiting
+
+        if (is_absolute) {
+            snprintf(g76_line, sizeof(g76_line), "G1G90F%.2fX%.2fZ%.2fC%.2f\r\n", feed_out, pos_start[X_AXIS], pos_start[Z_AXIS] + total_dist, pos_start[DEFAULT_SWAP_C] + (rev_total * 360.0));
+        } else {
+            snprintf(g76_line, sizeof(g76_line), "G1G91F%.2fX%.2fZ%.2fC%.2f\r\n", feed_out, depth_current, ((total_dist * rev_exit) / rev_total), (rev_exit * 360.0));
+        }
+
+        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 exit: %s", g76_line);
+
+        oPut = execute_line(g76_line, CLIENT_SERIAL, WebUI::AuthenticationLevel::LEVEL_GUEST);
+
+        if (oPut != Error::Ok) {
+            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 exit error: %i", oPut);
+            return oPut;
+        }
+
+        // returning (safety exit + return + safety enter)
+
+        // safety exit
+
+        if (is_absolute) {
+            snprintf(g76_line, sizeof(g76_line), "G1G90F%.2fX%.2fZ%.2fC%.2f\r\n", feed_out, pos_start[X_AXIS] + g76_params->depth_first_cut, pos_start[Z_AXIS] + total_dist, pos_start[DEFAULT_SWAP_C] + (rev_total * 360.0));
+        } else {
+            snprintf(g76_line, sizeof(g76_line), "G1G91F%.2fX%.2fZ%.2fC%.2f\r\n", feed_out, g76_params->depth_first_cut, 0, 0);
+        }
+
+        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 return/exit: %s", g76_line);
+
+        oPut = execute_line(g76_line, CLIENT_SERIAL, WebUI::AuthenticationLevel::LEVEL_GUEST);
+
+        if (oPut != Error::Ok) {
+            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 return/exit error: %i", oPut);
+            return oPut;
+        }
+
+        // return
+
+        if (is_absolute) {
+            snprintf(g76_line, sizeof(g76_line), "G1G90F%.2fX%.2fZ%.2fC%.2f\r\n", feed_out, pos_start[X_AXIS] + g76_params->depth_first_cut, pos_start[Z_AXIS], pos_start[DEFAULT_SWAP_C]);
+        } else {
+            snprintf(g76_line, sizeof(g76_line), "G1G91F%.2fX%.2fZ%.2fC%.2f\r\n", feed_out, 0, -total_dist, -(rev_total * 360.0));
+        }
+
+        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 return/thread: %s", g76_line);
+
+        oPut = execute_line(g76_line, CLIENT_SERIAL, WebUI::AuthenticationLevel::LEVEL_GUEST);
+
+        if (oPut != Error::Ok) {
+            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 return/thread error: %i", oPut);
+            return oPut;
+        }
+
+        // safety enter
+
+        if (is_absolute) {
+            snprintf(g76_line, sizeof(g76_line), "G1G90F%.2fX%.2fZ%.2fC%.2f\r\n", feed_out, pos_start[X_AXIS], pos_start[Z_AXIS], pos_start[DEFAULT_SWAP_C]);
+        } else {
+            snprintf(g76_line, sizeof(g76_line), "G1G91F%.2fX%.2fZ%.2fC%.2f\r\n", feed_out, -g76_params->depth_first_cut, 0, 0);
+        }
+
+        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 return/enter: %s", g76_line);
+
+        oPut = execute_line(g76_line, CLIENT_SERIAL, WebUI::AuthenticationLevel::LEVEL_GUEST);
+
+        if (oPut != Error::Ok) {
+            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 return/enter error: %i", oPut);
+            return oPut;
+        }
+
+        protocol_buffer_synchronize();
+
+        depth_last /= g76_params->degression;
+    }
+
+    if (is_lathe) {
+        gc_state.Rownd_special = true;
+        spindle_type->setEnumValue((int8_t)SpindleType::ASDA_CN1);
+        gc_state.Rownd_special = false;
+    }
+
+#ifdef ROWND_REPORT
+    report_status_message(oPut, CLIENT_SERIAL);
+#endif
+
+#ifdef ROWND_REPORT
+    return Error::Ok;
+#else
+    return oPut;
+#endif
+}
 
 /*
   setup() and loop() in the Arduino .ino implements this control flow:

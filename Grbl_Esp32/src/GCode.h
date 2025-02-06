@@ -33,7 +33,7 @@
 
 enum class ModalGroup : uint8_t {
     MG0  = 0,   // [G4,G10,G28,G28.1,G30,G30.1,G53,G92,G92.1] Non-modal
-    MG1  = 1,   // [G0,G1,G2,G3,G38.2,G38.3,G38.4,G38.5,G80] Motion
+    MG1  = 1,   // [G0,G1,G2,G3,G33,G38.2,G38.3,G38.4,G38.5,G76,G80] Motion
     MG2  = 2,   // [G17,G18,G19] Plane selection
     MG3  = 3,   // [G90,G91] Distance mode
     MG4  = 4,   // [G91.1] Arc IJK distance mode
@@ -82,6 +82,8 @@ enum class Motion : uint8_t {
     Linear             = 1,    // G1 (Do not alter value)
     CwArc              = 2,    // G2 (Do not alter value)
     CcwArc             = 3,    // G3 (Do not alter value)
+    G33                = 33,   // G33 (Do not alter value)
+    G76                = 76,   // G76 (Do not alter value)
     ProbeToward        = 140,  // G38.2 (Do not alter value)
     ProbeTowardNoError = 141,  // G38.3 (Do not alter value)
     ProbeAway          = 142,  // G38.4 (Do not alter value)
@@ -227,6 +229,10 @@ enum class GCodeWord : uint8_t {
     A = 16,
     B = 17,
     C = 18,
+    D = 19,
+    U = 20,
+    V = 21,
+    W = 22,
 };
 
 // GCode parser position updating flags
@@ -275,6 +281,14 @@ enum CoordIndex : uint8_t {
 // Allow iteration over CoordIndex values
 CoordIndex& operator++(CoordIndex& i);
 
+// G76 taper/chamfer modes
+enum G76_taperModes : uint8_t {
+    None  = 0,  // default
+    Entry = 1,
+    Exit  = 2,
+    Both  = 3,
+};
+
 // NOTE: When this struct is zeroed, the 0 values in the above types set the system defaults.
 typedef struct {
     Motion   motion;     // {G0,G1,G2,G3,G38.2,G80}
@@ -314,6 +328,8 @@ typedef struct {
 typedef struct {
     gc_modal_t modal;
 
+    bool Rownd_special = false;
+
     float   spindle_speed;  // RPM
     float   feed_rate;      // Millimeters/min
     int32_t line_number;    // Last line number sent
@@ -341,6 +357,37 @@ enum class AxisCommand : uint8_t {
     MotionMode       = 2,
     ToolLengthOffset = 3,
 };
+
+typedef struct {
+    bool first_line = false;
+
+    // float start_position[MAX_N_AXIS];  // Where the interpreter considers the tool to be at this point in the code
+
+    // float end_position[MAX_N_AXIS];  // Where the interpreter considers the tool to be at this point in the code
+
+    float pitch;
+
+    float depth_thread;
+    float depth_first_cut;
+    float depth_minimum_cut;
+    float depth_last_cut;
+
+    float slide_angle;
+
+    // float diameter_minor;
+    // float diameter_major;
+
+    float offset_peak;
+
+    float degression;
+
+    int spring_pass;
+
+    int chamfer_mode = 0;
+    int chamfer_angle;
+
+} g76_params_t;
+extern g76_params_t g76_params;
 
 // Initialize the parser
 void gc_init();

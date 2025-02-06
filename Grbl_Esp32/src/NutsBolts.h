@@ -95,6 +95,10 @@ const double INCH_PER_MM = (0.0393701);
 // It performs a bitwise AND operation and checks if the result is zero
 #define bit_isfalse(x, mask) ((x & mask) == 0)
 
+// Macro to check if bits match the given mask exactly
+// A failsafe for ensuring no extra bits are set
+#define bit_is_match(x, mask) ((x) == (mask))
+
 // Macro to set a specific bit (using a bit number 'num') to true (1)
 // It combines the value of 'x' with a bitmask created for the specified bit number
 #define bitnum_true(x, num) (x) |= bit(num)
