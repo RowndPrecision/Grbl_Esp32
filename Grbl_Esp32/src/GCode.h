@@ -311,7 +311,7 @@ typedef struct {
 } gc_modal_t;
 
 typedef struct {
-    uint8_t e;                // M67
+    float   e;                // M67
     float   f;                // Feed
     uint8_t h;                // G43
     float   ijk[3];           // I,J,K Axis arc offsets - only 3 are possible
@@ -383,8 +383,8 @@ typedef struct {
 
     int spring_pass;
 
-    int chamfer_mode = 0;
-    int chamfer_angle;
+    int   chamfer_mode = 0;
+    float chamfer_angle;
 
 } g76_params_t;
 extern g76_params_t g76_params;

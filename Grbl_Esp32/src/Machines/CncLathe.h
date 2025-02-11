@@ -138,10 +138,10 @@
 #define DEFAULT_Z_STEPS_PER_MM 1600.0   // steps per mm
 #define DEFAULT_A_STEPS_PER_MM 640.0   // steps per mm
 
-#define DEFAULT_X_MAX_RATE 1000.0   // mm/min
+#define DEFAULT_X_MAX_RATE 1200.0   // mm/min
 #define DEFAULT_Y_MAX_RATE 360000.0 / POSITIONABLE_AXIS_CONVERT  // rpm
-#define DEFAULT_Z_MAX_RATE 1000.0   // mm/min
-#define DEFAULT_A_MAX_RATE 1000.0   // mm/min
+#define DEFAULT_Z_MAX_RATE 1200.0   // mm/min
+#define DEFAULT_A_MAX_RATE 1200.0   // mm/min
 
 #define DEFAULT_X_ACCELERATION 200.0 // mm/sec^2. 50 mm/sec^2 = 180000 mm/min^2
 #define DEFAULT_Y_ACCELERATION 72000.0 / POSITIONABLE_AXIS_CONVERT // mm/sec^2

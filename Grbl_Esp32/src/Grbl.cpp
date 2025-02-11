@@ -140,17 +140,48 @@ Error __attribute__((weak)) rownd_G33(parser_block_t* gc_block, float* position)
     return Error::Ok;
 }
 
-// Error __attribute__((weak)) rownd_G76(parser_block_t* gc_block, float* position) {
+// Error __attribute__((weak)) rownd_G76(parser_block_t* gc_block,  parser_state_t* gc_state) {
 //     return Error::Ok;
 // }
 
-Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, float* position) {
+float calculate_G76_feed(float s, float rev, float dz, float dx) {
+    // float magnitude1 = sqrtf((rev * 360.0 / axis_convet_multiplier->get()) * (rev * 360.0 / axis_convet_multiplier->get()));
+    // float magnitude2 = sqrtf((magnitude1 * magnitude1) + (((dz * rev) / tot) * ((dz * rev) / tot)) + (dx * dx));
+    float feed_out = 0;
+
+    // grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 calc 1 fo: %.3f, rev: %.3f, m1: %.3f, m2: %.3f, dz: %.3f, dx: %.3f", feed_out, rev, magnitude1, magnitude2, ((dz * rev) / tot), dx);
+
+    if (rev != 0) {
+        float duration = rev / s;
+        float feed_c   = (s * 360.0 / axis_convet_multiplier->get());
+        float feed_z   = dz / duration;
+        float feed_x   = dx / duration;
+        feed_out       = sqrtf((feed_c * feed_c) + (feed_z * feed_z) + (feed_x * feed_x));
+
+        // feed_out = ((s * 360.0) / axis_convet_multiplier->get()) * (magnitude2 / magnitude1);
+        // grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 calc 3 fo: %.3f, rev: %.3f, s: %.3f", feed_out, rev, s);
+        // grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 calc 4 fo: %.3f, dur: %.3f, fc: %.3f, fz: %.3f, fx: %.3f", feed_out, duration, feed_c, feed_z, feed_x);
+    } else {
+        feed_out = axis_settings[X_AXIS]->max_rate->get();
+        // grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 calc 2 fo: %.3f, rev: %.3f", feed_out, rev);
+    }
+
+    if (feed_out < 0)
+        feed_out *= -1;
+
+    return feed_out;
+}
+
+Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state_t* gc_state) {
     // float pos_diff[MAX_N_AXIS];
     float pos_start[MAX_N_AXIS];
     char  g76_line[50];
     bool  is_lathe      = static_cast<SpindleType>(spindle_type->get()) == SpindleType::ASDA_CN1;
     bool  is_absolute   = gc_block->modal.distance == Distance::Absolute;
+    float dirMultiplier = (gc_block->modal.spindle == SpindleState::Ccw) ? 1.0f : -1.0f;
+    float feed_in       = gc_block->values.s;
     float feed_out      = 0;
+    float magnitude     = 0;
     float rev_total     = 0;
     float rev_enter     = 0;
     float rev_exit      = 0;
@@ -164,12 +195,14 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, float* posit
     Error oPut          = Error::Ok;
 
     if (is_lathe) {
-        gc_state.Rownd_special = true;
+        gc_state->Rownd_special = true;
         spindle_type->setEnumValue((int8_t)SpindleType::PWM);
-        gc_state.Rownd_special = false;
+        gc_state->Rownd_special = false;
     } else {
         return Error::AsdaMode;
     }
+
+    gc_state->Rownd_special = false;
 
     protocol_buffer_synchronize();
 
@@ -177,7 +210,7 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, float* posit
 
     // No tapered threading only works on Z axis
     for (size_t idx = 0; idx < MAX_N_AXIS; ++idx) {
-        pos_start[idx] = position[idx];
+        pos_start[idx] = gc_state->position[idx] - gc_state->coord_system[idx] - gc_state->coord_offset[idx] - gc_state->tool_length_offset[idx];
         // pos_diff[idx]  = gc_block->values.xyz[idx] - pos_start[idx];
         // total_dist += pos_diff[idx];
     }
@@ -185,21 +218,29 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, float* posit
     if (g76_params->degression < 1)
         g76_params->degression = 1;
 
-    total_dist = gc_block->values.xyz[Z_AXIS] - pos_start[Z_AXIS];
+    total_dist = gc_block->values.xyz[Z_AXIS] - gc_state->position[Z_AXIS];
+
+    if (total_dist == 0) {
+        oPut = Error::GcodeAxisCommandConflict;
+    }
 
     rev_total  = total_dist / g76_params->pitch;
     rev_thread = rev_total;
 
     if (bit_istrue(g76_params->chamfer_mode, G76_taperModes::Entry)) {
         rev_enter = g76_params->chamfer_angle / g76_params->pitch;
+        if (rev_total < 0)
+            rev_enter *= -1;
         rev_thread -= rev_enter;
     }
     if (bit_istrue(g76_params->chamfer_mode, G76_taperModes::Exit)) {
         rev_exit = g76_params->chamfer_angle / g76_params->pitch;
+        if (rev_total < 0)
+            rev_exit *= -1;
         rev_thread -= rev_exit;
     }
 
-    feed_out = ((gc_block->values.s * 360.0) / axis_convet_multiplier->get()) * (((rev_total * 360.0) + total_dist) / (rev_total * 360.0));
+    // feed_out = calculate_G76_feed(feed_in, rev_total, rev_total, total_dist, g76_params->depth_minimum_cut);
 
     depth_line = g76_params->depth_thread - g76_params->offset_peak;
 
@@ -224,7 +265,7 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, float* posit
             pass_count++;
         }
     } else {
-        return Error::BadNumberFormat;
+        oPut = Error::BadNumberFormat;
     }
 
     if (g76_params->depth_last_cut != 0)
@@ -235,6 +276,11 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, float* posit
     depth_last = g76_params->depth_first_cut;
 
     for (int pass = 1; pass <= pass_count + g76_params->spring_pass; pass++) {
+        if (oPut != Error::Ok) {
+            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 init error: %i", oPut);
+            break;
+        }
+
         if (pass > pass_count) {
             grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 spring pass: %i", pass - pass_count);
         } else {
@@ -247,15 +293,18 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, float* posit
 
         depth_current += depth_last;
 
-        if ((g76_params->depth_thread > 0 && depth_current < depth_line) || (g76_params->depth_thread < 0 && depth_current > depth_line))
+        if ((g76_params->depth_thread > 0 && depth_current > depth_line) || (g76_params->depth_thread < 0 && depth_current < depth_line))
             depth_current = depth_line;
 
         // entering
 
+        feed_out = calculate_G76_feed(feed_in, rev_enter, ((total_dist * rev_enter) / rev_total), depth_current);
+
         if (is_absolute) {
-            snprintf(g76_line, sizeof(g76_line), "G1G90F%.2fX%.2fZ%.2fC%.2f\r\n", feed_out, pos_start[X_AXIS] - depth_current, pos_start[Z_AXIS] + ((total_dist * rev_enter) / rev_total), pos_start[DEFAULT_SWAP_C] + (rev_enter * 360.0));
+            snprintf(
+                g76_line, sizeof(g76_line), "G1G90F%.2fX%.2fZ%.2fC%.2f", feed_out, pos_start[X_AXIS] - depth_current, pos_start[Z_AXIS] + ((total_dist * rev_enter) / rev_total), pos_start[DEFAULT_SWAP_C] + dirMultiplier * (rev_enter * 360.0));
         } else {
-            snprintf(g76_line, sizeof(g76_line), "G1G91F%.2fX%.2fZ%.2fC%.2f\r\n", feed_out, -depth_current, ((total_dist * rev_enter) / rev_total), (rev_enter * 360.0));
+            snprintf(g76_line, sizeof(g76_line), "G1G91F%.2fX%.2fZ%.2fC%.2f", feed_out, -depth_current, ((total_dist * rev_enter) / rev_total), dirMultiplier * (rev_enter * 360.0));
         }
 
         grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 enter: %s", g76_line);
@@ -264,21 +313,23 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, float* posit
 
         if (oPut != Error::Ok) {
             grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 enter error: %i", oPut);
-            return oPut;
+            break;
         }
 
         // threading
 
+        feed_out = calculate_G76_feed(feed_in, rev_thread, ((total_dist * rev_thread) / rev_total), 0.0f);
+
         if (is_absolute) {
             snprintf(g76_line,
                      sizeof(g76_line),
-                     "G1G90F%.2fX%.2fZ%.2fC%.2f\r\n",
+                     "G1G90F%.2fX%.2fZ%.2fC%.2f",
                      feed_out,
                      pos_start[X_AXIS] - depth_current,
                      pos_start[Z_AXIS] + ((total_dist * rev_thread) / rev_total),
-                     pos_start[DEFAULT_SWAP_C] + ((rev_thread + rev_enter) * 360.0));
+                     pos_start[DEFAULT_SWAP_C] + dirMultiplier * ((rev_thread + rev_enter) * 360.0));
         } else {
-            snprintf(g76_line, sizeof(g76_line), "G1G91F%.2fX%.2fZ%.2fC%.2f\r\n", feed_out, 0, ((total_dist * rev_thread) / rev_total), (rev_thread * 360.0));
+            snprintf(g76_line, sizeof(g76_line), "G1G91F%.2fX%.2fZ%.2fC%.2f", feed_out, 0.0f, ((total_dist * rev_thread) / rev_total), dirMultiplier * (rev_thread * 360.0));
         }
 
         grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 thread: %s", g76_line);
@@ -287,15 +338,17 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, float* posit
 
         if (oPut != Error::Ok) {
             grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 thread error: %i", oPut);
-            return oPut;
+            break;
         }
 
         // exiting
 
+        feed_out = calculate_G76_feed(feed_in, rev_exit, ((total_dist * rev_exit) / rev_total), depth_current);
+
         if (is_absolute) {
-            snprintf(g76_line, sizeof(g76_line), "G1G90F%.2fX%.2fZ%.2fC%.2f\r\n", feed_out, pos_start[X_AXIS], pos_start[Z_AXIS] + total_dist, pos_start[DEFAULT_SWAP_C] + (rev_total * 360.0));
+            snprintf(g76_line, sizeof(g76_line), "G1G90F%.2fX%.2fZ%.2fC%.2f", feed_out, pos_start[X_AXIS], pos_start[Z_AXIS] + total_dist, pos_start[DEFAULT_SWAP_C] + dirMultiplier * (rev_total * 360.0));
         } else {
-            snprintf(g76_line, sizeof(g76_line), "G1G91F%.2fX%.2fZ%.2fC%.2f\r\n", feed_out, depth_current, ((total_dist * rev_exit) / rev_total), (rev_exit * 360.0));
+            snprintf(g76_line, sizeof(g76_line), "G1G91F%.2fX%.2fZ%.2fC%.2f", feed_out, depth_current, ((total_dist * rev_exit) / rev_total), dirMultiplier * (rev_exit * 360.0));
         }
 
         grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 exit: %s", g76_line);
@@ -304,7 +357,7 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, float* posit
 
         if (oPut != Error::Ok) {
             grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 exit error: %i", oPut);
-            return oPut;
+            break;
         }
 
         // returning (safety exit + return + safety enter)
@@ -312,9 +365,9 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, float* posit
         // safety exit
 
         if (is_absolute) {
-            snprintf(g76_line, sizeof(g76_line), "G1G90F%.2fX%.2fZ%.2fC%.2f\r\n", feed_out, pos_start[X_AXIS] + g76_params->depth_first_cut, pos_start[Z_AXIS] + total_dist, pos_start[DEFAULT_SWAP_C] + (rev_total * 360.0));
+            snprintf(g76_line, sizeof(g76_line), "G0G90X%.2fZ%.2fC%.2f", pos_start[X_AXIS] + g76_params->depth_first_cut, pos_start[Z_AXIS] + total_dist, pos_start[DEFAULT_SWAP_C] + dirMultiplier * (rev_total * 360.0));
         } else {
-            snprintf(g76_line, sizeof(g76_line), "G1G91F%.2fX%.2fZ%.2fC%.2f\r\n", feed_out, g76_params->depth_first_cut, 0, 0);
+            snprintf(g76_line, sizeof(g76_line), "G0G91X%.2fZ%.2fC%.2f", g76_params->depth_first_cut, 0.0f, 0.0f);
         }
 
         grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 return/exit: %s", g76_line);
@@ -323,15 +376,15 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, float* posit
 
         if (oPut != Error::Ok) {
             grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 return/exit error: %i", oPut);
-            return oPut;
+            break;
         }
 
         // return
 
         if (is_absolute) {
-            snprintf(g76_line, sizeof(g76_line), "G1G90F%.2fX%.2fZ%.2fC%.2f\r\n", feed_out, pos_start[X_AXIS] + g76_params->depth_first_cut, pos_start[Z_AXIS], pos_start[DEFAULT_SWAP_C]);
+            snprintf(g76_line, sizeof(g76_line), "G0G90X%.2fZ%.2fC%.2f", pos_start[X_AXIS] + g76_params->depth_first_cut, pos_start[Z_AXIS], pos_start[DEFAULT_SWAP_C]);
         } else {
-            snprintf(g76_line, sizeof(g76_line), "G1G91F%.2fX%.2fZ%.2fC%.2f\r\n", feed_out, 0, -total_dist, -(rev_total * 360.0));
+            snprintf(g76_line, sizeof(g76_line), "G0G91X%.2fZ%.2fC%.2f", 0.0f, -total_dist, dirMultiplier * -(rev_total * 360.0));
         }
 
         grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 return/thread: %s", g76_line);
@@ -340,15 +393,15 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, float* posit
 
         if (oPut != Error::Ok) {
             grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 return/thread error: %i", oPut);
-            return oPut;
+            break;
         }
 
         // safety enter
 
         if (is_absolute) {
-            snprintf(g76_line, sizeof(g76_line), "G1G90F%.2fX%.2fZ%.2fC%.2f\r\n", feed_out, pos_start[X_AXIS], pos_start[Z_AXIS], pos_start[DEFAULT_SWAP_C]);
+            snprintf(g76_line, sizeof(g76_line), "G0G90X%.2fZ%.2fC%.2f", pos_start[X_AXIS], pos_start[Z_AXIS], pos_start[DEFAULT_SWAP_C]);
         } else {
-            snprintf(g76_line, sizeof(g76_line), "G1G91F%.2fX%.2fZ%.2fC%.2f\r\n", feed_out, -g76_params->depth_first_cut, 0, 0);
+            snprintf(g76_line, sizeof(g76_line), "G0G91X%.2fZ%.2fC%.2f", -g76_params->depth_first_cut, 0.0f, 0.0f);
         }
 
         grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 return/enter: %s", g76_line);
@@ -357,7 +410,7 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, float* posit
 
         if (oPut != Error::Ok) {
             grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 return/enter error: %i", oPut);
-            return oPut;
+            break;
         }
 
         protocol_buffer_synchronize();
@@ -366,9 +419,9 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, float* posit
     }
 
     if (is_lathe) {
-        gc_state.Rownd_special = true;
+        gc_state->Rownd_special = true;
         spindle_type->setEnumValue((int8_t)SpindleType::ASDA_CN1);
-        gc_state.Rownd_special = false;
+        gc_state->Rownd_special = false;
     }
 
 #ifdef ROWND_REPORT

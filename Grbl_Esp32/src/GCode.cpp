@@ -721,7 +721,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                     // case 'D': // Not supported
                     case 'E':
                         axis_word_bit     = GCodeWord::E;
-                        gc_block.values.e = int_value;
+                        gc_block.values.e = value;
                         //grbl_msg_sendf(CLIENT_SERIAL, MSG_LEVEL_INFO, "E %d", gc_block.values.e);
                         break;
                     case 'F':
@@ -1057,6 +1057,8 @@ Error gc_execute_line(char* line, uint8_t client) {
 
                             if (!bit_is_match(axis_words, bit(Z_AXIS))) {
                                 FAIL(Error::GcodeAxisWordsExist);
+                            } else {
+                                bit_false(value_words, bit(GCodeWord::Z));
                             }
 
                             if (bit_istrue(value_words, bit(GCodeWord::R))) {
@@ -1066,7 +1068,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                             } else {
                                 gc_block.values.r = 1.0;
                             }
-                            bit_isfalse(value_words, bit(GCodeWord::R));
+                            bit_false(value_words, bit(GCodeWord::R));
                             g76_params.degression = gc_block.values.r;
 
                             if (bit_isfalse(value_words, bit(GCodeWord::P)) | bit_isfalse(value_words, bit(GCodeWord::I)) | bit_isfalse(value_words, bit(GCodeWord::J)) | bit_isfalse(value_words, bit(GCodeWord::K))) {
@@ -1082,8 +1084,6 @@ Error gc_execute_line(char* line, uint8_t client) {
                                 }
                                 bit_false(value_words, bit(GCodeWord::P));
                                 g76_params.pitch = gc_block.values.p;
-                            } else {
-                                FAIL(Error::GcodeValueWordMissing);
                             }
 
                             if (bit_istrue(value_words, bit(GCodeWord::J))) {
@@ -1095,8 +1095,6 @@ Error gc_execute_line(char* line, uint8_t client) {
                                 }
                                 bit_false(value_words, bit(GCodeWord::J));
                                 g76_params.depth_first_cut = gc_block.values.ijk[Y_AXIS];
-                            } else {
-                                FAIL(Error::GcodeValueWordMissing);
                             }
 
                             if (bit_istrue(value_words, bit(GCodeWord::K))) {
@@ -1108,8 +1106,6 @@ Error gc_execute_line(char* line, uint8_t client) {
                                 }
                                 bit_false(value_words, bit(GCodeWord::K));
                                 g76_params.depth_thread = gc_block.values.ijk[Z_AXIS];
-                            } else {
-                                FAIL(Error::GcodeValueWordMissing);
                             }
 
                             if (bit_istrue(value_words, bit(GCodeWord::H))) {
@@ -1126,8 +1122,6 @@ Error gc_execute_line(char* line, uint8_t client) {
                                 }
                                 bit_false(value_words, bit(GCodeWord::I));
                                 g76_params.offset_peak = gc_block.values.ijk[X_AXIS];
-                            } else {
-                                FAIL(Error::GcodeValueWordMissing);
                             }
 
                             if (bit_istrue(value_words, bit(GCodeWord::Q))) {
@@ -1146,6 +1140,9 @@ Error gc_execute_line(char* line, uint8_t client) {
                                 }
                                 if (gc_block.values.e > (g76_params.offset_peak + g76_params.depth_thread) / 2) {
                                     FAIL(Error::GcodeMaxValueExceeded);
+                                }
+                                if (gc_block.values.e < 0) {
+                                    FAIL(Error::NegativeValue);
                                 }
                                 bit_false(value_words, bit(GCodeWord::E));
                                 g76_params.chamfer_angle = gc_block.values.e;
@@ -1196,6 +1193,7 @@ Error gc_execute_line(char* line, uint8_t client) {
         if (gc_state.modal.spindle == SpindleState::Disable && gc_block.modal.spindle == SpindleState::Disable) {
             FAIL(Error::GcodeAxisCommandConflict);
         }
+        gc_state.Rownd_special = true;
     }
 
 #ifdef ENABLE_PARKING_OVERRIDE_CONTROL
@@ -1534,7 +1532,7 @@ Error gc_execute_line(char* line, uint8_t client) {
             // the value must be positive. In inverse time mode, a positive value must be passed with each block.
         } else {
             // Check if feed rate is defined for the motion modes that require it.
-            if (gc_block.values.f == 0.0) {
+            if (gc_block.values.f == 0.0 && !gc_state.Rownd_special) {
                 FAIL(Error::GcodeUndefinedFeedRate);  // [Feed rate undefined]
             }
             switch (gc_block.modal.motion) {
@@ -1716,7 +1714,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                     return rownd_G33(&gc_block, gc_state.position);
                     break;
                 case Motion::G76:
-                    return rownd_G76(&gc_block, &g76_params, gc_state.position);
+                    return rownd_G76(&gc_block, &g76_params, &gc_state);
                     break;
                 default:
                     FAIL(Error::GcodeUnsupportedCommand);
