@@ -532,20 +532,27 @@ bool __attribute__((weak)) limitsCheckDirection(float* target) {
     uint32_t mask_pls = limit_axis_move_plus->get();
     for (idx = 0; idx < n_axis; idx++) {
         temp = target[idx] - mpos[idx];
+        // Check if movement in the negative direction is locked
         if (temp < 0 && bitnum_istrue(mask_min, idx)) {
             return true;
-        } else {
+        }
+        // If movement in the positive direction was previously locked, remove lock
+        if (temp > 0 && bitnum_istrue(mask_min, idx)) {
             if (!sys.abort && (sys.state == State::Idle)) {
                 limit_axis_move_minus->setAxis(idx, false);
                 limit_axis_move_minus->saveValue();
             }
         }
+
+        // Check if movement in the positive direction is locked
         if (temp > 0 && bitnum_istrue(mask_pls, idx)) {
             return true;
-        } else {
+        }
+        // If movement in the negative direction was previously locked, remove lock
+        if (temp < 0 && bitnum_istrue(mask_pls, idx)) {
             if (!sys.abort && (sys.state == State::Idle)) {
                 limit_axis_move_plus->setAxis(idx, false);
-                limit_axis_move_minus->saveValue();
+                limit_axis_move_plus->saveValue();
             }
         }
     }
