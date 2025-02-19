@@ -631,7 +631,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                         if (n_axis > DEFAULT_SWAP_A) {
                             if (isAxisAsda(DEFAULT_SWAP_A))
                                 FAIL(Error::AsdaMode);
-                            if (isAxisMovable(DEFAULT_SWAP_A))
+                            if (!isAxisMovable(DEFAULT_SWAP_A))
                                 FAIL(Error::GcodeAxisCommandConflict);
                             if (isAxisRpm(DEFAULT_SWAP_A))
                                 value /= axis_convet_multiplier->get();
@@ -661,7 +661,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                         if (n_axis > DEFAULT_SWAP_B) {
                             if (isAxisAsda(DEFAULT_SWAP_B))
                                 FAIL(Error::AsdaMode);
-                            if (isAxisMovable(DEFAULT_SWAP_B))
+                            if (!isAxisMovable(DEFAULT_SWAP_B))
                                 FAIL(Error::GcodeAxisCommandConflict);
                             if (isAxisRpm(DEFAULT_SWAP_B))
                                 value /= axis_convet_multiplier->get();
@@ -691,7 +691,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                         if (n_axis > DEFAULT_SWAP_C) {
                             if (isAxisAsda(DEFAULT_SWAP_C))
                                 FAIL(Error::AsdaMode);
-                            if (isAxisMovable(DEFAULT_SWAP_C))
+                            if (!isAxisMovable(DEFAULT_SWAP_C))
                                 FAIL(Error::GcodeAxisCommandConflict);
                             if (isAxisRpm(DEFAULT_SWAP_C)) {
                                 value /= axis_convet_multiplier->get();
@@ -781,7 +781,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                         if (n_axis > DEFAULT_SWAP_X) {
                             if (isAxisAsda(DEFAULT_SWAP_X))
                                 FAIL(Error::AsdaMode);
-                            if (isAxisMovable(DEFAULT_SWAP_X))
+                            if (!isAxisMovable(DEFAULT_SWAP_X))
                                 FAIL(Error::GcodeAxisCommandConflict);
                             if (isAxisRpm(DEFAULT_SWAP_X))
                                 value /= axis_convet_multiplier->get();
@@ -812,7 +812,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                         if (n_axis > DEFAULT_SWAP_Y) {
                             if (isAxisAsda(DEFAULT_SWAP_Y))
                                 FAIL(Error::AsdaMode);
-                            if (isAxisMovable(DEFAULT_SWAP_Y))
+                            if (!isAxisMovable(DEFAULT_SWAP_Y))
                                 FAIL(Error::GcodeAxisCommandConflict);
                             if (isAxisRpm(DEFAULT_SWAP_Y))
                                 value /= axis_convet_multiplier->get();
@@ -842,7 +842,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                         if (n_axis > DEFAULT_SWAP_Z) {
                             if (isAxisAsda(DEFAULT_SWAP_Z))
                                 FAIL(Error::AsdaMode);
-                            if (isAxisMovable(DEFAULT_SWAP_Z))
+                            if (!isAxisMovable(DEFAULT_SWAP_Z))
                                 FAIL(Error::GcodeAxisCommandConflict);
                             if (isAxisRpm(DEFAULT_SWAP_Z))
                                 value /= axis_convet_multiplier->get();
@@ -954,10 +954,10 @@ Error gc_execute_line(char* line, uint8_t client) {
                 return spindle_type->setEnumValue((int8_t)SpindleType::LASER);
                 break;
             case SpecialActions::DisconnectATC:
-                return atc_connected->setBoolValue(false);
+                return setATCConnection(false);
                 break;
             case SpecialActions::ConnectATC:
-                return atc_connected->setBoolValue(true);
+                return setATCConnection(true);
                 break;
             case SpecialActions::LEDOFF:
                 return led_state->setBoolValue(false);

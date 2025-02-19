@@ -326,8 +326,7 @@ void limits_go_home(uint8_t cycle_mask) {
     motors_set_homing_mode(cycle_mask, false);  // tell motors homing is done
 }
 
-uint8_t limit_pins[MAX_N_AXIS][2] = { { X_LIMIT_PIN, X2_LIMIT_PIN }, { Y_LIMIT_PIN, Y2_LIMIT_PIN }, { Z_LIMIT_PIN, Z2_LIMIT_PIN },
-                                      { A_LIMIT_PIN, A2_LIMIT_PIN }, { B_LIMIT_PIN, B2_LIMIT_PIN }, { C_LIMIT_PIN, C2_LIMIT_PIN } };
+uint8_t limit_pins[MAX_N_AXIS][2] = { { X_LIMIT_PIN, X2_LIMIT_PIN }, { Y_LIMIT_PIN, Y2_LIMIT_PIN }, { Z_LIMIT_PIN, Z2_LIMIT_PIN }, { A_LIMIT_PIN, A2_LIMIT_PIN }, { B_LIMIT_PIN, B2_LIMIT_PIN }, { C_LIMIT_PIN, C2_LIMIT_PIN } };
 
 uint8_t limit_mask = 0;
 
@@ -341,33 +340,33 @@ void limits_init() {
     for (int axis = 0; axis < n_axis; axis++) {
         for (int gang_index = 0; gang_index < 2; gang_index++) {
             uint8_t pin;
-            if ((pin = limit_pins[axis][gang_index]) != UNDEFINED_PIN) {
+            if ((pin = limit_pins[axis][gang_index]) != UNDEFINED_PIN && isAxisMovable(axis)) {
                 pinMode(pin, mode);
-                grbl_sendf(CLIENT_SERIAL, "[test: limit: %i | pin:  %i]\r\n", axis, pin);
+                grbl_sendf(CLIENT_SERIAL, "[test: limit: %c | pin:  %i]\r\n", "XYZABC"[axis], pin);
                 limit_mask |= bit(axis);
                 if (hard_limits->get()) {
                     attachInterrupt(pin, isr_limit_switches, RISING);
-                    grbl_sendf(CLIENT_SERIAL, "[test: attach: %i | pin:  %i]\r\n", axis, pin);
+                    grbl_sendf(CLIENT_SERIAL, "[test: attach: %c | pin:  %i]\r\n", "XYZABC"[axis], pin);
                 } else {
                     detachInterrupt(pin);
-                    grbl_sendf(CLIENT_SERIAL, "[test: deattach: %i | pin:  %i]\r\n", axis, pin);
+                    grbl_sendf(CLIENT_SERIAL, "[test: deattach: %c | pin:  %i]\r\n", "XYZABC"[axis], pin);
                 }
 
                 if (limit_sw_queue == NULL) {
-                    grbl_msg_sendf(
-                        CLIENT_SERIAL, MsgLevel::Info, "%s limit switch on pin %s", reportAxisNameMsg(axis, gang_index), pinName(pin).c_str());
+                    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "%s limit switch on pin %s", reportAxisNameMsg(axis, gang_index), pinName(pin).c_str());
                 }
             }
         }
     }
 
     // Setup the saveLimits task here
-    xTaskCreate(saveLimitsTaskFunction,  // Task function
-                "saveLimitsTask",        // Task name
-                2048,                    // Stack size
-                NULL,                    // Parameters
-                2,                       // Task priority
-                &saveLimitsTaskHandle);  // Task handle
+    if (saveLimitsTaskHandle == NULL)
+        xTaskCreate(saveLimitsTaskFunction,  // Task function
+                    "saveLimitsTask",        // Task name
+                    2048,                    // Stack size
+                    NULL,                    // Parameters
+                    2,                       // Task priority
+                    &saveLimitsTaskHandle);  // Task handle
 
     // setup task used for debouncing
     if (limit_sw_queue == NULL) {
@@ -390,9 +389,13 @@ void limits_disable() {
             uint8_t pin = limit_pins[axis][gang_index];
             if (pin != UNDEFINED_PIN) {
                 detachInterrupt(pin);
-                grbl_sendf(CLIENT_SERIAL, "[disable: deattach: %i | pin:  %i]\r\n", axis, pin);
+                grbl_sendf(CLIENT_SERIAL, "[disable: deattach: %c | pin:  %i]\r\n", "XYZABC"[axis], pin);
             }
         }
+    }
+    if (saveLimitsTaskHandle != NULL) {
+        vTaskDelete(saveLimitsTaskHandle);
+        saveLimitsTaskHandle = NULL;  // Clear handle before re-creating
     }
 }
 

@@ -497,13 +497,14 @@ public:
     AxisSettings(const char* axisName);
 };
 
-extern bool idleOrJog();
-extern bool idleOrAlarm();
-extern bool anyState();
-extern bool notCycleOrHold();
-extern bool isAxisAsda(int axis);
-extern bool isAxisRpm(int axis);
-extern bool isAxisMovable(int axis);
+extern bool  idleOrJog();
+extern bool  idleOrAlarm();
+extern bool  anyState();
+extern bool  notCycleOrHold();
+extern bool  isAxisAsda(int axis);
+extern bool  isAxisRpm(int axis);
+extern bool  isAxisMovable(int axis);
+extern Error setATCConnection(bool isConnected);
 
 class WebCommand : public Command {
 private:

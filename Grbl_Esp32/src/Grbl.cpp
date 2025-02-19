@@ -251,34 +251,13 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
     depth_current = 0;
     depth_last    = g76_params->depth_first_cut;
 
-    if (g76_params->depth_thread > 0) {
-        while (depth_current < (depth_line - g76_params->depth_last_cut)) {
-            depth_current += depth_last;
-            depth_last /= g76_params->degression;
-            if (depth_last < g76_params->depth_minimum_cut)
-                depth_last = g76_params->depth_minimum_cut;
-            pass_count++;
-        }
-    } else if (g76_params->depth_thread < 0) {
-        while (depth_current > (depth_line - g76_params->depth_last_cut)) {
-            depth_current += depth_last;
-            depth_last /= g76_params->degression;
-            if (depth_last > g76_params->depth_minimum_cut)
-                depth_last = g76_params->depth_minimum_cut;
-            pass_count++;
-        }
-    } else {
+    if (g76_params->depth_thread == 0) {
         oPut = Error::BadNumberFormat;
     }
 
-    if (g76_params->depth_last_cut != 0)
-        pass_count++;
-
-    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 p_calc 1: %i", pass_count);
-
     pass_count = ceilf(powf(depth_line / g76_params->depth_first_cut, g76_params->degression));
 
-    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 p_calc 2: %i", pass_count);
+    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 Pass Counter: %i", pass_count);
 
     depth_current = 0;
 
@@ -423,8 +402,6 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
         }
 
         protocol_buffer_synchronize();
-
-        // depth_last /= g76_params->degression;
 
         depth_last = g76_params->depth_first_cut * (powf((pass + 1), (1 / g76_params->degression)) - powf(pass, (1 / g76_params->degression)));
     }

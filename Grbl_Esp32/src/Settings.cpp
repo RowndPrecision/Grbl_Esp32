@@ -30,10 +30,19 @@ bool isAxisRpm(int axis) {
     return false;
 }
 bool isAxisMovable(int axis) {
-    if (axis == BLOCK_AXIS_ON_PWM_MODE && static_cast<SpindleType>(spindle_type->get()) == SpindleType::PWM) {
-        return true;
+    if ((axis == REMOVABLE_AXIS_LIMIT && static_cast<SpindleType>(spindle_type->get()) != SpindleType::ASDA_CN1) || (axis == REMOVABLE_AXIS_LIMIT && !atc_connected->get())) {
+        return false;
     }
-    return false;
+    return true;
+}
+
+Error setATCConnection(bool isConnected) {
+    protocol_buffer_synchronize();
+    limits_disable();
+    Error temp = atc_connected->setBoolValue(isConnected);
+    limits_init();
+    protocol_buffer_synchronize();
+    return temp;
 }
 
 Word::Word(type_t type, permissions_t permissions, const char* description, const char* grblName, const char* fullName) : _description(description), _grblName(grblName), _fullName(fullName), _type(type), _permissions(permissions) {}
