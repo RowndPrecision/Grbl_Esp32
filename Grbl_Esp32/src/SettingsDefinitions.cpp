@@ -402,15 +402,15 @@ void make_settings() {
     led_init();
 
     // Spindle Settings
-    laser_output_invert = new FlagSetting(EXTENDED, WG, "49", "Laser/PWM/Invert", DEFAULT_INVERT_SPINDLE_OUTPUT_PIN, checkSpindleChange);
+    laser_output_invert = new FlagSetting(EXTENDED, WG, "49", "Laser/PWM/Invert", DEFAULT_INVERT_LASER_OUTPUT_PIN, checkSpindleChange);
 
-    laser_enable_invert = new FlagSetting(EXTENDED, WG, "48", "Laser/Enable/Invert", DEFAULT_INVERT_SPINDLE_ENABLE_PIN, checkSpindleChange);
+    laser_enable_invert = new FlagSetting(EXTENDED, WG, "48", "Laser/Enable/Invert", DEFAULT_INVERT_LASER_ENABLE_PIN, checkSpindleChange);
 
-    laser_direction_invert = new FlagSetting(EXTENDED, WG, "47", "Laser/Dir/Invert", DEFAULT_INVERT_CHUCK_DIRECTION_PIN, checkSpindleChange);
+    laser_direction_invert = new FlagSetting(EXTENDED, WG, "47", "Laser/Dir/Invert", DEFAULT_INVERT_LASER_DIRECTION_PIN, checkSpindleChange);
 
-    chuck_output_invert = new FlagSetting(EXTENDED, WG, "43", "Chuck/PWM/Invert", DEFAULT_INVERT_SPINDLE_OUTPUT_PIN, checkSpindleChange);
+    chuck_output_invert = new FlagSetting(EXTENDED, WG, "43", "Chuck/PWM/Invert", DEFAULT_INVERT_CHUCK_OUTPUT_PIN, checkSpindleChange);
 
-    chuck_enable_invert = new FlagSetting(EXTENDED, WG, "42", "Chuck/Enable/Invert", DEFAULT_INVERT_SPINDLE_ENABLE_PIN, checkSpindleChange);
+    chuck_enable_invert = new FlagSetting(EXTENDED, WG, "42", "Chuck/Enable/Invert", DEFAULT_INVERT_CHUCK_ENABLE_PIN, checkSpindleChange);
 
     chuck_direction_invert = new FlagSetting(EXTENDED, WG, "41", "Chuck/Dir/Invert", DEFAULT_INVERT_CHUCK_DIRECTION_PIN, checkSpindleChange);
 
