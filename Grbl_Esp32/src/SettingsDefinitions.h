@@ -45,8 +45,8 @@ extern FloatSetting* arc_tolerance;
 extern FlagSetting* led_state;
 extern FlagSetting* led_inverse;
 
-extern AxisMaskSetting* limit_axis_move_plus;
-extern AxisMaskSetting* limit_axis_move_minus;
+extern AxisMaskSetting* limit_axis_move_positive;
+extern AxisMaskSetting* limit_axis_move_negative;
 
 extern FloatSetting* axis_convet_multiplier;
 

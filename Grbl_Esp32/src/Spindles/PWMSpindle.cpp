@@ -263,7 +263,7 @@ namespace Spindles {
     }
 
     void PWM::set_dir_pin(bool Clockwise) {
-        if (spindle_direction_invert)
+        if (spindle_direction_invert->get())
             Clockwise = !Clockwise;
         digitalWrite(_direction_pin, Clockwise);
     }

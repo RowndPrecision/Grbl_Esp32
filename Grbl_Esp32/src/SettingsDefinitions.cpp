@@ -39,8 +39,8 @@ IntSetting*   status_mask;
 FloatSetting* junction_deviation;
 FloatSetting* arc_tolerance;
 
-AxisMaskSetting* limit_axis_move_plus;
-AxisMaskSetting* limit_axis_move_minus;
+AxisMaskSetting* limit_axis_move_positive;
+AxisMaskSetting* limit_axis_move_negative;
 
 FloatSetting* axis_convet_multiplier;
 
@@ -389,8 +389,8 @@ void make_settings() {
 
     // Limit move vars
 
-    limit_axis_move_minus = new AxisMaskSetting(EXTENDED, WG, NULL, "BlockAxis/Minus", 0);
-    limit_axis_move_plus  = new AxisMaskSetting(EXTENDED, WG, NULL, "BlockAxis/Plus", 0);
+    limit_axis_move_negative = new AxisMaskSetting(EXTENDED, WG, NULL, "BlockAxis/Minus", 0);
+    limit_axis_move_positive = new AxisMaskSetting(EXTENDED, WG, NULL, "BlockAxis/Plus", 0);
 
     // special variables
 

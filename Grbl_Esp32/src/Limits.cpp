@@ -94,37 +94,37 @@ void saveLimitsTaskFunction(void* pvParameters) {
             char temp[10];
             auto n_axis = number_axis->get();
             for (int axis = 0; axis < n_axis; axis++) {
-                if (bitnum_istrue(pinMask, axis)) {
+                if (bitnum_istrue(pinMask, axis) && isAxisMovable(axis)) {
                     sprintf(temp, "%c", "XYZABC"[axis]);
                     strcat(msg, temp);
                     if (plan_get_block_buffer_available()) {
                         plan_block_t* dirBlock = plan_get_current_block();
                         if (dirBlock != NULL) {
                             if (bitnum_istrue(dirBlock->direction_bits, axis)) {
-                                limit_axis_move_minus->setAxis(axis, true);
-                                limit_axis_move_plus->setAxis(axis, false);
+                                limit_axis_move_negative->setAxis(axis, true);
+                                limit_axis_move_positive->setAxis(axis, false);
                             } else {
-                                limit_axis_move_minus->setAxis(axis, false);
-                                limit_axis_move_plus->setAxis(axis, true);
+                                limit_axis_move_negative->setAxis(axis, false);
+                                limit_axis_move_positive->setAxis(axis, true);
                             }
                         } else {
-                            limit_axis_move_minus->setAxis(axis, true);
-                            limit_axis_move_plus->setAxis(axis, true);
+                            limit_axis_move_negative->setAxis(axis, true);
+                            limit_axis_move_positive->setAxis(axis, true);
                         }
                     }
                 } else {
-                    limit_axis_move_minus->setAxis(axis, false);
-                    limit_axis_move_plus->setAxis(axis, false);
+                    limit_axis_move_negative->setAxis(axis, false);
+                    limit_axis_move_positive->setAxis(axis, false);
                 }
             }
             grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Hard limits: %s", msg);
         } else {
-            limit_axis_move_minus->setDefault();
-            limit_axis_move_plus->setDefault();
+            limit_axis_move_negative->setDefault();
+            limit_axis_move_positive->setDefault();
         }
 
-        limit_axis_move_minus->saveValue();
-        limit_axis_move_plus->saveValue();
+        limit_axis_move_negative->saveValue();
+        limit_axis_move_positive->saveValue();
     }
 }
 
@@ -528,31 +528,40 @@ bool __attribute__((weak)) limitsCheckDirection(float* target) {
     auto     n_axis = number_axis->get();
     float*   mpos   = system_get_mpos();
     float    temp;
-    uint32_t mask_min = limit_axis_move_minus->get();
-    uint32_t mask_pls = limit_axis_move_plus->get();
+    uint32_t mask_negative = limit_axis_move_negative->get();
+    uint32_t mask_positive = limit_axis_move_positive->get();
     for (idx = 0; idx < n_axis; idx++) {
+        if (bitnum_istrue(mask_negative, idx) && bitnum_istrue(mask_positive, idx)) {
+            if (!sys.abort && (sys.state == State::Idle)) {
+                limit_axis_move_negative->setAxis(idx, false);
+                limit_axis_move_positive->setAxis(idx, false);
+                limit_axis_move_negative->saveValue();
+                limit_axis_move_positive->saveValue();
+            }
+        }
+
         temp = target[idx] - mpos[idx];
         // Check if movement in the negative direction is locked
-        if (temp < 0 && bitnum_istrue(mask_min, idx)) {
+        if (temp < 0 && bitnum_istrue(mask_negative, idx)) {
             return true;
         }
         // If movement in the positive direction was previously locked, remove lock
-        if (temp > 0 && bitnum_istrue(mask_min, idx)) {
+        if (temp > 0 && bitnum_istrue(mask_negative, idx)) {
             if (!sys.abort && (sys.state == State::Idle)) {
-                limit_axis_move_minus->setAxis(idx, false);
-                limit_axis_move_minus->saveValue();
+                limit_axis_move_negative->setAxis(idx, false);
+                limit_axis_move_negative->saveValue();
             }
         }
 
         // Check if movement in the positive direction is locked
-        if (temp > 0 && bitnum_istrue(mask_pls, idx)) {
+        if (temp > 0 && bitnum_istrue(mask_positive, idx)) {
             return true;
         }
         // If movement in the negative direction was previously locked, remove lock
-        if (temp < 0 && bitnum_istrue(mask_pls, idx)) {
+        if (temp < 0 && bitnum_istrue(mask_positive, idx)) {
             if (!sys.abort && (sys.state == State::Idle)) {
-                limit_axis_move_plus->setAxis(idx, false);
-                limit_axis_move_plus->saveValue();
+                limit_axis_move_positive->setAxis(idx, false);
+                limit_axis_move_positive->saveValue();
             }
         }
     }
