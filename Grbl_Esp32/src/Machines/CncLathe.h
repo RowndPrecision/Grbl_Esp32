@@ -65,7 +65,7 @@
 #define DEFAULT_HOMING_CYCLE_5  0
 
 #define SPINDLE_TYPE            SpindleType::PWM
-#define DEFAULT_SPINDLE_FREQ    5000.0f
+#define DEFAULT_SPINDLE_FREQ    7000.0f
 
 #define SPINDLE_OUTPUT_PIN      GPIO_NUM_17
 #define SPINDLE_DIR_PIN         I2SO(5)

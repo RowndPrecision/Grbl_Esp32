@@ -718,7 +718,10 @@ Error gc_execute_line(char* line, uint8_t client) {
                             FAIL(Error::GcodeUnsupportedCommand);
                         }
                         break;
-                    // case 'D': // Not supported
+                    case 'D':  // Not supported
+                        axis_word_bit     = GCodeWord::D;
+                        gc_block.values.d = value;
+                        break;
                     case 'E':
                         axis_word_bit     = GCodeWord::E;
                         gc_block.values.e = value;
@@ -878,7 +881,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                 }
                 // Check for invalid negative values for words F, N, P, T, and S.
                 // NOTE: Negative value check is done here simply for code-efficiency.
-                if (bit_istrue(bitmask, (bit(GCodeWord::F) | bit(GCodeWord::N) | bit(GCodeWord::P) | bit(GCodeWord::T) | bit(GCodeWord::S)))) {
+                if (bit_istrue(bitmask, (bit(GCodeWord::F) | bit(GCodeWord::D) | bit(GCodeWord::N) | bit(GCodeWord::P) | bit(GCodeWord::T) | bit(GCodeWord::S)))) {
                     if (value < 0.0) {
                         FAIL(Error::NegativeValue);  // [Word value cannot be negative]
                     }
@@ -941,7 +944,7 @@ Error gc_execute_line(char* line, uint8_t client) {
             FAIL(Error::GcodeUnsupportedCommand);
         }
         if (bit_istrue(command_words, ~(bit(ModalGroup::MM10)))) {
-            FAIL(Error::GcodeUnsupportedCommand)
+            FAIL(Error::GcodeModalGroupViolation)
         };
         switch (gc_block.modal.RowndAction) {
             case SpecialActions::ModeSwitchLathe:
@@ -1147,6 +1150,24 @@ Error gc_execute_line(char* line, uint8_t client) {
                                 bit_false(value_words, bit(GCodeWord::E));
                                 g76_params.chamfer_angle = gc_block.values.e;
                             }
+
+                            if (bit_istrue(value_words, bit(GCodeWord::D))) {
+                                bit_false(value_words, bit(GCodeWord::D));
+                                if (gc_block.values.d >= 1)
+                                    g76_params.start_count = gc_block.values.d;
+                                else
+                                    g76_params.start_count = 1;
+                            } else
+                                g76_params.start_count = 1;
+
+                            if (bit_istrue(value_words, bit(GCodeWord::T))) {
+                                bit_false(value_words, bit(GCodeWord::T));
+                                if (gc_block.values.t == 0)
+                                    g76_params.is_return_pullback = false;
+                                else
+                                    g76_params.is_return_pullback = true;
+                            } else
+                                g76_params.is_return_pullback = true;
                         }
                     } else {
                         FAIL(Error::GcodeUnsupportedCommand);  // TODO fanuc type dual line G76
@@ -1834,15 +1855,17 @@ Error gc_execute_line(char* line, uint8_t client) {
         pl_data->spindle_speed = gc_state.spindle_speed;  // Record data for planner use.
     }  // else { pl_data->spindle_speed = 0.0; } // Initialized as zero already.
     // [5. Select tool ]: NOT SUPPORTED. Only tracks tool value.
-    tool_selected->setValue(gc_block.values.t);
     // [6. Change tool ]: NOT SUPPORTED
     if (gc_block.modal.tool_change == ToolChange::Enable) {
+        tool_selected->setValue(gc_block.values.t);
         if (tool_selected->get() > tool_count->get()) {
             FAIL(Error::GcodeMaxValueExceeded);
         }
         if (tool_selected->get(-1) < 0) {
             FAIL(Error::InvalidValue);
         }
+
+        gc_block.modal.tool_change = ToolChange::Disable;
 
         return user_tool_change(tool_selected->get());
     }

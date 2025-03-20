@@ -312,6 +312,7 @@ typedef struct {
 
 typedef struct {
     float   e;                // M67
+    uint8_t d;                // G76
     float   f;                // Feed
     uint8_t h;                // G43
     float   ijk[3];           // I,J,K Axis arc offsets - only 3 are possible
@@ -323,6 +324,7 @@ typedef struct {
     float   s;                // Spindle speed
     uint8_t t;                // Tool selection
     float   xyz[MAX_N_AXIS];  // X,Y,Z Translational axes
+    float   uvw[3];           // no use so far
 } gc_values_t;
 
 typedef struct {
@@ -385,6 +387,10 @@ typedef struct {
 
     int   chamfer_mode = 0;
     float chamfer_angle;
+
+    int start_count = 1;
+
+    bool is_return_pullback = true;
 
 } g76_params_t;
 extern g76_params_t g76_params;
