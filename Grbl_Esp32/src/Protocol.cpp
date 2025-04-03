@@ -290,7 +290,7 @@ void protocol_exec_rt_system() {
                 // If in CYCLE or JOG states, immediately initiate a motion HOLD.
                 if (sys.state == State::Cycle || sys.state == State::Jog) {
                     if (!(sys.suspend.bit.motionCancel || sys.suspend.bit.jogCancel)) {  // Block, if already holding.
-                        st_update_plan_block_parameters();  // Notify stepper module to recompute for hold deceleration.
+                        st_update_plan_block_parameters();                               // Notify stepper module to recompute for hold deceleration.
                         sys.step_control             = {};
                         sys.step_control.executeHold = true;  // Initiate suspend state with active flag.
                         if (sys.state == State::Jog) {        // Jog cancelled upon any hold event, except for sleeping.
@@ -415,8 +415,7 @@ void protocol_exec_rt_system() {
             // NOTE: Bresenham algorithm variables are still maintained through both the planner and stepper
             // cycle reinitializations. The stepper path should continue exactly as if nothing has happened.
             // NOTE: cycle_stop is set by the stepper subsystem when a cycle or feed hold completes.
-            if ((sys.state == State::Hold || sys.state == State::SafetyDoor || sys.state == State::Sleep) && !(sys.soft_limit) &&
-                !(sys.suspend.bit.jogCancel)) {
+            if ((sys.state == State::Hold || sys.state == State::SafetyDoor || sys.state == State::Sleep) && !(sys.soft_limit) && !(sys.suspend.bit.jogCancel)) {
                 // Hold complete. Set to indicate ready to resume.  Remain in HOLD or DOOR states until user
                 // has issued a resume command or reset.
                 plan_cycle_reinitialize();
@@ -559,6 +558,10 @@ static void protocol_exec_rt_suspend() {
     if (spindle->inLaserMode()) {
         sys_rt_exec_accessory_override.bit.spindleOvrStop = true;
     }
+#endif
+
+#ifdef DISABLE_SPINDLE_DURING_HOLD
+    sys_rt_exec_accessory_override.bit.spindleOvrStop = true;
 #endif
 
     while (sys.suspend.value) {
@@ -720,6 +723,11 @@ static void protocol_exec_rt_suspend() {
                         } else {
                             sys.spindle_stop_ovr.value = 0;  // Clear stop override state
                         }
+                        if (gc_state.modal.coolant.Flood || gc_state.modal.coolant.Mist) {
+                            coolant_off();  // De-energize
+                            sys.spindle_stop_ovr.value       = 0;
+                            sys.spindle_stop_ovr.bit.enabled = true;  // Set stop override state to enabled, if de-energized.
+                        }
                         // Handles restoring of spindle state
                     } else if (sys.spindle_stop_ovr.bit.restore || sys.spindle_stop_ovr.bit.restoreCycle) {
                         if (gc_state.modal.spindle != SpindleState::Disable) {
@@ -731,6 +739,14 @@ static void protocol_exec_rt_suspend() {
                                 spindle->set_state(restore_spindle, (uint32_t)restore_spindle_speed);
                             }
                         }
+                        if (gc_state.modal.coolant.Flood || gc_state.modal.coolant.Mist) {
+                            // Block if safety door re-opened during prior restore actions.
+                            if (!sys.suspend.bit.restartRetract) {
+                                // NOTE: Laser mode will honor this delay. An exhaust system is often controlled by this pin.
+                                coolant_set_state(restore_coolant);
+                            }
+                        }
+                        delay_msec(int32_t(1000.0 * coolant_start_delay->get()), DwellMode::SysSuspend);
                         if (sys.spindle_stop_ovr.bit.restoreCycle) {
                             sys_rt_exec_state.bit.cycleStart = true;  // Set to resume program.
                         }

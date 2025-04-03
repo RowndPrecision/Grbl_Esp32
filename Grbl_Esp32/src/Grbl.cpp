@@ -49,7 +49,8 @@ void grbl_init() {
 
     led_state->setBoolValue(true);
 
-    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Led test");
+    if (rownd_verbose_enable->get())
+        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Led test");
 
     // Initialize system state.
 #ifdef FORCE_INITIALIZATION_ALARM
@@ -144,6 +145,8 @@ Error __attribute__((weak)) rownd_G33(parser_block_t* gc_block, float* position)
 //     return Error::Ok;
 // }
 
+// Error __attribute__((weak)) rownd_M00() {}
+
 float calculate_G76_feed(float s, float rev, float dz, float dx) {
     float feed_out = 0;
 
@@ -223,19 +226,22 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
         oPut = Error::GcodeAxisCommandConflict;
     }
 
-    rev_total = total_dist / (g76_params->pitch * g76_params->start_count);
+    // rev_total = total_dist / (g76_params->pitch * g76_params->start_count);  // tepeden tepeye
+    rev_total = total_dist / g76_params->pitch;  // hatve
     if (rev_total < 0)
         rev_total *= -1;
     rev_thread = rev_total;
 
     if (bit_istrue(g76_params->chamfer_mode, G76_taperModes::Entry)) {
-        rev_enter = g76_params->chamfer_angle / (g76_params->pitch * g76_params->start_count);
+        // rev_enter = g76_params->chamfer_angle / (g76_params->pitch * g76_params->start_count);  // tepeden tepeye
+        rev_enter = g76_params->chamfer_angle / g76_params->pitch;  // hatve
         if (rev_total < 0)
             rev_enter *= -1;
         rev_thread -= rev_enter;
     }
     if (bit_istrue(g76_params->chamfer_mode, G76_taperModes::Exit)) {
-        rev_exit = g76_params->chamfer_angle / (g76_params->pitch * g76_params->start_count);
+        // rev_exit = g76_params->chamfer_angle / (g76_params->pitch * g76_params->start_count);  // tepeden tepeye
+        rev_exit = g76_params->chamfer_angle / g76_params->pitch;  // hatve
         if (rev_total < 0)
             rev_exit *= -1;
         rev_thread -= rev_exit;
@@ -262,7 +268,8 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
 
     pass_count = ceilf(powf(depth_line / g76_params->depth_first_cut, g76_params->degression));
 
-    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 Pass Counter: %i", pass_count);
+    if (rownd_verbose_enable->get())
+        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 Pass Counter: %i", pass_count);
 
     depth_current = 0;
 
@@ -290,24 +297,7 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
             depth_current = depth_line;
 
         for (int current_start = 0; current_start < g76_params->start_count; current_start++) {
-// make sure you are at the correct start position
-#pragma region goto start
-            if (is_absolute) {
-                snprintf(g76_line, sizeof(g76_line), "G0G90X%.3fZ%.3fC%.2f", pos_start[X_AXIS], pos_start[Z_AXIS], pos_start[DEFAULT_SWAP_C] + (dirMultiplier * current_start * rev_offset));
-            } else {
-                snprintf(g76_line, sizeof(g76_line), "G0G91X%.3fZ%.3fC%.2f", 0.0f, 0.0f, (dirMultiplier * current_start * rev_offset));
-            }
-
-            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 return/enter: %s", g76_line);
-
-            oPut = execute_line(g76_line, CLIENT_SERIAL, WebUI::AuthenticationLevel::LEVEL_GUEST);
-
-            if (oPut != Error::Ok) {
-                grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 return/enter error: %i", oPut);
-                break;
-            }
-#pragma endregion
-
+            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 start no: %i", current_start + 1);
             // Threading
 #pragma region entering smooth
             feed_out = calculate_G76_feed(feed_in, rev_enter + rev_smooth, ((total_dist * rev_enter) / rev_total), depth_current);
@@ -327,7 +317,8 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
                     g76_line, sizeof(g76_line), "G1G91F%.2fX%.3fZ%.3fC%.2f", feed_out, -(depth_current * mult_smooth), (((total_dist * rev_enter) / rev_total) * mult_smooth), (dirMultiplier * ((rev_enter + rev_smooth) * 360.0) * mult_smooth));
             }
 
-            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 enter 1: %s", g76_line);
+            if (rownd_verbose_enable->get())
+                grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 enter 1:       %s", g76_line);
 
             oPut = execute_line(g76_line, CLIENT_SERIAL, WebUI::AuthenticationLevel::LEVEL_GUEST);
 
@@ -354,10 +345,11 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
                              feed_out,
                              -(depth_current * (1 - mult_smooth)),
                              (((total_dist * rev_enter) / rev_total) * (1 - mult_smooth)),
-                             (dirMultiplier * (rev_enter * 360.0) * (1 - mult_smooth)));
+                             (dirMultiplier * ((rev_enter + rev_smooth) * 360.0) * (1 - mult_smooth)));
                 }
 
-                grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 enter 2: %s", g76_line);
+                if (rownd_verbose_enable->get())
+                    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 enter 2:       %s", g76_line);
 
                 oPut = execute_line(g76_line, CLIENT_SERIAL, WebUI::AuthenticationLevel::LEVEL_GUEST);
 
@@ -377,13 +369,14 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
                          "G1G90F%.2fX%.3fZ%.3fC%.2f",
                          feed_out,
                          pos_start[X_AXIS] - depth_current,
-                         pos_start[Z_AXIS] + ((total_dist * rev_thread) / rev_total),
-                         pos_start[DEFAULT_SWAP_C] + (dirMultiplier * current_start * rev_offset) + dirMultiplier * ((rev_thread + rev_enter) * 360.0));
+                         pos_start[Z_AXIS] + ((total_dist * (rev_thread + rev_enter)) / rev_total),
+                         pos_start[DEFAULT_SWAP_C] + (dirMultiplier * current_start * rev_offset) + dirMultiplier * ((rev_thread + rev_enter + rev_smooth) * 360.0));
             } else {
                 snprintf(g76_line, sizeof(g76_line), "G1G91F%.2fX%.3fZ%.3fC%.2f", feed_out, 0.0f, ((total_dist * rev_thread) / rev_total), dirMultiplier * (rev_thread * 360.0));
             }
 
-            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 thread: %s", g76_line);
+            if (rownd_verbose_enable->get())
+                grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 thread:        %s", g76_line);
 
             oPut = execute_line(g76_line, CLIENT_SERIAL, WebUI::AuthenticationLevel::LEVEL_GUEST);
 
@@ -403,12 +396,13 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
                          feed_out,
                          pos_start[X_AXIS],
                          pos_start[Z_AXIS] + total_dist,
-                         pos_start[DEFAULT_SWAP_C] + (dirMultiplier * current_start * rev_offset) + dirMultiplier * (rev_total * 360.0));
+                         pos_start[DEFAULT_SWAP_C] + (dirMultiplier * current_start * rev_offset) + dirMultiplier * ((rev_total + rev_smooth) * 360.0));
             } else {
                 snprintf(g76_line, sizeof(g76_line), "G1G91F%.2fX%.3fZ%.3fC%.2f", feed_out, depth_current, ((total_dist * rev_exit) / rev_total), dirMultiplier * (rev_exit * 360.0));
             }
 
-            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 exit: %s", g76_line);
+            if (rownd_verbose_enable->get())
+                grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 exit:          %s", g76_line);
 
             oPut = execute_line(g76_line, CLIENT_SERIAL, WebUI::AuthenticationLevel::LEVEL_GUEST);
 
@@ -426,12 +420,13 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
                          "G0G90X%.3fZ%.3fC%.2f",
                          pos_start[X_AXIS] + g76_params->depth_first_cut,
                          pos_start[Z_AXIS] + total_dist,
-                         pos_start[DEFAULT_SWAP_C] + (dirMultiplier * current_start * rev_offset) + dirMultiplier * (rev_total * 360.0));
+                         pos_start[DEFAULT_SWAP_C] + (dirMultiplier * current_start * rev_offset) + dirMultiplier * ((rev_total + rev_smooth) * 360.0));
             } else {
                 snprintf(g76_line, sizeof(g76_line), "G0G91X%.3fZ%.3fC%.2f", g76_params->depth_first_cut, 0.0f, 0.0f);
             }
 
-            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 return/exit: %s", g76_line);
+            if (rownd_verbose_enable->get())
+                grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 return/exit:   %s", g76_line);
 
             oPut = execute_line(g76_line, CLIENT_SERIAL, WebUI::AuthenticationLevel::LEVEL_GUEST);
 
@@ -445,10 +440,11 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
             if (is_absolute) {
                 snprintf(g76_line, sizeof(g76_line), "G0G90X%.3fZ%.3fC%.2f", pos_start[X_AXIS] + g76_params->depth_first_cut, pos_start[Z_AXIS], pos_start[DEFAULT_SWAP_C] + (dirMultiplier * current_start * rev_offset));
             } else {
-                snprintf(g76_line, sizeof(g76_line), "G0G91X%.3fZ%.3fC%.2f", 0.0f, -total_dist, dirMultiplier * -(rev_total * 360.0));
+                snprintf(g76_line, sizeof(g76_line), "G0G91X%.3fZ%.3fC%.2f", 0.0f, -total_dist, dirMultiplier * -((rev_total + rev_smooth) * 360.0));
             }
 
-            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 return/thread: %s", g76_line);
+            if (rownd_verbose_enable->get())
+                grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 return/thread: %s", g76_line);
 
             oPut = execute_line(g76_line, CLIENT_SERIAL, WebUI::AuthenticationLevel::LEVEL_GUEST);
 
@@ -465,7 +461,27 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
                 snprintf(g76_line, sizeof(g76_line), "G0G91X%.3fZ%.3fC%.2f", -g76_params->depth_first_cut, 0.0f, 0.0f);
             }
 
-            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 return/enter: %s", g76_line);
+            if (rownd_verbose_enable->get())
+                grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 return/enter:  %s", g76_line);
+
+            oPut = execute_line(g76_line, CLIENT_SERIAL, WebUI::AuthenticationLevel::LEVEL_GUEST);
+
+            if (oPut != Error::Ok) {
+                grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 return/enter error: %i", oPut);
+                break;
+            }
+#pragma endregion
+
+// make sure you are at the correct start position
+#pragma region goto next start
+            if (is_absolute) {
+                snprintf(g76_line, sizeof(g76_line), "G0G90X%.3fZ%.3fC%.2f", pos_start[X_AXIS], pos_start[Z_AXIS], pos_start[DEFAULT_SWAP_C] + (dirMultiplier * (current_start + 1) * rev_offset));
+            } else {
+                snprintf(g76_line, sizeof(g76_line), "G0G91X%.3fZ%.3fC%.2f", 0.0f, 0.0f, (dirMultiplier * rev_offset));
+            }
+
+            if (rownd_verbose_enable->get())
+                grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 goto start:    %s", g76_line);
 
             oPut = execute_line(g76_line, CLIENT_SERIAL, WebUI::AuthenticationLevel::LEVEL_GUEST);
 
@@ -477,6 +493,27 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
 
             protocol_buffer_synchronize();
         }
+        // make sure you are at the correct start position
+#pragma region return to start
+        if (is_absolute) {
+            snprintf(g76_line, sizeof(g76_line), "G0G90X%.3fZ%.3fC%.2f", pos_start[X_AXIS], pos_start[Z_AXIS], pos_start[DEFAULT_SWAP_C]);
+        } else {
+            // snprintf(g76_line, sizeof(g76_line), "G0G91X%.3fZ%.3fC%.2f", 0.0f, 0.0f, -(dirMultiplier * g76_params->start_count * rev_offset));
+            snprintf(g76_line, sizeof(g76_line), "G0G91X%.3fZ%.3fC%.2f", 0.0f, 0.0f, -360.0f);
+        }
+
+        if (rownd_verbose_enable->get())
+            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 return start:  %s", g76_line);
+
+        oPut = execute_line(g76_line, CLIENT_SERIAL, WebUI::AuthenticationLevel::LEVEL_GUEST);
+
+        if (oPut != Error::Ok) {
+            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 return/enter error: %i", oPut);
+            break;
+        }
+#pragma endregion
+
+        protocol_buffer_synchronize();
 
         depth_last = g76_params->depth_first_cut * (powf((pass + 1), (1 / g76_params->degression)) - powf(pass, (1 / g76_params->degression)));
     }

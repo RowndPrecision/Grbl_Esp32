@@ -42,6 +42,8 @@ FloatSetting* arc_tolerance;
 AxisMaskSetting* limit_axis_move_positive;
 AxisMaskSetting* limit_axis_move_negative;
 
+FlagSetting* rownd_verbose_enable;
+
 FloatSetting* axis_convet_multiplier;
 
 FlagSetting* led_state;
@@ -389,24 +391,27 @@ void make_settings() {
 
     // Limit move vars
 
-    limit_axis_move_negative = new AxisMaskSetting(EXTENDED, WG, NULL, "BlockAxis/Minus", 0);
-    limit_axis_move_positive = new AxisMaskSetting(EXTENDED, WG, NULL, "BlockAxis/Plus", 0);
+    limit_axis_move_positive = new AxisMaskSetting(EXTENDED, WG, "52", "BlockAxis/Positive", 0);
+    limit_axis_move_negative = new AxisMaskSetting(EXTENDED, WG, "51", "BlockAxis/Negative", 0);
+
+    // rownd verbose
+    rownd_verbose_enable = new FlagSetting(EXTENDED, WG, "50", "RowndVerboseEnable", DEFAULT_ROWND_VERBOSE, NULL);
 
     // special variables
 
-    axis_convet_multiplier = new FloatSetting(GRBL, WG, "46", "AxisConvertMultiplier", POSITIONABLE_AXIS_CONVERT, 0, 100000);
+    axis_convet_multiplier = new FloatSetting(GRBL, WG, "49", "AxisConvertMultiplier", POSITIONABLE_AXIS_CONVERT, 0, 100000);
 
-    led_state   = new FlagSetting(EXTENDED, WG, "45", "led/state", DEFAULT_LED_STATE, checkLedChange);
-    led_inverse = new FlagSetting(EXTENDED, WG, "44", "led/inverse", DEFAULT_LED_INVERSE, checkLedChange);
+    led_state   = new FlagSetting(EXTENDED, WG, "48", "led/state", DEFAULT_LED_STATE, checkLedChange);
+    led_inverse = new FlagSetting(EXTENDED, WG, "47", "led/inverse", DEFAULT_LED_INVERSE, checkLedChange);
 
     led_init();
 
     // Spindle Settings
-    laser_output_invert = new FlagSetting(EXTENDED, WG, "49", "Laser/PWM/Invert", DEFAULT_INVERT_LASER_OUTPUT_PIN, checkSpindleChange);
+    laser_output_invert = new FlagSetting(EXTENDED, WG, "46", "Laser/PWM/Invert", DEFAULT_INVERT_LASER_OUTPUT_PIN, checkSpindleChange);
 
-    laser_enable_invert = new FlagSetting(EXTENDED, WG, "48", "Laser/Enable/Invert", DEFAULT_INVERT_LASER_ENABLE_PIN, checkSpindleChange);
+    laser_enable_invert = new FlagSetting(EXTENDED, WG, "45", "Laser/Enable/Invert", DEFAULT_INVERT_LASER_ENABLE_PIN, checkSpindleChange);
 
-    laser_direction_invert = new FlagSetting(EXTENDED, WG, "47", "Laser/Dir/Invert", DEFAULT_INVERT_LASER_DIRECTION_PIN, checkSpindleChange);
+    laser_direction_invert = new FlagSetting(EXTENDED, WG, "44", "Laser/Dir/Invert", DEFAULT_INVERT_LASER_DIRECTION_PIN, checkSpindleChange);
 
     chuck_output_invert = new FlagSetting(EXTENDED, WG, "43", "Chuck/PWM/Invert", DEFAULT_INVERT_CHUCK_OUTPUT_PIN, checkSpindleChange);
 

@@ -99,6 +99,8 @@ Error user_tool_change(uint8_t new_tool) {
 #endif
 }
 
+// This code works, but not as well as we hoped, so we're disabling it for now. We might revisit and improve it in the distant future, but for now, it's on hold.
+/*
 Error rownd_G33(parser_block_t* gc_block, float* position) {
     float pos_diff[MAX_N_AXIS];
     char  g33_line[50];
@@ -166,6 +168,7 @@ Error rownd_G33(parser_block_t* gc_block, float* position) {
     return oPut;
 #endif
 }
+*/
 
 /*
   options.  user_defined_macro() is called with the button number to

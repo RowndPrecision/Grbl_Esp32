@@ -1051,7 +1051,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                         memset(&g76_params, 0, sizeof(g76_params_t));
                         if (bit_is_match(value_words, (bit(GCodeWord::P) | bit(GCodeWord::Q) | bit(GCodeWord::R)))) {
                             FAIL(Error::GcodeUnsupportedCommand);  // TODO fanuc type dual line G76
-                        } else if (bit_istrue(value_words, (bit(GCodeWord::A) | bit(GCodeWord::D)))) {
+                        } else if (bit_istrue(value_words, bit(GCodeWord::A))) {
                             FAIL(Error::GcodeUnsupportedCommand);  // TODO fanuc type dual line G76
                         } else {
                             if (gc_block.modal.plane_select != Plane::ZX) {
@@ -1141,7 +1141,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                                 if (gc_block.modal.units == Units::Inches) {
                                     gc_block.values.e *= MM_PER_INCH;
                                 }
-                                if (gc_block.values.e > (g76_params.offset_peak + g76_params.depth_thread) / 2) {
+                                if (gc_block.values.e > (g76_params.depth_thread - g76_params.offset_peak) / 2) {
                                     FAIL(Error::GcodeMaxValueExceeded);
                                 }
                                 if (gc_block.values.e < 0) {
@@ -1157,6 +1157,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                                     g76_params.start_count = gc_block.values.d;
                                 else
                                     g76_params.start_count = 1;
+                                bit_false(value_words, bit(GCodeWord::D));
                             } else
                                 g76_params.start_count = 1;
 
@@ -1166,6 +1167,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                                     g76_params.is_return_pullback = false;
                                 else
                                     g76_params.is_return_pullback = true;
+                                bit_false(value_words, bit(GCodeWord::T));
                             } else
                                 g76_params.is_return_pullback = true;
                         }
@@ -1732,7 +1734,8 @@ Error gc_execute_line(char* line, uint8_t client) {
                     }
                     break;
                 case Motion::G33:
-                    return rownd_G33(&gc_block, gc_state.position);
+                    return rownd_G33(&gc_block, gc_state.position);  // This code works, but not as well as we hoped, so we're disabling it for now. We might revisit and improve it in the distant future, but for now, it's on hold.
+                    FAIL(Error::GcodeUnsupportedCommand);
                     break;
                 case Motion::G76:
                     return rownd_G76(&gc_block, &g76_params, &gc_state);

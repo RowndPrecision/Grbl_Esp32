@@ -66,7 +66,6 @@ void IRAM_ATTR isr_limit_switches() {
             mc_reset();                                // Initiate system kill.
             sys_rt_exec_alarm = ExecAlarm::HardLimit;  // Indicate hard limit critical event
 #    endif
-#endif
             if (saveLimitsTaskHandle != NULL) {
                 // Trigger the saveLimits task here
                 BaseType_t xHigherPriorityTaskWoken = pdFALSE;
@@ -76,6 +75,7 @@ void IRAM_ATTR isr_limit_switches() {
                     portYIELD_FROM_ISR();  // Correct usage without parameters
                 }
             }
+#endif
         }
     }
 }
@@ -101,15 +101,20 @@ void saveLimitsTaskFunction(void* pvParameters) {
                         plan_block_t* dirBlock = plan_get_current_block();
                         if (dirBlock != NULL) {
                             if (bitnum_istrue(dirBlock->direction_bits, axis)) {
-                                limit_axis_move_negative->setAxis(axis, true);
-                                limit_axis_move_positive->setAxis(axis, false);
+                                if (bit_isfalse(limit_axis_move_positive->get(), bit(axis))) {
+                                    limit_axis_move_negative->setAxis(axis, true);
+                                    limit_axis_move_positive->setAxis(axis, false);
+                                }
                             } else {
-                                limit_axis_move_negative->setAxis(axis, false);
-                                limit_axis_move_positive->setAxis(axis, true);
+                                if (bit_isfalse(limit_axis_move_negative->get(), bit(axis))) {
+                                    limit_axis_move_negative->setAxis(axis, false);
+                                    limit_axis_move_positive->setAxis(axis, true);
+                                }
                             }
                         } else {
-                            limit_axis_move_negative->setAxis(axis, true);
-                            limit_axis_move_positive->setAxis(axis, true);
+                            // limit_axis_move_negative->setAxis(axis, true);
+                            // limit_axis_move_positive->setAxis(axis, true);
+                            grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Switch test on axis: %s", msg);
                         }
                     }
                 } else {
@@ -117,7 +122,7 @@ void saveLimitsTaskFunction(void* pvParameters) {
                     limit_axis_move_positive->setAxis(axis, false);
                 }
             }
-            grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Hard limits: %s", msg);
+            grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Hard limitos: %s", msg);
         } else {
             limit_axis_move_negative->setDefault();
             limit_axis_move_positive->setDefault();
@@ -408,7 +413,7 @@ AxisMask limits_get_state() {
     for (int axis = 0; axis < n_axis; axis++) {
         for (int gang_index = 0; gang_index < 2; gang_index++) {
             uint8_t pin = limit_pins[axis][gang_index];
-            if (pin != UNDEFINED_PIN) {
+            if (pin != UNDEFINED_PIN && isAxisMovable(axis)) {
                 if (limit_invert->get())
                     pinMask |= (!digitalRead(pin) << axis);
                 else
@@ -484,9 +489,18 @@ void limitCheckTask(void* pvParameters) {
         AxisMask switch_state;
         switch_state = limits_get_state();
         if (switch_state) {
-            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Debug, "Limit Switch State %08d", switch_state);
+            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Limit Switch State %08d", switch_state);
             mc_reset();                                // Initiate system kill.
             sys_rt_exec_alarm = ExecAlarm::HardLimit;  // Indicate hard limit critical event
+            if (saveLimitsTaskHandle != NULL) {
+                // Trigger the saveLimits task here
+                BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+                vTaskNotifyGiveFromISR(saveLimitsTaskHandle, &xHigherPriorityTaskWoken);
+                // If a higher priority task was woken, yield control
+                if (xHigherPriorityTaskWoken == pdTRUE) {
+                    portYIELD_FROM_ISR();  // Correct usage without parameters
+                }
+            }
         }
         static UBaseType_t uxHighWaterMark = 0;
 #ifdef DEBUG_TASK_STACK

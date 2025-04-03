@@ -48,6 +48,8 @@ extern FlagSetting* led_inverse;
 extern AxisMaskSetting* limit_axis_move_positive;
 extern AxisMaskSetting* limit_axis_move_negative;
 
+extern FlagSetting* rownd_verbose_enable;
+
 extern FloatSetting* axis_convet_multiplier;
 
 extern FloatSetting* homing_feed_rate;

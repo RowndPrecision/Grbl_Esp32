@@ -500,8 +500,8 @@ const int DWELL_TIME_STEP = 50;  // Integer (1-255) (milliseconds)
 // A simple software debouncing feature for hard limit switches. When enabled, the limit
 // switch interrupt unblock a waiting task which will recheck the limit switch pins after
 // a short delay. Default disabled
-//#define ENABLE_SOFTWARE_DEBOUNCE // Default disabled. Uncomment to enable.
-const int DEBOUNCE_PERIOD = 32;  // in milliseconds default 32 microseconds
+#define ENABLE_SOFTWARE_DEBOUNCE  // Default disabled. Uncomment to enable.
+const int DEBOUNCE_PERIOD = 32;   // in milliseconds default 32 microseconds
 
 // Configures the position after a probing cycle during Grbl's check mode. Disabled sets
 // the position to the probe target, when enabled sets the position to the start position.
@@ -600,6 +600,8 @@ const double PARKING_PULLOUT_INCREMENT = 5.0;    // Spindle pull-out and plunge 
 // be reenabled by disabling the spindle stop override, if needed. This is purely a safety feature
 // to ensure the laser doesn't inadvertently remain powered while at a stop and cause a fire.
 #define DISABLE_LASER_DURING_HOLD  // Default enabled. Comment to disable.
+
+#define DISABLE_SPINDLE_DURING_HOLD  // Default enabled. Comment to disable.
 
 // Enables a piecewise linear model of the spindle PWM/speed output. Requires a solution by the
 // 'fit_nonlinear_spindle.py' script in the /doc/script folder of the repo. See file comments

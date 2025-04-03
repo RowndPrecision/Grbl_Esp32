@@ -254,9 +254,9 @@ void execute_realtime_command(Cmd command, uint8_t client) {
             break;
         case Cmd::FeedHold:
             sys_rt_exec_state.bit.feedHold = true;
-            spindle->stop();
-            coolant_stop();
-            sys.spindle_stop_ovr.value = 1;
+            // spindle->stop();
+            // coolant_stop();
+            // sys.spindle_stop_ovr.value = 1;
             break;
         case Cmd::SafetyDoor:
             sys_rt_exec_state.bit.safetyDoor = true;
