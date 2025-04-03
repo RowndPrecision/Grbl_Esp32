@@ -5,6 +5,7 @@
 
 #define N_AXIS 4
 
+// #define SERVO_MODE // Distinguishes between regular machines and those upgraded with a servo  
 
 #define CUSTOM_CODE_FILENAME    "../Custom/CncLathe.cpp"
 
@@ -24,6 +25,7 @@
 #define DEFAULT_SWAP_Y  C_AXIS
 #define DEFAULT_SWAP_C  Y_AXIS
 
+#define REMOVABLE_AXIS_LIMIT A_AXIS
 // #define BLOCK_AXIS_ON_PWM_MODE  A_AXIS
 
 #define COOLANT_MIST_PIN GPIO_NUM_13
@@ -55,8 +57,6 @@
 #define A_LIMIT_PIN                 GPIO_NUM_18
 #define PROBE_PIN                   GPIO_NUM_34
 #define CONTROL_SAFETY_DOOR_PIN     GPIO_NUM_35
-
-#define REMOVABLE_AXIS_LIMIT A_AXIS
 
 #define DEFAULT_HOMING_CYCLE_0  bit(X_AXIS)
 #define DEFAULT_HOMING_CYCLE_1  bit(Z_AXIS)
@@ -177,6 +177,7 @@
 #define DEFAULT_COOLANT_DELAY_TURNON 0.5
 
 
-
-// #define DEFAULT_SPINDLE_STEPS_PER_DEG DEFAULT_Y_STEPS_PER_MM  // steps per deg
-// #define DEFAULT_SPINDLE_MAX_TRAVEL DEFAULT_Y_MAX_TRAVEL // deg
+#ifdef SERVO_MODE
+#define DEFAULT_X_MAX_RATE 2200.0   // mm/min
+#define DEFAULT_Z_MAX_RATE 2200.0   // mm/min
+#endif
