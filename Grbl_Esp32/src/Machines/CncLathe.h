@@ -5,7 +5,7 @@
 
 #define N_AXIS 4
 
-// #define SERVO_MODE // Distinguishes between regular machines and those upgraded with a servo  
+#define SERVO_MODE // Distinguishes between regular machines and those upgraded with a servo  
 
 #define CUSTOM_CODE_FILENAME    "../Custom/CncLathe.cpp"
 
@@ -178,6 +178,8 @@
 
 
 #ifdef SERVO_MODE
-#define DEFAULT_X_MAX_RATE 2200.0   // mm/min
-#define DEFAULT_Z_MAX_RATE 2200.0   // mm/min
+#undef DEFAULT_X_MAX_RATE
+#undef DEFAULT_Z_MAX_RATE
+#define DEFAULT_X_MAX_RATE 2000.0   // mm/min
+#define DEFAULT_Z_MAX_RATE 2000.0   // mm/min
 #endif
