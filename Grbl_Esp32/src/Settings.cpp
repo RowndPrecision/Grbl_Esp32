@@ -30,9 +30,11 @@ bool isAxisRpm(int axis) {
     return false;
 }
 bool isAxisMovable(int axis) {
-    if ((axis == REMOVABLE_AXIS_LIMIT && static_cast<SpindleType>(spindle_type->get()) != SpindleType::ASDA_CN1) || (axis == REMOVABLE_AXIS_LIMIT && !atc_connected->get())) {
-        return false;
-    }
+    // Disabled for automatic ATC connection detection. Kept for potential future use.
+
+    // if ((axis == REMOVABLE_AXIS_LIMIT && static_cast<SpindleType>(spindle_type->get()) != SpindleType::ASDA_CN1) || (axis == REMOVABLE_AXIS_LIMIT && !atc_connected->get())) {
+    //     return false;
+    // }
     return true;
 }
 

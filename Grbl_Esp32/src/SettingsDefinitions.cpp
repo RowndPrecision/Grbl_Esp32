@@ -22,7 +22,8 @@ AxisMaskSetting* stallguard_debug_mask;
 
 AxisMaskSetting* step_enable_invert;
 
-FlagSetting* limit_invert;
+AxisMaskSetting* limit_invert;
+
 FlagSetting* probe_invert;
 FlagSetting* report_inches;
 FlagSetting* soft_limits;
@@ -188,14 +189,31 @@ static bool checkATCChange(char* value) {
         if (atc_connected->get() == _convertedValue) {
             // grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC: %s", value);
         } else if (_convertedValue) {
-            if (static_cast<SpindleType>(spindle_type->get()) != SpindleType::ASDA_CN1) {
+            if (static_cast<SpindleType>(spindle_type->get()) != SpindleType::ASDA_CN1 && !gc_state.Rownd_special) {
                 atc_connected->_checkError = Error::AtcUnexpectedConnection;
                 return false;
             }
+            Error temp = limit_invert->setAxis(A_AXIS, !_convertedValue);
+            if (temp == Error::Ok) {
+                temp = limit_invert->saveValue();
+            }
+            if (temp != Error::Ok) {
+                atc_connected->_checkError = temp;
+                return false;
+            }
             grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC connected");
+
         } else {
-            if (static_cast<SpindleType>(spindle_type->get()) != SpindleType::ASDA_CN1) {
+            if (static_cast<SpindleType>(spindle_type->get()) != SpindleType::ASDA_CN1 && !gc_state.Rownd_special) {
                 atc_connected->_checkError = Error::AtcUnexpectedRemoval;
+                return false;
+            }
+            Error temp = limit_invert->setAxis(A_AXIS, !_convertedValue);
+            if (temp == Error::Ok) {
+                temp = limit_invert->saveValue();
+            }
+            if (temp != Error::Ok) {
+                atc_connected->_checkError = temp;
                 return false;
             }
             grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC removed");
@@ -475,7 +493,7 @@ void make_settings() {
     status_mask        = new IntSetting(GRBL, WG, "10", "Report/Status", DEFAULT_STATUS_REPORT_MASK, 0, 3);
 
     probe_invert                 = new FlagSetting(GRBL, WG, "6", "Probe/Invert", DEFAULT_INVERT_PROBE_PIN);
-    limit_invert                 = new FlagSetting(GRBL, WG, "5", "Limits/Invert", DEFAULT_INVERT_LIMIT_PINS);
+    limit_invert                 = new AxisMaskSetting(GRBL, WG, "5", "Limits/Invert", DEFAULT_INVERT_LIMIT_PINS);
     step_enable_invert           = new AxisMaskSetting(GRBL, WG, "4", "Stepper/EnableInvert", DEFAULT_INVERT_ST_ENABLE);
     dir_invert_mask              = new AxisMaskSetting(GRBL, WG, "3", "Stepper/DirInvert", DEFAULT_DIRECTION_INVERT_MASK, postMotorSetting);
     step_invert_mask             = new AxisMaskSetting(GRBL, WG, "2", "Stepper/StepInvert", DEFAULT_STEPPING_INVERT_MASK, postMotorSetting);

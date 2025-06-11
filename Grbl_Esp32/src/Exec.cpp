@@ -13,4 +13,5 @@ std::map<ExecAlarm, const char*> AlarmNames = {
     { ExecAlarm::HomingFailApproach, "Homing Fail Approach" },
     { ExecAlarm::SpindleControl, "Spindle Control" },
     { ExecAlarm::DirectionBlock, "Direction Locked" },
+    { ExecAlarm::EscapeTooShort, "Escape Distance from Locked Direction Insufficient" },
 };

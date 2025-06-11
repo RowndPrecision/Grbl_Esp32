@@ -29,14 +29,14 @@ extern AxisMaskSetting* homing_cycle[MAX_N_AXIS];
 
 extern AxisMaskSetting* step_enable_invert;
 
-extern FlagSetting* limit_invert;
-extern FlagSetting* probe_invert;
-extern FlagSetting* report_inches;
-extern FlagSetting* soft_limits;
-extern FlagSetting* hard_limits;
-extern FlagSetting* homing_enable;
-extern FlagSetting* laser_mode;
-extern IntSetting*  laser_full_power;
+extern AxisMaskSetting* limit_invert;
+extern FlagSetting*     probe_invert;
+extern FlagSetting*     report_inches;
+extern FlagSetting*     soft_limits;
+extern FlagSetting*     hard_limits;
+extern FlagSetting*     homing_enable;
+extern FlagSetting*     laser_mode;
+extern IntSetting*      laser_full_power;
 
 extern IntSetting*   status_mask;
 extern FloatSetting* junction_deviation;

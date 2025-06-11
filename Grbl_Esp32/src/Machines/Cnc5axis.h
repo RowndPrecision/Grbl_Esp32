@@ -6,20 +6,26 @@
 #define N_AXIS 5
 
 
-// #define CUSTOM_CODE_FILENAME    "../Custom/CncLathe.cpp"
+#define CUSTOM_CODE_FILENAME    "../Custom/Cnc5axis.cpp"
 
 #define USE_I2S_OUT
 
 #define I2S_OUT_BCK             GPIO_NUM_22
 #define I2S_OUT_WS              GPIO_NUM_23
 #define I2S_OUT_DATA            GPIO_NUM_21
+#define I2S_OUT_EN              GPIO_NUM_19
+
+#define RS485_RX                GPIO_NUM_33
+#define RS485_TX                GPIO_NUM_32
+#define RS485_CTRL              GPIO_NUM_12
 
 #define DEFAULT_PLANE   Plane::XY  // ZX for lathe
 
 #define DEFAULT_SWAP_B  C_AXIS
 #define DEFAULT_SWAP_C  B_AXIS
 
-#define BLOCK_AXIS_ON_PWM_MODE  A_AXIS
+#define REMOVABLE_AXIS_LIMIT -1
+// #define BLOCK_AXIS_ON_PWM_MODE  A_AXIS
 
 #define POSITIONABLE_SPINDLE_AXIS -1 // -1 to disable
 #define POSITIONABLE_AXIS_CONVERT 1.0f // 360.0f
@@ -60,6 +66,7 @@
 #define DEFAULT_HOMING_CYCLE_5  0
 
 #define SPINDLE_TYPE            SpindleType::PWM
+#define DEFAULT_SPINDLE_FREQ    5000.0f
 
 #define SPINDLE_OUTPUT_PIN      GPIO_NUM_17
 #define SPINDLE_DIR_PIN         I2SO(3)
@@ -70,15 +77,24 @@
 #define ASDA_CN1_ENABLE_PIN     I2SO(3)
 #define ASDA_CN1_DIR_PIN        I2SO(3)
 
+#define DEFAULT_ROWND_VERBOSE 0
+
 #define LED_PIN     I2SO(4)
 #define DEFAULT_LED_STATE 1
 #define DEFAULT_LED_INVERSE 0
 
 
-#define DEFAULT_INVERT_SPINDLE_ENABLE_PIN       true
-#define DEFAULT_INVERT_SPINDLE_DIRECTION_PIN    true
+#define DEFAULT_INVERT_SPINDLE_OUTPUT_PIN       false
+#define DEFAULT_INVERT_SPINDLE_ENABLE_PIN       false
+#define DEFAULT_INVERT_SPINDLE_DIRECTION_PIN    false
 
+#define DEFAULT_INVERT_CHUCK_OUTPUT_PIN       false
+#define DEFAULT_INVERT_CHUCK_ENABLE_PIN       false
 #define DEFAULT_INVERT_CHUCK_DIRECTION_PIN    false
+
+#define DEFAULT_INVERT_LASER_OUTPUT_PIN       false
+#define DEFAULT_INVERT_LASER_ENABLE_PIN       false
+#define DEFAULT_INVERT_LASER_DIRECTION_PIN    false
 
 // #define MONITOR_PIN 13
 
@@ -162,6 +178,8 @@
 #define DEFAULT_ATC_OFFSET 0.15
 
 #define DEFAULT_SPINDLE_DELAY_SPINUP 0.75
+
+#define DEFAULT_COOLANT_DELAY_TURNON 0.5
 
 
 

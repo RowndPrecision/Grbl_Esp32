@@ -80,6 +80,7 @@ void IRAM_ATTR isr_limit_switches() {
     }
 }
 
+plan_block_t* dirBlock = NULL;
 // Define the saveLimits task function
 void saveLimitsTaskFunction(void* pvParameters) {
     while (true) {
@@ -90,6 +91,7 @@ void saveLimitsTaskFunction(void* pvParameters) {
         // Check limit pin state.
         AxisMask pinMask = limits_get_state();
         if (pinMask) {
+            bool is_test = false;
             char msg[20] = "";
             char temp[10];
             auto n_axis = number_axis->get();
@@ -97,39 +99,44 @@ void saveLimitsTaskFunction(void* pvParameters) {
                 if (bitnum_istrue(pinMask, axis) && isAxisMovable(axis)) {
                     sprintf(temp, "%c", "XYZABC"[axis]);
                     strcat(msg, temp);
-                    if (plan_get_block_buffer_available()) {
-                        plan_block_t* dirBlock = plan_get_current_block();
-                        if (dirBlock != NULL) {
-                            if (bitnum_istrue(dirBlock->direction_bits, axis)) {
-                                if (bit_isfalse(limit_axis_move_positive->get(), bit(axis))) {
-                                    limit_axis_move_negative->setAxis(axis, true);
-                                    limit_axis_move_positive->setAxis(axis, false);
-                                }
-                            } else {
-                                if (bit_isfalse(limit_axis_move_negative->get(), bit(axis))) {
-                                    limit_axis_move_negative->setAxis(axis, false);
-                                    limit_axis_move_positive->setAxis(axis, true);
-                                }
+                    if (dirBlock == NULL)
+                        dirBlock = plan_get_current_block();
+                    if (dirBlock != NULL) {
+                        if (bitnum_istrue(dirBlock->direction_bits, axis)) {
+                            if (bit_isfalse(limit_axis_move_positive->get(), bit(axis))) {
+                                limit_axis_move_negative->setAxis(axis, true);
+                                limit_axis_move_positive->setAxis(axis, false);
                             }
                         } else {
-                            // limit_axis_move_negative->setAxis(axis, true);
-                            // limit_axis_move_positive->setAxis(axis, true);
-                            grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Switch test on axis: %s", msg);
+                            if (bit_isfalse(limit_axis_move_negative->get(), bit(axis))) {
+                                limit_axis_move_negative->setAxis(axis, false);
+                                limit_axis_move_positive->setAxis(axis, true);
+                            }
                         }
+                    } else {
+                        // limit_axis_move_negative->setAxis(axis, true);
+                        // limit_axis_move_positive->setAxis(axis, true);
+                        is_test = true;
                     }
                 } else {
                     limit_axis_move_negative->setAxis(axis, false);
                     limit_axis_move_positive->setAxis(axis, false);
                 }
             }
-            grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Hard limitos: %s", msg);
+            if (is_test) {
+                grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Switch test on axis: %s", msg);
+                is_test = false;
+            } else
+                grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Hard limits: %s", msg);
         } else {
             limit_axis_move_negative->setDefault();
             limit_axis_move_positive->setDefault();
         }
 
-        limit_axis_move_negative->saveValue();
-        limit_axis_move_positive->saveValue();
+        Error err1 = limit_axis_move_negative->saveValue();
+        Error err2 = limit_axis_move_positive->saveValue();
+        grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "LAMM: %s, LAMP %s", errorString(err1), errorString(err2));
+        dirBlock = NULL;
     }
 }
 
@@ -180,6 +187,7 @@ void limits_go_home(uint8_t cycle_mask) {
         if (bit_istrue(cycle_mask, bit(idx))) {
             // Set target based on max_travel setting. Ensure homing switches engaged with search scalar.
             max_travel = MAX(max_travel, (HOMING_AXIS_SEARCH_SCALAR)*axis_settings[idx]->max_travel->get());
+            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "h %c: %f", "XYZABC"[idx], max_travel);
         }
     }
     // Set search mode with approach at seek rate to quickly engage the specified cycle_mask limit switches.
@@ -408,13 +416,14 @@ void limits_disable() {
 // triggered is 1 and not triggered is 0. Invert mask is applied. Axes are defined by their
 // number in bit position, i.e. Z_AXIS is bit(2), and Y_AXIS is bit(1).
 AxisMask limits_get_state() {
-    AxisMask pinMask = 0;
-    auto     n_axis  = number_axis->get();
+    AxisMask pinMask  = 0;
+    AxisMask pinNvert = limit_invert->get();
+    auto     n_axis   = number_axis->get();
     for (int axis = 0; axis < n_axis; axis++) {
         for (int gang_index = 0; gang_index < 2; gang_index++) {
             uint8_t pin = limit_pins[axis][gang_index];
             if (pin != UNDEFINED_PIN && isAxisMovable(axis)) {
-                if (limit_invert->get())
+                if (bit_istrue(pinNvert, bit(axis)))
                     pinMask |= (!digitalRead(pin) << axis);
                 else
                     pinMask |= (digitalRead(pin) << axis);
@@ -458,7 +467,8 @@ void limits_soft_check(float* target) {
 // the workspace volume is in all negative space, and the system is in normal operation.
 // NOTE: Used by jogging to limit travel within soft-limit volume.
 void limits_direction_check(float* target) {
-    if (limitsCheckDirection(target) && sys.state != State::Homing) {
+    ExecAlarm temp = limitsCheckDirection(target);
+    if (temp != ExecAlarm::None && sys.state != State::Homing) {
         sys.soft_limit = true;
         // Force feed hold if cycle is active. All buffered blocks are guaranteed to be within
         // workspace volume so just come to a controlled stop so position is not lost. When complete
@@ -472,10 +482,10 @@ void limits_direction_check(float* target) {
                 }
             } while (sys.state != State::Idle);
         }
-        grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, AlarmNames[ExecAlarm::DirectionBlock]);
-        mc_reset();                                     // Issue system reset and ensure spindle and coolant are shutdown.
-        sys_rt_exec_alarm = ExecAlarm::DirectionBlock;  // Indicate soft limit critical event
-        protocol_execute_realtime();                    // Execute to enter critical event loop and system abort
+        grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, AlarmNames[temp]);
+        mc_reset();                   // Issue system reset and ensure spindle and coolant are shutdown.
+        sys_rt_exec_alarm = temp;     // Indicate soft limit critical event
+        protocol_execute_realtime();  // Execute to enter critical event loop and system abort
         return;
     }
 }
@@ -489,16 +499,38 @@ void limitCheckTask(void* pvParameters) {
         AxisMask switch_state;
         switch_state = limits_get_state();
         if (switch_state) {
-            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Limit Switch State %08d", switch_state);
-            mc_reset();                                // Initiate system kill.
-            sys_rt_exec_alarm = ExecAlarm::HardLimit;  // Indicate hard limit critical event
-            if (saveLimitsTaskHandle != NULL) {
-                // Trigger the saveLimits task here
-                BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-                vTaskNotifyGiveFromISR(saveLimitsTaskHandle, &xHigherPriorityTaskWoken);
-                // If a higher priority task was woken, yield control
-                if (xHigherPriorityTaskWoken == pdTRUE) {
-                    portYIELD_FROM_ISR();  // Correct usage without parameters
+            if (plan_get_block_buffer_available()) {
+                dirBlock = plan_get_current_block();
+            }
+            if (!atc_connected->get() && bit_is_match(switch_state, bit(REMOVABLE_AXIS_LIMIT))) {
+                gc_state.Rownd_special = true;
+
+                // Note: Automatically switching to lathe mode would be ideal, but with the current setup,
+                // this causes display issues on the RPi side. To avoid that, we're removing the auto-switch.
+                // However, this may lead to user confusion, so we must warn users to switch to lathe mode
+                // manually before connecting the ATC.
+
+                // spindle_type->setEnumValue((int8_t)SpindleType::ASDA_CN1);
+                atc_connected->setBoolValue(true);  // auto detect?
+                gc_state.Rownd_special = false;
+                grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "atc algilandi %08d, %i", switch_state, atc_connected->get());
+                atc_connected->setBoolValue(true);  // auto detect?
+            } else if (atc_connected->get() && bit_is_match(switch_state, bit(REMOVABLE_AXIS_LIMIT))) {
+                grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "atc tur atti? %08d", switch_state);
+                // ignore
+            } else {
+                grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Limit Switch State %08d", switch_state);
+                mc_reset();                                // Initiate system kill.
+                sys_rt_exec_alarm = ExecAlarm::HardLimit;  // Indicate hard limit critical event
+                if (saveLimitsTaskHandle != NULL) {
+                    vTaskDelay(DEBOUNCE_PERIOD / portTICK_PERIOD_MS);  // delay a while
+                    // Trigger the saveLimits task here
+                    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+                    vTaskNotifyGiveFromISR(saveLimitsTaskHandle, &xHigherPriorityTaskWoken);
+                    // If a higher priority task was woken, yield control
+                    if (xHigherPriorityTaskWoken == pdTRUE) {
+                        portYIELD_FROM_ISR();  // Correct usage without parameters
+                    }
                 }
             }
         }
@@ -537,11 +569,12 @@ bool __attribute__((weak)) limitsCheckTravel(float* target) {
     return false;
 }
 
-bool __attribute__((weak)) limitsCheckDirection(float* target) {
+ExecAlarm __attribute__((weak)) limitsCheckDirection(float* target) {
     uint8_t  idx;
     auto     n_axis = number_axis->get();
     float*   mpos   = system_get_mpos();
     float    temp;
+    float    move_limit    = homing_pulloff->get();
     uint32_t mask_negative = limit_axis_move_negative->get();
     uint32_t mask_positive = limit_axis_move_positive->get();
     for (idx = 0; idx < n_axis; idx++) {
@@ -554,32 +587,53 @@ bool __attribute__((weak)) limitsCheckDirection(float* target) {
             }
         }
 
-        temp = target[idx] - mpos[idx];
-        // Check if movement in the negative direction is locked
-        if (temp < 0 && bitnum_istrue(mask_negative, idx)) {
-            return true;
-        }
-        // If movement in the positive direction was previously locked, remove lock
-        if (temp > 0 && bitnum_istrue(mask_negative, idx)) {
-            if (!sys.abort && (sys.state == State::Idle)) {
-                limit_axis_move_negative->setAxis(idx, false);
-                limit_axis_move_negative->saveValue();
+        temp = target[idx] - mpos[idx];  // Check if movement in the negative direction is locked
+        if (bitnum_istrue(mask_negative, idx)) {
+            // If there is no movement, silently continue
+            if (temp == 0) {
+                // No movement, no alarm
+            }
+            // If the movement is in the negative direction, return alarm 11
+            else if (temp < 0) {
+                return ExecAlarm::DirectionBlock;
+            }
+            // If the movement is in the positive direction and exceeds the limit, remove the lock
+            else if (temp > move_limit) {
+                if (!sys.abort && (sys.state == State::Idle)) {
+                    limit_axis_move_negative->setAxis(idx, false);
+                    limit_axis_move_negative->saveValue();
+                }
+            }
+            // If the movement is in the positive direction but does not exceed the limit, return alarm 12
+            else {
+                return ExecAlarm::EscapeTooShort;
             }
         }
 
         // Check if movement in the positive direction is locked
-        if (temp > 0 && bitnum_istrue(mask_positive, idx)) {
-            return true;
-        }
-        // If movement in the negative direction was previously locked, remove lock
-        if (temp < 0 && bitnum_istrue(mask_positive, idx)) {
-            if (!sys.abort && (sys.state == State::Idle)) {
-                limit_axis_move_positive->setAxis(idx, false);
-                limit_axis_move_positive->saveValue();
+        if (bitnum_istrue(mask_positive, idx)) {
+            // If there is no movement, silently continue
+            if (temp == 0) {
+                // No movement, no alarm
+            }
+            // If the movement is in the positive direction, return alarm 11
+            else if (temp > 0) {
+                return ExecAlarm::DirectionBlock;
+            }
+            // If the movement is in the negative direction and exceeds the limit, remove the lock
+            else if (temp < -move_limit) {
+                if (!sys.abort && (sys.state == State::Idle)) {
+                    limit_axis_move_positive->setAxis(idx, false);
+                    limit_axis_move_positive->saveValue();
+                }
+            }
+            // If the movement is in the negative direction but does not exceed the limit, return alarm 12
+            else {
+                return ExecAlarm::EscapeTooShort;
             }
         }
     }
-    return false;
+    return ExecAlarm::None;
 }
 
 bool limitsSwitchDefined(uint8_t axis, uint8_t gang_index) {

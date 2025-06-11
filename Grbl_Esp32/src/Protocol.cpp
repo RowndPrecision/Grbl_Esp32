@@ -256,7 +256,7 @@ void protocol_exec_rt_system() {
         sys.state = State::Alarm;  // Set system alarm state
         report_alarm_message(alarm);
         // Halt everything upon a critical event flag. Currently hard and soft limits flag this.
-        if ((alarm == ExecAlarm::HardLimit) || (alarm == ExecAlarm::SoftLimit) || (alarm == ExecAlarm::DirectionBlock)) {
+        if ((alarm == ExecAlarm::HardLimit) || (alarm == ExecAlarm::SoftLimit) || (alarm == ExecAlarm::DirectionBlock) || (alarm == ExecAlarm::EscapeTooShort)) {
             report_feedback_message(Message::CriticalEvent);
             sys_rt_exec_state.bit.reset = false;  // Disable any existing reset
             do {

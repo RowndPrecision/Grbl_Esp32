@@ -133,9 +133,9 @@ void __attribute__((weak)) display_init() {}
 
 void __attribute__((weak)) user_m30() {}
 
-Error __attribute__((weak)) user_tool_change(uint8_t new_tool) {
-    return Error::Ok;
-}
+// Error __attribute__((weak)) user_tool_change(uint8_t new_tool) {
+//     return Error::Ok;
+// }
 
 Error __attribute__((weak)) rownd_G33(parser_block_t* gc_block, float* position) {
     return Error::Ok;
@@ -145,7 +145,134 @@ Error __attribute__((weak)) rownd_G33(parser_block_t* gc_block, float* position)
 //     return Error::Ok;
 // }
 
-// Error __attribute__((weak)) rownd_M00() {}
+bool user_defined_homing(uint8_t cycle_mask) {
+    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "home usr def mask: %d", cycle_mask);
+    if (bitnum_istrue(cycle_mask, X_AXIS) || bitnum_istrue(cycle_mask, Z_AXIS) || cycle_mask == 0) {
+        return false;
+    }
+
+    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "TODO home: %d", cycle_mask);
+    return false;
+}
+
+Error user_tool_change(uint8_t new_tool) {
+    if (!atc_connected->get()) {
+        return Error::AtcNotConnected;
+    }
+    Error oPut = Error::Ok;
+
+    bool  is_absolute          = gc_state.modal.distance == Distance::Absolute;
+    bool  is_inverseTime       = gc_state.modal.feed_rate == FeedRate::InverseTime;
+    bool  is_imperial          = gc_state.modal.units == Units::Inches;
+    float mult_conv            = homing_pulloff->get() / (atc_distance->get() + atc_offset->get());
+    int   tool_diff            = new_tool - tool_active->get();
+    int   tool_move            = (tool_diff < 0) ? tool_diff + tool_count->get() : tool_diff;
+    float lock_test_percentage = 0.1;
+
+    char tc_line[20];
+
+    if (tool_diff == 0) {  // no tool change cycle needed since we're already at the selected tool
+        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Active Tool No: %d | New Tool No: %d", tool_active->get(), new_tool);
+        return Error::Ok;
+    } else {
+        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Active Tool No: %d | New Tool No: %d", tool_active->get(), new_tool);
+    }
+
+    if (is_inverseTime) {
+        gc_state.modal.feed_rate = FeedRate::UnitsPerMin;
+    }
+    if (is_imperial) {
+        gc_state.modal.units = Units::Mm;
+    }
+
+    protocol_buffer_synchronize();
+
+    // old atc
+    // snprintf(tc_line, sizeof(tc_line), "G1G90F%.2fA%.2f\r\n", atc_speed->get(), atc_distance->get() * tool_active->get(-1) + atc_distance->get() * atc_offset->get());
+    // WebUI::inputBuffer.push(tc_line);  // It's more efficient to add to the buffer instead of executing immediately.
+
+    // ATC Lock Check
+    snprintf(tc_line, sizeof(tc_line), "G1G91F%.2fA%.2f", atc_speed->get(), lock_test_percentage * (-atc_offset->get() * mult_conv));
+
+    if (rownd_verbose_enable->get())
+        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC Lock Check:  %s", tc_line);
+
+    oPut = execute_line(tc_line, CLIENT_SERIAL, WebUI::AuthenticationLevel::LEVEL_GUEST);
+
+    if (oPut != Error::Ok) {
+        return oPut;
+    }
+
+    // ATC Rise Up / Unlock
+    snprintf(tc_line, sizeof(tc_line), "G1G91F%.2fA%.2f", atc_speed->get(), atc_distance->get() * mult_conv);
+
+    if (rownd_verbose_enable->get())
+        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC Rise Up:     %s", tc_line);
+
+    oPut = execute_line(tc_line, CLIENT_SERIAL, WebUI::AuthenticationLevel::LEVEL_GUEST);
+
+    if (oPut != Error::Ok) {
+        return oPut;
+    }
+
+    // ATC goto Target
+    snprintf(tc_line, sizeof(tc_line), "G1G91F%.2fA%.2f", atc_speed->get(), tool_move * atc_offset->get() * mult_conv);
+
+    if (rownd_verbose_enable->get())
+        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC goto Target: %s", tc_line);
+
+    oPut = execute_line(tc_line, CLIENT_SERIAL, WebUI::AuthenticationLevel::LEVEL_GUEST);
+
+    if (oPut != Error::Ok) {
+        return oPut;
+    }
+
+    // ATC Lock Back
+    snprintf(tc_line, sizeof(tc_line), "G1G91F%.2fA%.2f", atc_speed->get(), -(atc_distance->get() + atc_offset->get()) * mult_conv);
+
+    if (rownd_verbose_enable->get())
+        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC Lock Back:   %s", tc_line);
+
+    oPut = execute_line(tc_line, CLIENT_SERIAL, WebUI::AuthenticationLevel::LEVEL_GUEST);
+
+    if (oPut != Error::Ok) {
+        return oPut;
+    }
+
+    oPut = tool_active->setValue(new_tool);
+
+    if (oPut != Error::Ok) {
+        return oPut;
+    }
+
+#ifdef ROWND_REPORT
+    report_status_message(oPut, CLIENT_SERIAL);
+#endif
+
+    protocol_buffer_synchronize();
+
+    if (is_absolute) {
+        gc_state.modal.distance = Distance::Absolute;
+    } else {
+        gc_state.modal.distance = Distance::Incremental;
+    }
+    if (is_inverseTime) {
+        gc_state.modal.feed_rate = FeedRate::InverseTime;
+    } else {
+        gc_state.modal.feed_rate = FeedRate::UnitsPerMin;
+    }
+    if (is_imperial) {
+        gc_state.modal.units = Units::Inches;
+    } else {
+        gc_state.modal.units = Units::Mm;
+    }
+
+#ifdef ROWND_REPORT
+    return Error::Ok;
+#else
+    return oPut;
+#endif
+}
 
 float calculate_G76_feed(float s, float rev, float dz, float dx) {
     float feed_out = 0;
@@ -170,26 +297,27 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
     // float pos_diff[MAX_N_AXIS];
     float pos_start[MAX_N_AXIS];
     char  g76_line[50];
-    bool  is_lathe      = static_cast<SpindleType>(spindle_type->get()) == SpindleType::ASDA_CN1;
-    bool  is_absolute   = gc_block->modal.distance == Distance::Absolute;
-    float dirMultiplier = (gc_block->modal.spindle == SpindleState::Ccw) ? -1.0f : 1.0f;
-    float feed_in       = gc_block->values.s;
-    float feed_out      = 0;
-    float magnitude     = 0;
-    float rev_total     = 0;
-    float rev_enter     = 0;
-    float rev_exit      = 0;
-    float rev_thread    = 0;
-    float rev_smooth    = 1;
-    float rev_offset    = 0;
-    float mult_smooth   = 1;
-    float total_dist    = 0;
-    float depth_line    = 0;
-    int   pass_count    = 0;
-    int   current_pass  = 0;
-    float depth_last    = 0;
-    float depth_current = 0;
-    Error oPut          = Error::Ok;
+    bool  is_lathe       = static_cast<SpindleType>(spindle_type->get()) == SpindleType::ASDA_CN1;
+    bool  is_absolute    = gc_block->modal.distance == Distance::Absolute;
+    bool  is_inverseTime = gc_block->modal.feed_rate == FeedRate::InverseTime;
+    float dirMultiplier  = (gc_block->modal.spindle == SpindleState::Ccw) ? -1.0f : 1.0f;
+    float feed_in        = gc_block->values.s;
+    float feed_out       = 0;
+    float magnitude      = 0;
+    float rev_total      = 0;
+    float rev_enter      = 0;
+    float rev_exit       = 0;
+    float rev_thread     = 0;
+    float rev_smooth     = 1;
+    float rev_offset     = 0;
+    float mult_smooth    = 1;
+    float total_dist     = 0;
+    float depth_line     = 0;
+    int   pass_count     = 0;
+    int   current_pass   = 0;
+    float depth_last     = 0;
+    float depth_current  = 0;
+    Error oPut           = Error::Ok;
 
     if (is_lathe) {
         gc_state->Rownd_special = true;
@@ -203,6 +331,10 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
 
     protocol_buffer_synchronize();
 
+    if (is_inverseTime) {
+        gc_block->modal.feed_rate = FeedRate::UnitsPerMin;
+    }
+
     // calculate variables 1 (for loop)
 
     // No tapered threading only works on Z axis
@@ -215,10 +347,25 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
     if (g76_params->degression < 1)
         g76_params->degression = 1;
 
-    if (g76_params->depth_thread > 0 && g76_params->depth_minimum_cut <= 0)
-        g76_params->depth_minimum_cut = 0.005;
-    if (g76_params->depth_thread < 0 && g76_params->depth_minimum_cut >= 0)
-        g76_params->depth_minimum_cut = -0.005;
+    g76_params->depth_minimum_cut = 0.01;
+
+    g76_params->depth_first_cut = abs(g76_params->depth_first_cut);
+    if (g76_params->depth_first_cut <= g76_params->depth_minimum_cut) {
+        g76_params->depth_first_cut = g76_params->depth_minimum_cut;
+    }
+
+    g76_params->offset_peak = abs(g76_params->offset_peak);
+
+    if (g76_params->depth_thread > 0) {
+        // g76_params->depth_minimum_cut *= 1;
+        // g76_params->depth_first_cut *= 1;
+        g76_params->offset_peak *= -1;
+    }
+    if (g76_params->depth_thread < 0) {  // new
+        g76_params->depth_minimum_cut *= -1;
+        g76_params->depth_first_cut *= -1;
+        // g76_params->offset_peak *= 1;
+    }
 
     total_dist = gc_block->values.xyz[Z_AXIS] - gc_state->position[Z_AXIS];
 
@@ -522,6 +669,10 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
         gc_state->Rownd_special = true;
         spindle_type->setEnumValue((int8_t)SpindleType::ASDA_CN1);
         gc_state->Rownd_special = false;
+    }
+
+    if (is_inverseTime) {
+        gc_block->modal.feed_rate = FeedRate::InverseTime;
     }
 
 #ifdef ROWND_REPORT

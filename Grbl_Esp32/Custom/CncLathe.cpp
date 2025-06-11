@@ -31,17 +31,6 @@ bool limitsCheckTravel() {
 */
 // Cycle mask is 0 unless the user sends a single axis command like $HZ
 // This will always return true to prevent the normal Grbl homing cycle
-bool user_defined_homing(uint8_t cycle_mask) {
-    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "home usr def mask: %d", cycle_mask);
-    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "b1: %d, b2: %d, b3: %d", bitnum_istrue(cycle_mask, X_AXIS), bitnum_istrue(cycle_mask, Z_AXIS), cycle_mask == 0);
-    if (bitnum_istrue(cycle_mask, X_AXIS) || bitnum_istrue(cycle_mask, Z_AXIS) || cycle_mask == 0) {
-        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "b1: %d, b2: %d, b3: %d", bitnum_istrue(cycle_mask, X_AXIS), bitnum_istrue(cycle_mask, Z_AXIS), cycle_mask == 0);
-        return false;
-    }
-
-    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "TODO home: %d", cycle_mask);
-    return true;
-}
 
 /*
   kinematics_pre_homing() is called before normal homing
@@ -57,47 +46,6 @@ bool kinematics_pre_homing(uint8_t cycle_mask) {
   user_tool_change() is called when tool change gcode is received,
   to perform appropriate actions for your machine.
 */
-Error user_tool_change(uint8_t new_tool) {
-    if (!atc_connected->get()) {
-        return Error::AtcNotConnected;
-    }
-
-    bool is_absolute = gc_state.modal.distance == Distance::Absolute;
-
-    char tc_line[20];
-
-    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Active Tool No: %d | New Tool No: %d", tool_active->get(), new_tool);
-
-    tool_active->setValue(new_tool);
-
-    snprintf(tc_line, sizeof(tc_line), "G1G90F%.2fA%.2f\r\n", atc_speed->get(), atc_distance->get() * tool_active->get(-1) + atc_distance->get() * atc_offset->get());
-
-    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "atc line: %s", tc_line);
-
-    protocol_buffer_synchronize();
-
-    // WebUI::inputBuffer.push(tc_line);  // It's more efficient to add to the buffer instead of executing immediately.
-
-    Error oPut = execute_line(tc_line, CLIENT_SERIAL, WebUI::AuthenticationLevel::LEVEL_GUEST);
-
-#ifdef ROWND_REPORT
-    report_status_message(oPut, CLIENT_SERIAL);
-#endif
-
-    protocol_buffer_synchronize();
-
-    if (is_absolute) {
-        gc_state.modal.distance = Distance::Absolute;
-    } else {
-        gc_state.modal.distance = Distance::Incremental;
-    }
-
-#ifdef ROWND_REPORT
-    return Error::Ok;
-#else
-    return oPut;
-#endif
-}
 
 // This code works, but not as well as we hoped, so we're disabling it for now. We might revisit and improve it in the distant future, but for now, it's on hold.
 /*

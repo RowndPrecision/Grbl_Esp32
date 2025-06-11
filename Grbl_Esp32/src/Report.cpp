@@ -675,8 +675,13 @@ void report_realtime_status(uint8_t client) {
     }
     strcat(status, temp);
 #endif
-    sprintf(temp, "|Led:%s", led_state->getStringValue());
-    strcat(status, temp);
+    // sprintf(temp, "|Led:%s", led_state->getStringValue());
+    // strcat(status, temp);
+    strcat(status, "|R:");
+    if (led_state->get())
+        strcat(status, "L");
+    if (atc_connected->get())
+        strcat(status, "A");
 
 #ifdef REPORT_FIELD_PIN_STATE
     AxisMask    lim_pin_state  = limits_get_state();

@@ -21,8 +21,8 @@
 */
 
 // Grbl versioning system
-const char* const CNC_VERSION        = "3.5.5";
-const char* const CNC_VERSION_BUILD  = "20250403";
+const char* const CNC_VERSION        = "3.5.6";
+const char* const CNC_VERSION_BUILD  = "20250530";
 const char* const GRBL_VERSION       = "1.3a";
 const char* const GRBL_VERSION_BUILD = "20211103";
 
@@ -111,7 +111,7 @@ void kinematics_post_homing();
 
 bool limitsCheckTravel(float* target);  // weak in Limits.cpp; true if out of range
 
-bool limitsCheckDirection(float* target);  // weak in Limits.cpp; true if out of range
+ExecAlarm limitsCheckDirection(float* target);  // weak in Limits.cpp; true if out of range
 
 void motors_to_cartesian(float* cartestian, float* motors, int n_axis);  // weak definition
 

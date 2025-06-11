@@ -35,7 +35,7 @@ Error jog_execute(plan_line_data_t* pl_data, parser_block_t* gc_block, bool* can
     pl_data->line_number = gc_block->values.n;
 #endif
     if (hard_limits->get()) {
-        if (limitsCheckDirection(gc_block->values.xyz)) {
+        if (limitsCheckDirection(gc_block->values.xyz) != ExecAlarm::None) {
             return Error::TravelExceeded;
         }
     }

@@ -66,7 +66,7 @@
 #define DEFAULT_HOMING_CYCLE_5  0
 
 #define SPINDLE_TYPE            SpindleType::PWM
-#define DEFAULT_SPINDLE_FREQ    7000.0f
+#define DEFAULT_SPINDLE_FREQ    5000.0f
 
 #define SPINDLE_OUTPUT_PIN      GPIO_NUM_17
 #define SPINDLE_DIR_PIN         I2SO(5)
@@ -117,8 +117,8 @@
 
 #define DEFAULT_STEPPING_INVERT_MASK 0 // uint8_t
 #define DEFAULT_DIRECTION_INVERT_MASK (bit(Z_AXIS) | bit(A_AXIS)) // uint8_t
-#define DEFAULT_INVERT_LIMIT_PINS 0 // boolean
-#define DEFAULT_INVERT_PROBE_PIN 0 // boolean
+#define DEFAULT_INVERT_LIMIT_PINS bit(A_AXIS) // uint8_t
+#define DEFAULT_INVERT_PROBE_PIN 1 // boolean
 
 #define DEFAULT_STATUS_REPORT_MASK 1
 
@@ -148,17 +148,17 @@
 #define DEFAULT_X_STEPS_PER_MM 1600.0   // steps per mm
 #define DEFAULT_Y_STEPS_PER_MM 10.0 * POSITIONABLE_AXIS_CONVERT    // steps per rev
 #define DEFAULT_Z_STEPS_PER_MM 1600.0   // steps per mm
-#define DEFAULT_A_STEPS_PER_MM 640.0   // steps per mm
+#define DEFAULT_A_STEPS_PER_MM 56000.0   // steps per mm
 
 #define DEFAULT_X_MAX_RATE 1200.0   // mm/min
 #define DEFAULT_Y_MAX_RATE 360000.0 / POSITIONABLE_AXIS_CONVERT  // rpm
 #define DEFAULT_Z_MAX_RATE 1200.0   // mm/min
-#define DEFAULT_A_MAX_RATE 1200.0   // mm/min
+#define DEFAULT_A_MAX_RATE 34.2   // mm/min
 
 #define DEFAULT_X_ACCELERATION 200.0 // mm/sec^2. 50 mm/sec^2 = 180000 mm/min^2
-#define DEFAULT_Y_ACCELERATION 72000.0 / POSITIONABLE_AXIS_CONVERT // mm/sec^2
+#define DEFAULT_Y_ACCELERATION 3600.0 / POSITIONABLE_AXIS_CONVERT // mm/sec^2
 #define DEFAULT_Z_ACCELERATION 200.0 // mm/sec^2
-#define DEFAULT_A_ACCELERATION 200.0 // mm/sec^2
+#define DEFAULT_A_ACCELERATION 20.0 // mm/sec^2
 
 #define DEFAULT_X_MAX_TRAVEL 100.0  // mm NOTE: Must be a positive value.
 #define DEFAULT_Y_MAX_TRAVEL 0.0    // 0 = inf
@@ -166,11 +166,11 @@
 #define DEFAULT_A_MAX_TRAVEL 40.0   // This is percent in servo mode...used for calibration
 
 
-#define DEFAULT_ATC_SPEED 100
+#define DEFAULT_ATC_SPEED 30
 
-#define DEFAULT_ATC_DISTANCE 10
+#define DEFAULT_ATC_DISTANCE 5
 
-#define DEFAULT_ATC_OFFSET 0.15
+#define DEFAULT_ATC_OFFSET 2
 
 #define DEFAULT_SPINDLE_DELAY_SPINUP 0.75
 

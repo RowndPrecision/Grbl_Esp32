@@ -1,3 +1,6 @@
+
+#include "../src/Grbl.h"
+
 /*
   polar_coaster.cpp - Implements simple inverse kinematics for Grbl_ESP32
   Part of Grbl_ESP32
@@ -87,12 +90,12 @@ void kinematics_post_homing() {
 */
 
 bool cartesian_to_motors(float* target, plan_line_data_t* pl_data, float* position) {
-    float    dx, dy, dz;          // distances in each cartesian axis
-    float    p_dx, p_dy, p_dz;    // distances in each polar axis
-    float    dist, polar_dist;    // the distances in both systems...used to determine feed rate
-    uint32_t segment_count;       // number of segments the move will be broken in to.
-    float    seg_target[N_AXIS];  // The target of the current segment
-    float    polar[N_AXIS];       // target location in polar coordinates
+    float    dx, dy, dz;                                                                // distances in each cartesian axis
+    float    p_dx, p_dy, p_dz;                                                          // distances in each polar axis
+    float    dist, polar_dist;                                                          // the distances in both systems...used to determine feed rate
+    uint32_t segment_count;                                                             // number of segments the move will be broken in to.
+    float    seg_target[N_AXIS];                                                        // The target of the current segment
+    float    polar[N_AXIS];                                                             // target location in polar coordinates
     float    x_offset = gc_state.coord_system[X_AXIS] + gc_state.coord_offset[X_AXIS];  // offset from machine coordinate system
     float    z_offset = gc_state.coord_system[Z_AXIS] + gc_state.coord_offset[Z_AXIS];  // offset from machine coordinate system
     //grbl_sendf(CLIENT_SERIAL, "Position: %4.2f %4.2f %4.2f \r\n", position[X_AXIS] - x_offset, position[Y_AXIS], position[Z_AXIS]);

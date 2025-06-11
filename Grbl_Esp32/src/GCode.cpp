@@ -1074,7 +1074,8 @@ Error gc_execute_line(char* line, uint8_t client) {
                             bit_false(value_words, bit(GCodeWord::R));
                             g76_params.degression = gc_block.values.r;
 
-                            if (bit_isfalse(value_words, bit(GCodeWord::P)) | bit_isfalse(value_words, bit(GCodeWord::I)) | bit_isfalse(value_words, bit(GCodeWord::J)) | bit_isfalse(value_words, bit(GCodeWord::K))) {
+                            // if (bit_isfalse(value_words, bit(GCodeWord::P)) | bit_isfalse(value_words, bit(GCodeWord::I)) | bit_isfalse(value_words, bit(GCodeWord::J)) | bit_isfalse(value_words, bit(GCodeWord::K))) {
+                            if (bit_isfalse(value_words, bit(GCodeWord::P)) | bit_isfalse(value_words, bit(GCodeWord::J)) | bit_isfalse(value_words, bit(GCodeWord::K))) {
                                 FAIL(Error::GcodeValueWordMissing);
                             }
 
@@ -1089,10 +1090,23 @@ Error gc_execute_line(char* line, uint8_t client) {
                                 g76_params.pitch = gc_block.values.p;
                             }
 
-                            if (bit_istrue(value_words, bit(GCodeWord::J))) {
-                                if (gc_block.values.ijk[Y_AXIS] <= 0) {
-                                    FAIL(Error::NegativeValue);
+                            if (bit_istrue(value_words, bit(GCodeWord::I))) {
+                                // Rownd version
+                                // if (gc_block.values.ijk[X_AXIS] <= 0) {
+                                //     FAIL(Error::in);
+                                // }
+                                if (gc_block.modal.units == Units::Inches) {
+                                    gc_block.values.ijk[X_AXIS] *= MM_PER_INCH;
                                 }
+                                bit_false(value_words, bit(GCodeWord::I));
+                                g76_params.offset_peak = gc_block.values.ijk[X_AXIS];
+                            } else
+                                g76_params.offset_peak = 0;
+
+                            if (bit_istrue(value_words, bit(GCodeWord::J))) {
+                                // if (gc_block.values.ijk[Y_AXIS] <= 0) {
+                                //     FAIL(Error::NegativeValue);
+                                // }
                                 if (gc_block.modal.units == Units::Inches) {
                                     gc_block.values.ijk[Y_AXIS] *= MM_PER_INCH;
                                 }
@@ -1101,8 +1115,13 @@ Error gc_execute_line(char* line, uint8_t client) {
                             }
 
                             if (bit_istrue(value_words, bit(GCodeWord::K))) {
-                                if (gc_block.values.ijk[Z_AXIS] <= 0) {
-                                    FAIL(Error::NegativeValue);
+                                // linuxCnc version
+                                // if (gc_block.values.ijk[Z_AXIS] <= 0) {
+                                //     FAIL(Error::NegativeValue);
+                                // }
+                                // Rownd version
+                                if (gc_block.values.ijk[Z_AXIS] == 0) {
+                                    FAIL(Error::InvalidValue);
                                 }
                                 if (gc_block.modal.units == Units::Inches) {
                                     gc_block.values.ijk[Z_AXIS] *= MM_PER_INCH;
@@ -1117,15 +1136,8 @@ Error gc_execute_line(char* line, uint8_t client) {
                                 }
                                 bit_false(value_words, bit(GCodeWord::H));
                                 g76_params.spring_pass = gc_block.values.h;
-                            }
-
-                            if (bit_istrue(value_words, bit(GCodeWord::I))) {
-                                if (gc_block.modal.units == Units::Inches) {
-                                    gc_block.values.ijk[X_AXIS] *= MM_PER_INCH;
-                                }
-                                bit_false(value_words, bit(GCodeWord::I));
-                                g76_params.offset_peak = gc_block.values.ijk[X_AXIS];
-                            }
+                            } else
+                                g76_params.spring_pass = 0;
 
                             if (bit_istrue(value_words, bit(GCodeWord::Q))) {
                                 bit_false(value_words, bit(GCodeWord::Q));
@@ -1141,7 +1153,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                                 if (gc_block.modal.units == Units::Inches) {
                                     gc_block.values.e *= MM_PER_INCH;
                                 }
-                                if (gc_block.values.e > (g76_params.depth_thread - g76_params.offset_peak) / 2) {
+                                if (gc_block.values.e > (abs(g76_params.depth_thread) + abs(g76_params.offset_peak)) / 2) {
                                     FAIL(Error::GcodeMaxValueExceeded);
                                 }
                                 if (gc_block.values.e < 0) {
@@ -1149,7 +1161,8 @@ Error gc_execute_line(char* line, uint8_t client) {
                                 }
                                 bit_false(value_words, bit(GCodeWord::E));
                                 g76_params.chamfer_angle = gc_block.values.e;
-                            }
+                            } else
+                                g76_params.chamfer_angle = 0;
 
                             if (bit_istrue(value_words, bit(GCodeWord::D))) {
                                 bit_false(value_words, bit(GCodeWord::D));
@@ -1860,12 +1873,12 @@ Error gc_execute_line(char* line, uint8_t client) {
     // [5. Select tool ]: NOT SUPPORTED. Only tracks tool value.
     // [6. Change tool ]: NOT SUPPORTED
     if (gc_block.modal.tool_change == ToolChange::Enable) {
+        if (gc_block.values.t <= 0) {
+            FAIL(Error::InvalidValue);
+        }
         tool_selected->setValue(gc_block.values.t);
         if (tool_selected->get() > tool_count->get()) {
             FAIL(Error::GcodeMaxValueExceeded);
-        }
-        if (tool_selected->get(-1) < 0) {
-            FAIL(Error::InvalidValue);
         }
 
         gc_block.modal.tool_change = ToolChange::Disable;

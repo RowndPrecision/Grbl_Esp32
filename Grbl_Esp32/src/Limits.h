@@ -59,7 +59,7 @@ float limitsMinPosition(uint8_t axis);
 bool limitsCheckTravel(float* target);
 
 // Internal factor used by limits_dir_check
-bool limitsCheckDirection(float* target);
+ExecAlarm limitsCheckDirection(float* target);
 
 // check if a switch has been defined
 bool limitsSwitchDefined(uint8_t axis, uint8_t gang_index);
