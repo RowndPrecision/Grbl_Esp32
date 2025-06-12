@@ -21,8 +21,8 @@
 */
 
 // Grbl versioning system
-const char* const CNC_VERSION        = "3.5.6";
-const char* const CNC_VERSION_BUILD  = "20250530";
+const char* const CNC_VERSION        = "3.6.0s";
+const char* const CNC_VERSION_BUILD  = "20250611";
 const char* const GRBL_VERSION       = "1.3a";
 const char* const GRBL_VERSION_BUILD = "20211103";
 
