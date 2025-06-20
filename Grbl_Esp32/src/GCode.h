@@ -297,7 +297,7 @@ typedef struct {
     Distance distance;   // {G90,G91}
     // ArcDistance distance_arc; // {G91.1} NOTE: Don't track. Only default supported.
     Plane plane_select;  // {G17,G18,G19}
-    // CutterCompensation cutter_comp;  // {G40} NOTE: Don't track. Only default supported.
+    // CutterCompensation cutter_comp;  // CutterCompensation {G40} removed NOTE: Don't track. Only default supported.
     ToolLengthOffset tool_length;   // {G43.1,G49}
     CoordIndex       coord_select;  // {G54,G55,G56,G57,G58,G59}
     // uint8_t control;      // {G61} NOTE: Don't track. Only default supported.

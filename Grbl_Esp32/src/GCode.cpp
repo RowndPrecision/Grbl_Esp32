@@ -1388,16 +1388,19 @@ Error gc_execute_line(char* line, uint8_t client) {
             }
             bit_false(value_words, (bit(GCodeWord::L) | bit(GCodeWord::P)));
             // Pre-calculate the offset data changes.
+            ToolTable->get_xyz(coord_data, ToolTable->get_tool_selected());
             if (gc_block.values.l == 10) {
                 // L10: Update coordinate system axis at current position (with modifiers) with programmed value
                 // WPos = MPos - WCS - G92 - TLO  ->  TLO = MPos - G92 - WCS - WPos
-                // for (idx = 0; idx < n_axis; idx++) {
-                // ToolTable.set_xyz(gc_state.position[idx] - gc_state.coord_offset[idx] - gc_block.values.xyz[idx] - gc_state.tool_length_offset[idx], ToolTable.get_tool_selected());
-                // }
-                FAIL(Error::GcodeUnsupportedCommand);  // [Unsupported L]
+                for (int idx = 0; idx < n_axis; ++idx) {
+                    coord_data[idx] = gc_state.position[idx] - gc_state.coord_offset[idx] - gc_block.values.xyz[idx] - gc_state.coord_system[idx];
+                }
+                // FAIL(Error::GcodeUnsupportedCommand);  // [Unsupported L]  // TODO add support
             } else {
                 // L1: Update tool table to programmed value.
-                ToolTable->set_xyz(gc_block.values.xyz, ToolTable->get_tool_selected());  //todo test
+                for (int idx = 0; idx < n_axis; ++idx) {
+                    coord_data[idx] = gc_block.values.xyz[idx];
+                }  // TODO test
                 if (bit_istrue(value_words, bit(GCodeWord::I))) {
                     bit_false(value_words, bit(GCodeWord::I));
                     ToolTable->set_i(gc_block.values.ijk[0], ToolTable->get_tool_selected());
@@ -2006,6 +2009,14 @@ Error gc_execute_line(char* line, uint8_t client) {
     // [18. Set retract mode ]: NOT SUPPORTED
     // [19. Go to predefined position, Set G10, or Set axis offsets ]:
     switch (gc_block.non_modal_command) {
+        case NonModal::SetToolTableData:
+            ToolTable->set_xyz(coord_data, ToolTable->get_tool_selected());
+            // Update system coordinate system if currently active.
+            if (gc_state.modal.tool_length == ToolLengthOffset::EnableStandart && ToolTable->get_tool_active() == ToolTable->get_tool_selected()) {
+                memcpy(gc_state.tool_length_offset, coord_data, sizeof(gc_state.tool_length_offset));
+                system_flag_wco_change();
+            }
+            break;
         case NonModal::SetCoordinateData:
             coords[coord_select]->set(coord_data);
             // Update system coordinate system if currently active.

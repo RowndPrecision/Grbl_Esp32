@@ -153,7 +153,7 @@
 #define DEFAULT_X_MAX_RATE 1200.0   // mm/min
 #define DEFAULT_Y_MAX_RATE 360000.0 / POSITIONABLE_AXIS_CONVERT  // rpm
 #define DEFAULT_Z_MAX_RATE 1200.0   // mm/min
-#define DEFAULT_A_MAX_RATE 34.2   // mm/min
+#define DEFAULT_A_MAX_RATE 70   // mm/min
 
 #define DEFAULT_X_ACCELERATION 200.0 // mm/sec^2. 50 mm/sec^2 = 180000 mm/min^2
 #define DEFAULT_Y_ACCELERATION 3600.0 / POSITIONABLE_AXIS_CONVERT // mm/sec^2
@@ -166,7 +166,7 @@
 #define DEFAULT_A_MAX_TRAVEL 40.0   // This is percent in servo mode...used for calibration
 
 
-#define DEFAULT_ATC_SPEED 30
+#define DEFAULT_ATC_SPEED 57.14
 
 #define DEFAULT_ATC_DISTANCE 5
 

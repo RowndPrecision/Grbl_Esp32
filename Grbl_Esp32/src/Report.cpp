@@ -435,6 +435,17 @@ void report_gcode_modes(uint8_t client) {
     }
     strcat(modes_rpt, mode);
 
+    switch (gc_state.modal.tool_length) {
+        case ToolLengthOffset::EnableStandart:
+            mode = " G43";
+            break;
+        case ToolLengthOffset::Cancel:
+        default:
+            mode = " G49";
+            break;
+    }
+    strcat(modes_rpt, mode);
+
     switch (gc_state.modal.distance) {
         case Distance::Absolute:
             mode = " G90";
