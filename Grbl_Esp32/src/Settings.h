@@ -21,6 +21,9 @@ enum SettingsRestore {
 // Restore subsets of settings to default values
 void settings_restore(uint8_t restore_flag);
 
+// Axismask to string converter
+char* maskToString(uint32_t mask, char* strval);
+
 // Command::List is a linked list of all settings,
 // so common code can enumerate them.
 class Command;

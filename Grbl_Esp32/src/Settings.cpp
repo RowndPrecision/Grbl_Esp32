@@ -319,7 +319,7 @@ const char* AxisMaskSetting::getCompatibleValue() {
     return strval;
 }
 
-static char* maskToString(uint32_t mask, char* strval) {
+char* maskToString(uint32_t mask, char* strval) {
     char* s = strval;
     for (int i = 0; i < MAX_N_AXIS; i++) {
         if (mask & bit(i)) {

@@ -41,7 +41,7 @@ TaskHandle_t saveLimitsTaskHandle;  // Task handle for the saveLimits task
 #    define HOMING_AXIS_LOCATE_SCALAR 5.0  // Must be > 1 to ensure limit switch is cleared.
 #endif
 
-void IRAM_ATTR isr_limit_switches() {
+void IRAM_ATTR isr_limit_switches(void* arg) {
     // Ignore limit switches if already in an alarm state or in-process of executing an alarm.
     // When in the alarm state, Grbl should have been reset or will force a reset, so any pending
     // moves in the planner and serial buffers are all cleared and newly sent blocks will be
@@ -51,18 +51,20 @@ void IRAM_ATTR isr_limit_switches() {
         if (sys_rt_exec_alarm == ExecAlarm::None) {
 #ifdef ENABLE_SOFTWARE_DEBOUNCE
             // we will start a task that will recheck the switches after a small delay
-            int evt;
-            xQueueSendFromISR(limit_sw_queue, &evt, NULL);
+            int axis = (int)(intptr_t)arg;
+            xQueueSendFromISR(limit_sw_queue, &axis, NULL);
 #else
 #    ifdef HARD_LIMIT_FORCE_STATE_CHECK
             // Check limit pin state.
             AxisMask pinMask = limits_get_state();
             if (pinMask) {
+                sys_rt_exec_alarm = ExecAlarm::HardLimit;  // Indicate hard limit critical event
                 mc_reset();                                // Initiate system kill.
                 sys_rt_exec_alarm = ExecAlarm::HardLimit;  // Indicate hard limit critical event
             }
 #    else
             grbl_msg_sendf(CLIENT_ALL, MsgLevel::Debug, "Hard limits");
+            sys_rt_exec_alarm = ExecAlarm::HardLimit;  // Indicate hard limit critical event
             mc_reset();                                // Initiate system kill.
             sys_rt_exec_alarm = ExecAlarm::HardLimit;  // Indicate hard limit critical event
 #    endif
@@ -91,32 +93,32 @@ void saveLimitsTaskFunction(void* pvParameters) {
         // Check limit pin state.
         AxisMask pinMask = limits_get_state();
         if (pinMask) {
-            bool is_test = false;
-            char msg[20] = "";
-            char temp[10];
-            auto n_axis = number_axis->get();
+            AxisMask is_test  = 0;
+            AxisMask is_limit = 0;
+            char     msg[20]  = "";
+            auto     n_axis   = number_axis->get();
             for (int axis = 0; axis < n_axis; axis++) {
                 if (bitnum_istrue(pinMask, axis) && isAxisMovable(axis)) {
-                    sprintf(temp, "%c", "XYZABC"[axis]);
-                    strcat(msg, temp);
                     if (dirBlock == NULL)
                         dirBlock = plan_get_current_block();
-                    if (dirBlock != NULL) {
+                    if (dirBlock != NULL && dirBlock->steps[axis] != 0) {
                         if (bitnum_istrue(dirBlock->direction_bits, axis)) {
                             if (bit_isfalse(limit_axis_move_positive->get(), bit(axis))) {
                                 limit_axis_move_negative->setAxis(axis, true);
                                 limit_axis_move_positive->setAxis(axis, false);
+                                bit_true(is_limit, bit(axis));
                             }
                         } else {
                             if (bit_isfalse(limit_axis_move_negative->get(), bit(axis))) {
                                 limit_axis_move_negative->setAxis(axis, false);
                                 limit_axis_move_positive->setAxis(axis, true);
+                                bit_true(is_limit, bit(axis));
                             }
                         }
                     } else {
                         // limit_axis_move_negative->setAxis(axis, true);
                         // limit_axis_move_positive->setAxis(axis, true);
-                        is_test = true;
+                        bit_true(is_test, bit(axis));
                     }
                 } else {
                     limit_axis_move_negative->setAxis(axis, false);
@@ -124,10 +126,15 @@ void saveLimitsTaskFunction(void* pvParameters) {
                 }
             }
             if (is_test) {
+                maskToString(is_test, msg);
                 grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Switch test on axis: %s", msg);
-                is_test = false;
-            } else
+                is_test = 0;
+            }
+            if (is_limit) {
+                maskToString(is_limit, msg);
                 grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Hard limits: %s", msg);
+                is_limit = 0;
+            }
         } else {
             limit_axis_move_negative->setDefault();
             limit_axis_move_positive->setDefault();
@@ -135,7 +142,7 @@ void saveLimitsTaskFunction(void* pvParameters) {
 
         Error err1 = limit_axis_move_negative->saveValue();
         Error err2 = limit_axis_move_positive->saveValue();
-        grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "LAMM: %s, LAMP %s", errorString(err1), errorString(err2));
+        grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "LAMN: %s, LAMP %s", errorString(err1), errorString(err2));
         dirBlock = NULL;
     }
 }
@@ -358,7 +365,7 @@ void limits_init() {
                 grbl_sendf(CLIENT_SERIAL, "[test: limit: %c | pin:  %i]\r\n", "XYZABC"[axis], pin);
                 limit_mask |= bit(axis);
                 if (hard_limits->get()) {
-                    attachInterrupt(pin, isr_limit_switches, RISING);
+                    attachInterruptArg(pin, isr_limit_switches, (void*)axis, RISING);
                     grbl_sendf(CLIENT_SERIAL, "[test: attach: %c | pin:  %i]\r\n", "XYZABC"[axis], pin);
                 } else {
                     detachInterrupt(pin);
@@ -456,6 +463,7 @@ void limits_soft_check(float* target) {
             } while (sys.state != State::Idle);
         }
         grbl_msg_sendf(CLIENT_ALL, MsgLevel::Debug, "Soft limits");
+        sys_rt_exec_alarm = ExecAlarm::SoftLimit;  // Indicate soft limit critical event
         mc_reset();                                // Issue system reset and ensure spindle and coolant are shutdown.
         sys_rt_exec_alarm = ExecAlarm::SoftLimit;  // Indicate soft limit critical event
         protocol_execute_realtime();               // Execute to enter critical event loop and system abort
@@ -483,6 +491,7 @@ void limits_direction_check(float* target) {
             } while (sys.state != State::Idle);
         }
         grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, AlarmNames[temp]);
+        sys_rt_exec_alarm = temp;     // Indicate soft limit critical event
         mc_reset();                   // Issue system reset and ensure spindle and coolant are shutdown.
         sys_rt_exec_alarm = temp;     // Indicate soft limit critical event
         protocol_execute_realtime();  // Execute to enter critical event loop and system abort
@@ -493,12 +502,16 @@ void limits_direction_check(float* target) {
 // this is the task
 void limitCheckTask(void* pvParameters) {
     while (true) {
-        int evt;
-        xQueueReceive(limit_sw_queue, &evt, portMAX_DELAY);  // block until receive queue
-        vTaskDelay(DEBOUNCE_PERIOD / portTICK_PERIOD_MS);    // delay a while
+        int  axis;
+        char msg[10] = "";
+
+        xQueueReceive(limit_sw_queue, &axis, portMAX_DELAY);  // block until receive queue
+        vTaskDelay(DEBOUNCE_PERIOD / portTICK_PERIOD_MS);     // delay a while
         AxisMask switch_state;
         switch_state = limits_get_state();
-        if (switch_state) {
+        maskToString(switch_state, msg);
+        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "sw algilandi %s, axis: %c", msg, "XYZABC"[axis]);
+        if (bit_istrue(switch_state, bit(axis))) {
             if (plan_get_block_buffer_available()) {
                 dirBlock = plan_get_current_block();
             }
@@ -513,13 +526,14 @@ void limitCheckTask(void* pvParameters) {
                 // spindle_type->setEnumValue((int8_t)SpindleType::ASDA_CN1);
                 atc_connected->setBoolValue(true);  // auto detect?
                 gc_state.Rownd_special = false;
-                grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "atc algilandi %08d, %i", switch_state, atc_connected->get());
+                grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "atc algilandi %s, %i", msg, atc_connected->get());
                 atc_connected->setBoolValue(true);  // auto detect?
             } else if (atc_connected->get() && bit_is_match(switch_state, bit(REMOVABLE_AXIS_LIMIT))) {
-                grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "atc tur atti? %08d", switch_state);
+                grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "atc tur atti? %s", msg);
                 // ignore
             } else {
-                grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Limit Switch State %08d", switch_state);
+                grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Limit Switch State %s", msg);
+                sys_rt_exec_alarm = ExecAlarm::HardLimit;  // Indicate hard limit critical event
                 mc_reset();                                // Initiate system kill.
                 sys_rt_exec_alarm = ExecAlarm::HardLimit;  // Indicate hard limit critical event
                 if (saveLimitsTaskHandle != NULL) {

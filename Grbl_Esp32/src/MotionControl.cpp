@@ -125,15 +125,7 @@ void __attribute__((weak)) forward_kinematics(float* position) {}
 // The arc is approximated by generating a huge number of tiny, linear segments. The chordal tolerance
 // of each segment is configured in the arc_tolerance setting, which is defined to be the maximum normal
 // distance from segment to the circle when the end points both lie on the circle.
-void mc_arc(float*            target,
-            plan_line_data_t* pl_data,
-            float*            position,
-            float*            offset,
-            float             radius,
-            uint8_t           axis_0,
-            uint8_t           axis_1,
-            uint8_t           axis_linear,
-            uint8_t           is_clockwise_arc) {
+void mc_arc(float* target, plan_line_data_t* pl_data, float* position, float* offset, float radius, uint8_t axis_0, uint8_t axis_1, uint8_t axis_linear, uint8_t is_clockwise_arc) {
     float center_axis0 = position[axis_0] + offset[axis_0];
     float center_axis1 = position[axis_1] + offset[axis_1];
     float r_axis0      = -offset[axis_0];  // Radius vector from center to current location
@@ -283,18 +275,18 @@ static bool axis_is_squared(uint8_t axis_mask) {
 }
 
 #ifdef USE_I2S_STEPS
-#    define BACKUP_STEPPER(save_stepper)                                                                                                   \
-        do {                                                                                                                               \
-            if (save_stepper == ST_I2S_STREAM) {                                                                                           \
-                stepper_switch(ST_I2S_STATIC); /* Change the stepper to reduce the delay for accurate probing. */                          \
-            }                                                                                                                              \
+#    define BACKUP_STEPPER(save_stepper)                                                                                                                                                                                                       \
+        do {                                                                                                                                                                                                                                   \
+            if (save_stepper == ST_I2S_STREAM) {                                                                                                                                                                                               \
+                stepper_switch(ST_I2S_STATIC); /* Change the stepper to reduce the delay for accurate probing. */                                                                                                                              \
+            }                                                                                                                                                                                                                                  \
         } while (0)
 
-#    define RESTORE_STEPPER(save_stepper)                                                                                                  \
-        do {                                                                                                                               \
-            if (save_stepper == ST_I2S_STREAM && current_stepper != ST_I2S_STREAM) {                                                       \
-                stepper_switch(ST_I2S_STREAM); /* Put the stepper back on. */                                                              \
-            }                                                                                                                              \
+#    define RESTORE_STEPPER(save_stepper)                                                                                                                                                                                                      \
+        do {                                                                                                                                                                                                                                   \
+            if (save_stepper == ST_I2S_STREAM && current_stepper != ST_I2S_STREAM) {                                                                                                                                                           \
+                stepper_switch(ST_I2S_STREAM); /* Put the stepper back on. */                                                                                                                                                                  \
+            }                                                                                                                                                                                                                                  \
         } while (0)
 #else
 #    define BACKUP_STEPPER(save_stepper)
@@ -321,6 +313,7 @@ void mc_homing_cycle(uint8_t cycle_mask) {
     // TODO: Move the pin-specific LIMIT_PIN call to Limits.cpp as a function.
 #ifdef LIMITS_TWO_SWITCHES_ON_AXES
     if (limits_get_state()) {
+        sys_rt_exec_alarm = ExecAlarm::HardLimit;
         mc_reset();  // Issue system reset and ensure spindle and coolant are shutdown.
         sys_rt_exec_alarm = ExecAlarm::HardLimit;
         return;
@@ -540,13 +533,12 @@ void mc_reset() {
         // NOTE: If steppers are kept enabled via the step idle delay setting, this also keeps
         // the steppers enabled by avoiding the go_idle call altogether, unless the motion state is
         // violated, by which, all bets are off.
-        if ((sys.state == State::Cycle || sys.state == State::Homing || sys.state == State::Jog) ||
-            (sys.step_control.executeHold || sys.step_control.executeSysMotion)) {
+        if ((sys.state == State::Cycle || sys.state == State::Homing || sys.state == State::Jog) || (sys.step_control.executeHold || sys.step_control.executeSysMotion)) {
             if (sys.state == State::Homing) {
                 if (sys_rt_exec_alarm == ExecAlarm::None) {
                     sys_rt_exec_alarm = ExecAlarm::HomingFailReset;
                 }
-            } else {
+            } else if (sys_rt_exec_alarm == ExecAlarm::None) {
                 sys_rt_exec_alarm = ExecAlarm::AbortCycle;
             }
             st_go_idle();  // Force kill steppers. Position has likely been lost.
