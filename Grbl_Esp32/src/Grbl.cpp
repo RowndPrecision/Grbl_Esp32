@@ -164,10 +164,11 @@ Error user_tool_change(uint8_t new_tool) {
     bool  is_absolute          = gc_state.modal.distance == Distance::Absolute;
     bool  is_inverseTime       = gc_state.modal.feed_rate == FeedRate::InverseTime;
     bool  is_imperial          = gc_state.modal.units == Units::Inches;
-    float mult_conv            = homing_pulloff->get() / (atc_distance->get() + atc_offset->get());
     int   tool_diff            = new_tool - tool_active->get();
     int   tool_move            = (tool_diff < 0) ? tool_diff + tool_count->get() : tool_diff;
     float lock_test_percentage = 0.1;
+
+    // float mult_conv            = homing_pulloff->get() / (atc_distance->get() + atc_offset->get());
 
     char tc_line[20];
 
@@ -192,7 +193,7 @@ Error user_tool_change(uint8_t new_tool) {
     // WebUI::inputBuffer.push(tc_line);  // It's more efficient to add to the buffer instead of executing immediately.
 
     // ATC Lock Check
-    snprintf(tc_line, sizeof(tc_line), "G1G91F%.2fA%.2f", atc_speed->get(), lock_test_percentage * (-atc_offset->get() * mult_conv));
+    snprintf(tc_line, sizeof(tc_line), "G1G91F%.2fA%.2f", atc_speed->get(), (-atc_offset->get()) * lock_test_percentage);
 
     if (rownd_verbose_enable->get())
         grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC Lock Check:  %s", tc_line);
@@ -204,7 +205,7 @@ Error user_tool_change(uint8_t new_tool) {
     }
 
     // ATC Rise Up / Unlock
-    snprintf(tc_line, sizeof(tc_line), "G1G91F%.2fA%.2f", atc_speed->get(), atc_distance->get() * mult_conv);
+    snprintf(tc_line, sizeof(tc_line), "G1G91F%.2fA%.2f", atc_speed->get(), atc_distance->get());
 
     if (rownd_verbose_enable->get())
         grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC Rise Up:     %s", tc_line);
@@ -216,7 +217,7 @@ Error user_tool_change(uint8_t new_tool) {
     }
 
     // ATC goto Target
-    snprintf(tc_line, sizeof(tc_line), "G1G91F%.2fA%.2f", atc_speed->get(), tool_move * atc_offset->get() * mult_conv);
+    snprintf(tc_line, sizeof(tc_line), "G1G91F%.2fA%.2f", atc_speed->get(), tool_move * atc_offset->get());
 
     if (rownd_verbose_enable->get())
         grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC goto Target: %s", tc_line);
@@ -228,7 +229,7 @@ Error user_tool_change(uint8_t new_tool) {
     }
 
     // ATC Lock Back
-    snprintf(tc_line, sizeof(tc_line), "G1G91F%.2fA%.2f", atc_speed->get(), -(atc_distance->get() + atc_offset->get()) * mult_conv);
+    snprintf(tc_line, sizeof(tc_line), "G1G91F%.2fA%.2f", atc_speed->get(), -(atc_distance->get() + atc_offset->get()));
 
     if (rownd_verbose_enable->get())
         grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC Lock Back:   %s", tc_line);

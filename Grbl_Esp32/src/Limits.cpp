@@ -311,11 +311,14 @@ void limits_go_home(uint8_t cycle_mask) {
         // Reverse direction and reset homing rate for locate cycle(s).
         approach = !approach;
         // After first cycle, homing enters locating phase. Shorten search to pull-off distance.
+        max_travel = homing_pulloff->get();
+        if (bit_istrue(cycle_mask, bit(REMOVABLE_AXIS_LIMIT))) {
+            max_travel = MAX(max_travel, atc_distance->get() + atc_offset->get());
+        }
         if (approach) {
-            max_travel  = homing_pulloff->get() * HOMING_AXIS_LOCATE_SCALAR;
+            max_travel *= HOMING_AXIS_LOCATE_SCALAR;
             homing_rate = homing_feed_rate->get();
         } else {
-            max_travel  = homing_pulloff->get();
             homing_rate = homing_seek_rate->get();
         }
     } while (n_cycle-- > 0);
@@ -331,6 +334,11 @@ void limits_go_home(uint8_t cycle_mask) {
     auto pulloff = homing_pulloff->get();
     for (uint8_t idx = 0; idx < n_axis; idx++) {
         auto steps = axis_settings[idx]->steps_per_mm->get();
+        if (idx == REMOVABLE_AXIS_LIMIT) {
+            pulloff = atc_distance->get() + atc_offset->get();
+        } else {
+            pulloff = homing_pulloff->get();
+        }
         if (cycle_mask & bit(idx)) {
             float travel = axis_settings[idx]->max_travel->get();
             float mpos   = axis_settings[idx]->home_mpos->get();

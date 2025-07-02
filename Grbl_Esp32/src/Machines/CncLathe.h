@@ -148,7 +148,7 @@
 #define DEFAULT_X_STEPS_PER_MM 1600.0   // steps per mm
 #define DEFAULT_Y_STEPS_PER_MM 10.0 * POSITIONABLE_AXIS_CONVERT    // steps per rev
 #define DEFAULT_Z_STEPS_PER_MM 1600.0   // steps per mm
-#define DEFAULT_A_STEPS_PER_MM 56000.0   // steps per mm
+#define DEFAULT_A_STEPS_PER_MM 24000.0   // steps per mm
 
 #define DEFAULT_X_MAX_RATE 1200.0   // mm/min
 #define DEFAULT_Y_MAX_RATE 360000.0 / POSITIONABLE_AXIS_CONVERT  // rpm

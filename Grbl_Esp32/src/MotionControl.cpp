@@ -533,7 +533,7 @@ void mc_reset() {
         // NOTE: If steppers are kept enabled via the step idle delay setting, this also keeps
         // the steppers enabled by avoiding the go_idle call altogether, unless the motion state is
         // violated, by which, all bets are off.
-        if ((sys.state == State::Cycle || sys.state == State::Homing || sys.state == State::Jog) || (sys.step_control.executeHold || sys.step_control.executeSysMotion)) {
+        if ((sys.state == State::Cycle || sys.state == State::Homing || sys.state == State::Jog) || (sys.step_control.executeHold || sys.step_control.executeSysMotion || sys_rt_exec_alarm == ExecAlarm::HardLimit)) {
             if (sys.state == State::Homing) {
                 if (sys_rt_exec_alarm == ExecAlarm::None) {
                     sys_rt_exec_alarm = ExecAlarm::HomingFailReset;
@@ -542,6 +542,7 @@ void mc_reset() {
                 sys_rt_exec_alarm = ExecAlarm::AbortCycle;
             }
             st_go_idle();  // Force kill steppers. Position has likely been lost.
+            // TODO move st_go_idle out of this if
         }
         ganged_mode = SquaringMode::Dual;  // in case an error occurred during squaring
 

@@ -284,7 +284,9 @@ static void stepper_pulse_func() {
                 st.steps[axis] = st.exec_block->steps[axis] >> st.exec_segment->amass_level;
             }
             // Set real-time spindle output as segment is loaded, just prior to the first step.
-            spindle->set_rpm(st.exec_segment->spindle_rpm);
+            if (sys_rt_exec_alarm == ExecAlarm::None) {
+                spindle->set_rpm(st.exec_segment->spindle_rpm);
+            }
         } else {
             // Segment buffer empty. Shutdown.
             st_go_idle();
@@ -352,8 +354,8 @@ static void stepper_pulse_func() {
 }
 
 void stepper_init() {
-    busy.store(false); 
-    
+    busy.store(false);
+
     grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Axis count %d", number_axis->get());
     grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "%s", stepper_names[current_stepper]);
 
@@ -394,8 +396,7 @@ void st_wake_up() {
     // Initialize step pulse timing from settings. Here to ensure updating after re-writing.
 #ifdef USE_RMT_STEPS
     // Step pulse delay handling is not require with ESP32...the RMT function does it.
-    if (direction_delay_microseconds->get() < 1)
-    {
+    if (direction_delay_microseconds->get() < 1) {
         // Set step pulse time. Ad hoc computation from oscilloscope. Uses two's complement.
         st.step_pulse_time = -(((pulse_microseconds->get() - 2) * ticksPerMicrosecond) >> 3);
     }
@@ -439,15 +440,14 @@ void st_go_idle() {
     Stepper_Timer_Stop();
 
     // Set stepper driver idle state, disabled or enabled, depending on settings and circumstances.
-    if (((stepper_idle_lock_time->get() != 0xff) || sys_rt_exec_alarm != ExecAlarm::None || sys.state == State::Sleep) &&
-        sys.state != State::Homing) {
+    if (((stepper_idle_lock_time->get() != 0xff) || sys_rt_exec_alarm != ExecAlarm::None || sys.state == State::Sleep) && sys.state != State::Homing) {
         // Force stepper dwell to lock axes for a defined amount of time to ensure the axes come to a complete
         // stop and not drift from residual inertial forces at the end of the last movement.
 
         if (sys.state == State::Sleep || sys_rt_exec_alarm != ExecAlarm::None) {
             motors_set_disable(true);
         } else {
-            stepper_idle         = true;  // esp32 work around for disable in main loop
+            stepper_idle         = true;                                                           // esp32 work around for disable in main loop
             stepper_idle_counter = esp_timer_get_time() + (stepper_idle_lock_time->get() * 1000);  // * 1000 because the time is in uSecs
             // after idle countdown will be disabled in protocol loop
         }
@@ -464,7 +464,7 @@ void st_update_plan_block_parameters() {
     if (pl_block != NULL) {  // Ignore if at start of a new block.
         prep.recalculate_flag.recalculate = 1;
         pl_block->entry_speed_sqr         = prep.current_speed * prep.current_speed;  // Update entry speed.
-        pl_block                          = NULL;  // Flag st_prep_segment() to load and check active velocity profile.
+        pl_block                          = NULL;                                     // Flag st_prep_segment() to load and check active velocity profile.
     }
 }
 
@@ -641,7 +641,7 @@ void st_prep_buffer() {
                         // prep.decelerate_after = pl_block->millimeters;
                         // prep.maximum_speed = prep.current_speed;
                         // Compute override block exit speed since it doesn't match the planner exit speed.
-                        prep.exit_speed = sqrt(pl_block->entry_speed_sqr - 2 * pl_block->acceleration * pl_block->millimeters);
+                        prep.exit_speed                     = sqrt(pl_block->entry_speed_sqr - 2 * pl_block->acceleration * pl_block->millimeters);
                         prep.recalculate_flag.decelOverride = 1;  // Flag to load next block as deceleration override.
                         // TODO: Determine correct handling of parameters in deceleration-only.
                         // Can be tricky since entry speed will be current speed, as in feed holds.
