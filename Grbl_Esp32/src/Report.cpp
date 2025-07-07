@@ -523,6 +523,22 @@ void report_gcode_modes(uint8_t client) {
         }
     }
 
+    switch (static_cast<SpindleType>(spindle_type->get())) {
+        case SpindleType::ASDA_CN1:
+            mode = " M100";
+            break;
+        case SpindleType::PWM:
+            mode = " M101";
+            break;
+        case SpindleType::LASER:
+            mode = " M102";
+            break;
+        default:
+            mode = " M103";
+            break;
+    }
+    strcat(modes_rpt, mode);
+
 #ifdef ENABLE_PARKING_OVERRIDE_CONTROL
     if (sys.override_ctrl == Override::ParkingMotion) {
         strcat(modes_rpt, " M56");
