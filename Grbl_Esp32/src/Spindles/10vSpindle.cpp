@@ -28,7 +28,7 @@
 
 namespace Spindles {
 
-    void _10v::init() {
+    void _10V::init() {
         get_pins_and_settings();  // these gets the standard PWM settings, but many need to be changed for BESC
 
         // a couple more pins not inherited from PWM Spindle
@@ -66,7 +66,7 @@ namespace Spindles {
     }
 
     // prints the startup message of the spindle config
-    void _10v::config_message() {
+    void _10V::config_message() {
         grbl_msg_sendf(CLIENT_ALL,
                        MsgLevel::Info,
                        "0-10V spindle Out:%s Enbl:%s, Dir:%s, Fwd:%s, Rev:%s, Freq:%dHz Res:%dbits",
@@ -79,7 +79,7 @@ namespace Spindles {
                        _pwm_precision);
     }
 
-    uint32_t _10v::set_rpm(uint32_t rpm) {
+    uint32_t _10V::set_rpm(uint32_t rpm) {
         uint32_t pwm_value;
 
         if (_output_pin == UNDEFINED_PIN) {
@@ -109,7 +109,7 @@ namespace Spindles {
     }
 
     /*
-	void _10v::set_state(SpindleState state, uint32_t rpm) {
+	void _10V::set_state(SpindleState state, uint32_t rpm) {
 		if (sys.abort) {
             return;   // Block during abort.
         }
@@ -128,7 +128,7 @@ namespace Spindles {
 	}
 	*/
 
-    SpindleState _10v::get_state() {
+    SpindleState _10V::get_state() {
         if (_current_pwm_duty == 0 || _output_pin == UNDEFINED_PIN) {
             return SpindleState::Disable;
         }
@@ -138,13 +138,13 @@ namespace Spindles {
         return SpindleState::Cw;
     }
 
-    void _10v::stop() {
+    void _10V::stop() {
         // inverts are delt with in methods
         set_enable_pin(false);
         set_output(_pwm_off_value);
     }
 
-    void _10v::set_enable_pin(bool enable) {
+    void _10V::set_enable_pin(bool enable) {
         if (_off_with_zero_speed && sys.spindle_speed == 0) {
             enable = false;
         }
@@ -163,13 +163,13 @@ namespace Spindles {
         }
     }
 
-    void _10v::set_dir_pin(bool Clockwise) {
+    void _10V::set_dir_pin(bool Clockwise) {
         digitalWrite(_direction_pin, Clockwise);
         digitalWrite(_forward_pin, Clockwise);
         digitalWrite(_reverse_pin, !Clockwise);
     }
 
-    void _10v::deinit() {
+    void _10V::deinit() {
 #ifdef SPINDLE_OUTPUT_PIN
         // gpio_reset_pin(SPINDLE_OUTPUT_PIN);
         // pinMode(SPINDLE_OUTPUT_PIN, INPUT);

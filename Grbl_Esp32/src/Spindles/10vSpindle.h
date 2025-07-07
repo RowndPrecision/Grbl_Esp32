@@ -29,14 +29,14 @@
 #include "PWMSpindle.h"
 
 namespace Spindles {
-    class _10v : public PWM {
+    class _10V : public PWM {
     public:
-        _10v() = default;
+        _10V() = default;
 
-        _10v(const _10v&) = delete;
-        _10v(_10v&&)      = delete;
-        _10v& operator=(const _10v&) = delete;
-        _10v& operator=(_10v&&) = delete;
+        _10V(const _10V&)            = delete;
+        _10V(_10V&&)                 = delete;
+        _10V& operator=(const _10V&) = delete;
+        _10V& operator=(_10V&&)      = delete;
 
         void     init() override;
         void     config_message() override;
@@ -47,7 +47,7 @@ namespace Spindles {
         void         stop() override;
         void         deinit() override;
 
-        virtual ~_10v() {}
+        virtual ~_10V() {}
 
         uint8_t _forward_pin;
         uint8_t _reverse_pin;

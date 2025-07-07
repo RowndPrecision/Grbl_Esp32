@@ -54,7 +54,7 @@ namespace Spindles {
     Huanyang huanyang;
     H2A      h2a;
     BESC     besc;
-    _10v     _10v;
+    _10V     _10v;
     YL620    yl620;
     L510     l510;
     AsdaCN1  Asda_CN1;
