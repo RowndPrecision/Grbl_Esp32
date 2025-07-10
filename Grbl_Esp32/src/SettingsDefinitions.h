@@ -45,6 +45,8 @@ extern FloatSetting* arc_tolerance;
 extern FlagSetting* led_state;
 extern FlagSetting* led_inverse;
 
+extern FlagSetting* rownd_param_G76_ignore_offset;
+
 extern AxisMaskSetting* limit_axis_move_positive;
 extern AxisMaskSetting* limit_axis_move_negative;
 

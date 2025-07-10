@@ -40,6 +40,8 @@ IntSetting*   status_mask;
 FloatSetting* junction_deviation;
 FloatSetting* arc_tolerance;
 
+FlagSetting* rownd_param_G76_ignore_offset;
+
 AxisMaskSetting* limit_axis_move_positive;
 AxisMaskSetting* limit_axis_move_negative;
 
@@ -406,6 +408,10 @@ void make_settings() {
     tool_selected = new IntSetting(EXTENDED, WG, "62", "Tool/Selected", 1, 1, DEFAULT_TOOL_COUNT_MAX, NULL);
     tool_active   = new IntSetting(EXTENDED, WG, "61", "Tool/Active", 1, 1, DEFAULT_TOOL_COUNT_MAX, NULL);
     tool_count    = new IntSetting(EXTENDED, WG, "60", "Tool/Count", DEFAULT_TOOL_COUNT_MAX, 1, DEFAULT_TOOL_COUNT_MAX, NULL);
+
+    // Rownd options 1
+
+    rownd_param_G76_ignore_offset = new FlagSetting(EXTENDED, WG, "55", "RowndG76IgnoreOffset", DEFAULT_ROWND_G76_IGNORE_OFFSET, NULL);
 
     // Limit move vars
 

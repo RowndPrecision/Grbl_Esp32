@@ -414,12 +414,20 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
         oPut = Error::BadNumberFormat;
     }
 
-    pass_count = ceilf(powf(depth_line / g76_params->depth_first_cut, g76_params->degression));
+    if (rownd_param_G76_ignore_offset->get()) {
+        pass_count = ceilf(powf((depth_line + g76_params->offset_peak) / g76_params->depth_first_cut, g76_params->degression));
+    } else {
+        pass_count = ceilf(powf(depth_line / g76_params->depth_first_cut, g76_params->degression));
+    }
 
     if (rownd_verbose_enable->get())
-        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 Pass Counter: %i", pass_count);
+        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 Pass Counter: %i (offset ignore: %s)", pass_count, rownd_param_G76_ignore_offset->getStringValue());
 
-    depth_current = 0;
+    if (rownd_param_G76_ignore_offset->get()) {
+        depth_current = -g76_params->offset_peak;
+    } else {
+        depth_current = 0;
+    }
 
     depth_last = g76_params->depth_first_cut;
 
