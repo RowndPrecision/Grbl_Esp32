@@ -514,15 +514,15 @@ void limitCheckTask(void* pvParameters) {
         char msg[10] = "";
 
         xQueueReceive(limit_sw_queue, &axis, portMAX_DELAY);  // block until receive queue
-        vTaskDelay(DEBOUNCE_PERIOD / portTICK_PERIOD_MS);     // delay a while
+        if (plan_get_block_buffer_available()) {
+            dirBlock = plan_get_current_block();
+        }
+        vTaskDelay(DEBOUNCE_PERIOD / portTICK_PERIOD_MS);  // delay a while
         AxisMask switch_state;
         switch_state = limits_get_state();
         maskToString(switch_state, msg);
         grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "sw algilandi %s, axis: %c", msg, "XYZABC"[axis]);
         if (bit_istrue(switch_state, bit(axis))) {
-            if (plan_get_block_buffer_available()) {
-                dirBlock = plan_get_current_block();
-            }
             if (!atc_connected->get() && bit_is_match(switch_state, bit(REMOVABLE_AXIS_LIMIT))) {
                 gc_state.Rownd_special = true;
 
