@@ -38,6 +38,13 @@ bool isAxisMovable(int axis) {
     return true;
 }
 
+Error setDisableDoor(bool isDisabled) {
+    protocol_buffer_synchronize();
+    Error temp = rownd_param_ignore_door_switch->setBoolValue(isDisabled);
+    protocol_buffer_synchronize();
+    return temp;
+}
+
 Error setATCConnection(bool isConnected) {
     protocol_buffer_synchronize();
     limits_disable();

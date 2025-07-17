@@ -709,6 +709,8 @@ void report_realtime_status(uint8_t client) {
         strcat(status, "L");
     if (atc_connected->get())
         strcat(status, "A");
+    if (rownd_param_ignore_door_switch->get())
+        strcat(status, "D");
 
 #ifdef REPORT_FIELD_PIN_STATE
     AxisMask    lim_pin_state  = limits_get_state();

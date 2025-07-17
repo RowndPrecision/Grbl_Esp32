@@ -78,7 +78,8 @@
 #define ASDA_CN1_DIR_PIN        I2SO(3)
 
 #define DEFAULT_ROWND_VERBOSE 0
-#define DEFAULT_ROWND_G76_IGNORE_OFFSET 0
+#define DEFAULT_ROWND_G76_IGNORE_OFFSET false
+#define DEFAULT_ROWND_IGNORE_DOOR_SWITCH false
 
 #define LED_PIN     I2SO(4)
 #define DEFAULT_LED_STATE 1
@@ -166,6 +167,7 @@
 #define DEFAULT_Z_MAX_TRAVEL 300.0  // This is percent in servo mode...used for calibration
 #define DEFAULT_A_MAX_TRAVEL 40.0   // This is percent in servo mode...used for calibration
 
+#define DEFAULT_ATC_STATE false
 
 #define DEFAULT_ATC_SPEED 57.14
 

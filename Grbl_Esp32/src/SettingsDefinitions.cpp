@@ -41,6 +41,7 @@ FloatSetting* junction_deviation;
 FloatSetting* arc_tolerance;
 
 FlagSetting* rownd_param_G76_ignore_offset;
+FlagSetting* rownd_param_ignore_door_switch;
 
 AxisMaskSetting* limit_axis_move_positive;
 AxisMaskSetting* limit_axis_move_negative;
@@ -179,6 +180,26 @@ static bool checkStartupLine(char* value) {
 static bool postMotorSetting(char* value) {
     if (!value) {
         motors_read_settings();
+    }
+    return true;
+}
+
+static bool checkDisableDoorChange(char* value) {
+    if (value) {
+        bool _convertedValue = (strcasecmp(value, "on") == 0) || (strcasecmp(value, "true") == 0) || (strcasecmp(value, "enabled") == 0) || (strcasecmp(value, "yes") == 0) || (strcasecmp(value, "1") == 0);
+        if (rownd_param_ignore_door_switch->get() == _convertedValue) {
+            // grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Door?: %s", value);
+        } else if (_convertedValue) {
+            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "WARNING: Safety Door DISABLED!");
+
+        } else {
+            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "NOTICE: Safety Door re-enabled.");
+        }
+    } else {
+        if (rownd_param_ignore_door_switch->get())
+            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Safety Door is disabled.");
+        else
+            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Safety Door is enabled.");
     }
     return true;
 }
@@ -399,7 +420,7 @@ void make_settings() {
 
     // Tool settings
 
-    atc_connected = new FlagSetting(EXTENDED, WG, "68", "ATC/state", false, checkATCChange);
+    atc_connected = new FlagSetting(EXTENDED, WG, "68", "ATC/state", DEFAULT_ATC_STATE, checkATCChange);
 
     atc_speed    = new FloatSetting(EXTENDED, WG, "67", "ATC/speed", DEFAULT_ATC_SPEED, 0.0, DEFAULT_ATC_SPEED_MAX, NULL);
     atc_distance = new FloatSetting(EXTENDED, WG, "66", "ATC/distance", DEFAULT_ATC_DISTANCE, 0.0, DEFAULT_ATC_DISTANCE_MAX, NULL);
@@ -412,6 +433,8 @@ void make_settings() {
     // Rownd options 1
 
     rownd_param_G76_ignore_offset = new FlagSetting(EXTENDED, WG, "55", "RowndG76IgnoreOffset", DEFAULT_ROWND_G76_IGNORE_OFFSET, NULL);
+
+    rownd_param_ignore_door_switch = new FlagSetting(EXTENDED, WG, "54", "RowndIgnoreDoorSwitch", DEFAULT_ROWND_IGNORE_DOOR_SWITCH, checkDisableDoorChange);
 
     // Limit move vars
 

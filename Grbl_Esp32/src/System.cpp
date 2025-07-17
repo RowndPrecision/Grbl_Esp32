@@ -26,11 +26,11 @@ system_t               sys;
 int32_t                sys_position[MAX_N_AXIS];        // Real-time machine (aka home) position vector in steps.
 int32_t                sys_probe_position[MAX_N_AXIS];  // Last probe position in machine coordinates and steps.
 volatile Probe         sys_probe_state;                 // Probing state value.  Used to coordinate the probing cycle with stepper ISR.
-volatile ExecState     sys_rt_exec_state;  // Global realtime executor bitflag variable for state management. See EXEC bitmasks.
-volatile ExecAlarm     sys_rt_exec_alarm;  // Global realtime executor bitflag variable for setting various alarms.
+volatile ExecState     sys_rt_exec_state;               // Global realtime executor bitflag variable for state management. See EXEC bitmasks.
+volatile ExecAlarm     sys_rt_exec_alarm;               // Global realtime executor bitflag variable for setting various alarms.
 volatile ExecAccessory sys_rt_exec_accessory_override;  // Global realtime executor bitflag variable for spindle/coolant overrides.
 volatile bool          cycle_stop;                      // For state transitions, instead of bitflag
-volatile void*         sys_pl_data_inflight;  // holds a plan_line_data_t while cartesian_to_motors has taken ownership of a line motion
+volatile void*         sys_pl_data_inflight;            // holds a plan_line_data_t while cartesian_to_motors has taken ownership of a line motion
 #ifdef DEBUG
 volatile bool sys_rt_exec_debug;
 #endif
@@ -202,9 +202,11 @@ ControlPins system_control_get_state() {
     pin_states.value = 0;
 
 #ifdef CONTROL_SAFETY_DOOR_PIN
-    defined_pins.bit.safetyDoor = true;
-    if (digitalRead(CONTROL_SAFETY_DOOR_PIN)) {
-        pin_states.bit.safetyDoor = true;
+    if (!rownd_param_ignore_door_switch->get()) {
+        defined_pins.bit.safetyDoor = true;
+        if (digitalRead(CONTROL_SAFETY_DOOR_PIN)) {
+            pin_states.bit.safetyDoor = true;
+        }
     }
 #endif
 #ifdef CONTROL_RESET_PIN

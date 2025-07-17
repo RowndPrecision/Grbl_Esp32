@@ -175,10 +175,12 @@ enum class SpecialActions : uint8_t {
     ModeSwitchLathe   = 1,  // M100
     ModeSwitch4thAxis = 2,  // M101
     ModeSwitchLaser   = 3,  // M102
-    DisconnectATC     = 4,  // M120
-    ConnectATC        = 5,  // M121
-    LEDOFF            = 6,  // M150
-    LEDON             = 7,  // M151
+    ReEnableDoor      = 4,  // M110
+    DisableDoor       = 5,  // M111
+    DisconnectATC     = 6,  // M120
+    ConnectATC        = 7,  // M121
+    LEDOFF            = 8,  // M150
+    LEDON             = 9,  // M151
 };
 
 // Modal Group MM5: User I/O control
