@@ -329,6 +329,7 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
     }
 
     gc_state->Rownd_special = false;
+    gc_state->Rownd_thread  = true;
 
     protocol_buffer_synchronize();
 
@@ -683,6 +684,8 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
     if (is_inverseTime) {
         gc_block->modal.feed_rate = FeedRate::InverseTime;
     }
+
+    gc_state->Rownd_thread = false;
 
 #ifdef ROWND_REPORT
     report_status_message(oPut, CLIENT_SERIAL);

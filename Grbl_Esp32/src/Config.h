@@ -189,6 +189,7 @@ const int DEFAULT_RADIO_MODE = ESP_RADIO_OFF;
 enum class Cmd : uint8_t {
     Reset                 = 0x18,  // Ctrl-X
     StatusReport          = '?',
+    ModeReport            = '&',
     CycleStart            = '~',
     FeedHold              = '!',
     SafetyDoor            = 0x84,

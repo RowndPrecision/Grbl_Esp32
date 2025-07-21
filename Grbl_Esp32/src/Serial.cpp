@@ -236,7 +236,7 @@ bool is_realtime_command(uint8_t data) {
         return true;
     }
     auto cmd = static_cast<Cmd>(data);
-    return cmd == Cmd::Reset || cmd == Cmd::StatusReport || cmd == Cmd::CycleStart || cmd == Cmd::FeedHold;
+    return cmd == Cmd::Reset || cmd == Cmd::StatusReport || cmd == Cmd::ModeReport || cmd == Cmd::CycleStart || cmd == Cmd::FeedHold;
 }
 
 // Act upon a realtime character
@@ -248,6 +248,9 @@ void execute_realtime_command(Cmd command, uint8_t client) {
             break;
         case Cmd::StatusReport:
             report_realtime_status(client);  // direct call instead of setting flag
+            break;
+        case Cmd::ModeReport:
+            report_gcode_modes(client);  // direct call instead of setting flag
             break;
         case Cmd::CycleStart:
             sys_rt_exec_state.bit.cycleStart = true;

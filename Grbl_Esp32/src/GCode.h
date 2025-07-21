@@ -333,6 +333,8 @@ typedef struct {
     gc_modal_t modal;
 
     bool Rownd_special = false;
+    bool Rownd_isAtc   = false;
+    bool Rownd_thread  = false;
 
     float   spindle_speed;  // RPM
     float   feed_rate;      // Millimeters/min

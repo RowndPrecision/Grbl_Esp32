@@ -372,40 +372,44 @@ void report_gcode_modes(uint8_t client) {
     const char* mode = "";
     strcpy(modes_rpt, "[GC:");
 
-    switch (gc_state.modal.motion) {
-        case Motion::None:
-            mode = "G80";
-            break;
-        case Motion::Seek:
-            mode = "G0";
-            break;
-        case Motion::Linear:
-            mode = "G1";
-            break;
-        case Motion::CwArc:
-            mode = "G2";
-            break;
-        case Motion::CcwArc:
-            mode = "G3";
-            break;
-        case Motion::G33:
-            mode = "G33";
-            break;
-        case Motion::ProbeToward:
-            mode = "G38.1";
-            break;
-        case Motion::ProbeTowardNoError:
-            mode = "G38.2";
-            break;
-        case Motion::ProbeAway:
-            mode = "G38.3";
-            break;
-        case Motion::ProbeAwayNoError:
-            mode = "G38.4";
-            break;
-        case Motion::G76:
-            mode = "G76";
-            break;
+    if (gc_state.Rownd_thread) {
+        mode = "G76";
+    } else {
+        switch (gc_state.modal.motion) {
+            case Motion::None:
+                mode = "G80";
+                break;
+            case Motion::Seek:
+                mode = "G0";
+                break;
+            case Motion::Linear:
+                mode = "G1";
+                break;
+            case Motion::CwArc:
+                mode = "G2";
+                break;
+            case Motion::CcwArc:
+                mode = "G3";
+                break;
+            case Motion::G33:
+                mode = "G33";
+                break;
+            case Motion::ProbeToward:
+                mode = "G38.1";
+                break;
+            case Motion::ProbeTowardNoError:
+                mode = "G38.2";
+                break;
+            case Motion::ProbeAway:
+                mode = "G38.3";
+                break;
+            case Motion::ProbeAwayNoError:
+                mode = "G38.4";
+                break;
+            case Motion::G76:
+                mode = "G76";
+                break;
+        }
     }
     strcat(modes_rpt, mode);
 
@@ -711,6 +715,8 @@ void report_realtime_status(uint8_t client) {
         strcat(status, "A");
     if (rownd_param_ignore_door_switch->get())
         strcat(status, "D");
+    if (gc_state.Rownd_thread)
+        strcat(status, "T");
 
 #ifdef REPORT_FIELD_PIN_STATE
     AxisMask    lim_pin_state  = limits_get_state();
