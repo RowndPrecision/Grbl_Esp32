@@ -84,6 +84,7 @@ void settings_init() {
     WebUI::make_web_settings();
     make_grbl_commands();
     load_settings();
+    initialATCCheck();
 }
 
 // TODO Settings - jog may need to be special-cased in the parser, since

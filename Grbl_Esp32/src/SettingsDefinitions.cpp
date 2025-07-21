@@ -204,6 +204,8 @@ static bool checkDisableDoorChange(char* value) {
     return true;
 }
 
+// OLD checkATCChange
+/*
 static bool checkATCChange(char* value) {
     // TODO Check for errors
     atc_connected->_checkError = Error::Ok;
@@ -244,6 +246,70 @@ static bool checkATCChange(char* value) {
     } else {
         grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC: %s", atc_connected->getStringValue());
     }
+    return true;
+}
+*/
+
+// NEW checkATCChange
+static bool checkATCChange(char* value) {
+    atc_connected->_checkError = Error::Ok;
+
+    if (!value) {
+        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC: %s", atc_connected->getStringValue());
+        return true;
+    }
+
+    bool _convertedValue = (strcasecmp(value, "on") == 0) || (strcasecmp(value, "true") == 0) || (strcasecmp(value, "enabled") == 0) || (strcasecmp(value, "yes") == 0) || (strcasecmp(value, "1") == 0);
+
+    if (atc_connected->get() == _convertedValue) {
+        // No state change, do nothing
+        // grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC: %s", value);
+        return true;
+    }
+
+    if (static_cast<SpindleType>(spindle_type->get()) != SpindleType::ASDA_CN1 && !gc_state.Rownd_special) {
+        atc_connected->_checkError = _convertedValue ? Error::AtcUnexpectedConnection : Error::AtcUnexpectedRemoval;
+        return false;
+    }
+
+    Error temp = limit_invert->setAxis(A_AXIS, !_convertedValue);
+    if (temp == Error::Ok) {
+        temp = limit_invert->saveValue();
+    }
+    if (temp != Error::Ok) {
+        atc_connected->_checkError = temp;
+        return false;
+    }
+
+    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC %s", _convertedValue ? "connected" : "removed");
+    return true;
+}
+
+bool initialATCCheck() {
+    AxisMask mask = limits_get_state();
+
+    bool test1 = atc_connected->get();
+    bool test2 = bit_istrue(mask, bit(REMOVABLE_AXIS_LIMIT));
+    bool test3 = bit_istrue(limit_invert->getAxis(), bit(REMOVABLE_AXIS_LIMIT));
+
+    // Erroneous state: ATC state and Limit invert do not match.
+    // This could be caused by flash write errors or manual changes to related settings.
+    // A warning is issued; manually changing the ATC state from the screen should fix this.
+    if (test1 == test3) {
+        grbl_msg_sendf(CLIENT_ALL, MsgLevel::Warning, "Warning: Invalid ATC state detected. Please manually change the ATC state from the screen to fix this.");
+        return false;
+    }
+
+    // Used XNOR to represent reality. just trust me :D
+    bool reality = (test2 == test3);
+
+    // If the current ATC state does not match reality, update it
+    if (test1 != reality) {
+        gc_state.Rownd_special = true;
+        atc_connected->setBoolValue(reality);
+        gc_state.Rownd_special = false;
+    }
+
     return true;
 }
 

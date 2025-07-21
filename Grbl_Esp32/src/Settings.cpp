@@ -29,10 +29,17 @@ bool isAxisRpm(int axis) {
 #endif
     return false;
 }
-bool isAxisMovable(int axis) {
+bool isAxisValid(int axis) {
     // Disabled for automatic ATC connection detection. Kept for potential future use.
 
     if ((axis == REMOVABLE_AXIS_LIMIT && static_cast<SpindleType>(spindle_type->get()) != SpindleType::ASDA_CN1) || (axis == REMOVABLE_AXIS_LIMIT && !atc_connected->get())) {
+        return false;
+    }
+    return true;
+}
+
+bool isAxisOperationAllowed(int axis) {
+    if ((!isAxisValid(axis)) || (axis == REMOVABLE_AXIS_LIMIT && (!gc_state.Rownd_isAtc || !rownd_verbose_enable->get()))) {
         return false;
     }
     return true;

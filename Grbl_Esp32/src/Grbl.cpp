@@ -188,6 +188,8 @@ Error user_tool_change(uint8_t new_tool) {
 
     protocol_buffer_synchronize();
 
+    gc_state.Rownd_isAtc = true;
+
     // old atc
     // snprintf(tc_line, sizeof(tc_line), "G1G90F%.2fA%.2f\r\n", atc_speed->get(), atc_distance->get() * tool_active->get(-1) + atc_distance->get() * atc_offset->get());
     // WebUI::inputBuffer.push(tc_line);  // It's more efficient to add to the buffer instead of executing immediately.
@@ -251,6 +253,8 @@ Error user_tool_change(uint8_t new_tool) {
 #endif
 
     protocol_buffer_synchronize();
+
+    gc_state.Rownd_isAtc = false;
 
     if (is_absolute) {
         gc_state.modal.distance = Distance::Absolute;

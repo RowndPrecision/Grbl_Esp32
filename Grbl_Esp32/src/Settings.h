@@ -506,7 +506,8 @@ extern bool  anyState();
 extern bool  notCycleOrHold();
 extern bool  isAxisAsda(int axis);
 extern bool  isAxisRpm(int axis);
-extern bool  isAxisMovable(int axis);
+extern bool  isAxisValid(int axis);
+extern bool  isAxisOperationAllowed(int axis);
 extern Error setDisableDoor(bool isDisabled);
 extern Error setATCConnection(bool isConnected);
 

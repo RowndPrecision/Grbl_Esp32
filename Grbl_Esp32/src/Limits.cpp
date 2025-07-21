@@ -98,7 +98,7 @@ void saveLimitsTaskFunction(void* pvParameters) {
             char     msg[20]  = "";
             auto     n_axis   = number_axis->get();
             for (int axis = 0; axis < n_axis; axis++) {
-                if (bitnum_istrue(pinMask, axis) && isAxisMovable(axis)) {
+                if (bitnum_istrue(pinMask, axis) && isAxisOperationAllowed(axis)) {
                     if (dirBlock == NULL)
                         dirBlock = plan_get_current_block();
                     if (dirBlock != NULL && dirBlock->steps[axis] != 0) {
@@ -368,7 +368,8 @@ void limits_init() {
     for (int axis = 0; axis < n_axis; axis++) {
         for (int gang_index = 0; gang_index < 2; gang_index++) {
             uint8_t pin;
-            if ((pin = limit_pins[axis][gang_index]) != UNDEFINED_PIN && isAxisMovable(axis)) {
+            // if ((pin = limit_pins[axis][gang_index]) != UNDEFINED_PIN && isAxisValid(axis)) {
+            if ((pin = limit_pins[axis][gang_index]) != UNDEFINED_PIN) {
                 pinMode(pin, mode);
                 grbl_sendf(CLIENT_SERIAL, "[test: limit: %c | pin:  %i]\r\n", "XYZABC"[axis], pin);
                 limit_mask |= bit(axis);
@@ -437,7 +438,8 @@ AxisMask limits_get_state() {
     for (int axis = 0; axis < n_axis; axis++) {
         for (int gang_index = 0; gang_index < 2; gang_index++) {
             uint8_t pin = limit_pins[axis][gang_index];
-            if (pin != UNDEFINED_PIN && isAxisMovable(axis)) {
+            // if (pin != UNDEFINED_PIN && isAxisValid(axis)) {
+            if (pin != UNDEFINED_PIN) {
                 if (bit_istrue(pinNvert, bit(axis)))
                     pinMask |= (!digitalRead(pin) << axis);
                 else
@@ -537,7 +539,14 @@ void limitCheckTask(void* pvParameters) {
                 grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "atc algilandi %s, %i", msg, atc_connected->get());
                 atc_connected->setBoolValue(true);  // auto detect?
             } else if (atc_connected->get() && bit_is_match(switch_state, bit(REMOVABLE_AXIS_LIMIT))) {
-                grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "atc tur atti? %s", msg);
+                if (dirBlock == NULL) {
+                    gc_state.Rownd_special = true;
+                    atc_connected->setBoolValue(false);  // auto detect?
+                    gc_state.Rownd_special = false;
+                    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "atc söküldü %s", msg);
+                } else {
+                    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "atc tur atti %s", msg);
+                }
                 // ignore
             } else {
                 grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Limit Switch State %s", msg);
