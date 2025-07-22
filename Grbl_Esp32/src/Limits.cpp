@@ -47,11 +47,11 @@ void IRAM_ATTR isr_limit_switches(void* arg) {
     // moves in the planner and serial buffers are all cleared and newly sent blocks will be
     // locked out until a homing cycle or a kill lock command. Allows the user to disable the hard
     // limit setting if their limits are constantly triggering after a reset and move their axes.
-    if (sys.state != State::Alarm && sys.state != State::Homing) {
+    int axis = (int)(intptr_t)arg;
+    if ((sys.state != State::Alarm || axis == REMOVABLE_AXIS_LIMIT) && sys.state != State::Homing) {
         if (sys_rt_exec_alarm == ExecAlarm::None) {
 #ifdef ENABLE_SOFTWARE_DEBOUNCE
             // we will start a task that will recheck the switches after a small delay
-            int axis = (int)(intptr_t)arg;
             xQueueSendFromISR(limit_sw_queue, &axis, NULL);
 #else
 #    ifdef HARD_LIMIT_FORCE_STATE_CHECK
@@ -157,6 +157,11 @@ void saveLimitsTaskFunction(void* pvParameters) {
 void limits_go_home(uint8_t cycle_mask) {
     if (sys.abort) {
         return;  // Block if system reset has been issued.
+    }
+
+    if (bit_istrue(cycle_mask, bit(REMOVABLE_AXIS_LIMIT)) && !atc_connected->get()) {
+        grbl_msg_sendf(CLIENT_ALL, MsgLevel::Warning, "ATC homing blocked: ATC connection is required.");
+        return;
     }
 
     static float temp_target[MAX_N_AXIS];
@@ -339,7 +344,7 @@ void limits_go_home(uint8_t cycle_mask) {
         } else {
             pulloff = homing_pulloff->get();
         }
-        if (cycle_mask & bit(idx)) {
+        if (bit_istrue(cycle_mask, bit(idx))) {
             float travel = axis_settings[idx]->max_travel->get();
             float mpos   = axis_settings[idx]->home_mpos->get();
 
@@ -348,6 +353,13 @@ void limits_go_home(uint8_t cycle_mask) {
             } else {
                 sys_position[idx] = (mpos - pulloff) * steps;
             }
+            // if (idx == REMOVABLE_AXIS_LIMIT) {
+            //     gc_state.Rownd_special = true;
+            //     Error err1             = tool_selected->setValue(1);
+            //     Error err2             = tool_active->setValue(1);
+            //     gc_state.Rownd_special = false;
+            //     grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "tool set to sel: %i (%s), act: %i (%s)", tool_selected->get(), errorString(err1), tool_active->get(), errorString(err2));
+            // }
         }
     }
     sys.step_control = {};                      // Return step control to normal operation.

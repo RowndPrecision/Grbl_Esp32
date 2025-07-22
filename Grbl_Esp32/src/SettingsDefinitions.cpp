@@ -290,13 +290,14 @@ bool initialATCCheck() {
 
     bool test1 = atc_connected->get();
     bool test2 = bit_istrue(mask, bit(REMOVABLE_AXIS_LIMIT));
-    bool test3 = bit_istrue(limit_invert->getAxis(), bit(REMOVABLE_AXIS_LIMIT));
+    bool test3 = bit_istrue(limit_invert->get(), bit(REMOVABLE_AXIS_LIMIT));
 
     // Erroneous state: ATC state and Limit invert do not match.
     // This could be caused by flash write errors or manual changes to related settings.
     // A warning is issued; manually changing the ATC state from the screen should fix this.
     if (test1 == test3) {
-        grbl_msg_sendf(CLIENT_ALL, MsgLevel::Warning, "Warning: Invalid ATC state detected. Please manually change the ATC state from the screen to fix this.");
+        grbl_msg_sendf(
+            CLIENT_ALL, MsgLevel::Warning, "Warning: Invalid ATC state detected. Please manually change the ATC state from the screen to fix this.con(t1):%i, lst(t2):%i, inv(t3):%i, ma:%i, li:%i", test1, test2, test3, mask, limit_invert->get());
         return false;
     }
 
@@ -305,9 +306,12 @@ bool initialATCCheck() {
 
     // If the current ATC state does not match reality, update it
     if (test1 != reality) {
+        grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "ATC state mismatch: reported %s, applying correction", atc_connected->getStringValue());
         gc_state.Rownd_special = true;
         atc_connected->setBoolValue(reality);
         gc_state.Rownd_special = false;
+    } else {
+        grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "ATC state: %s", atc_connected->getStringValue());
     }
 
     return true;
