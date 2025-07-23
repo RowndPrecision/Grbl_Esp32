@@ -94,7 +94,7 @@ Setting::Setting(const char* description, type_t type, permissions_t permissions
 }
 
 Error Setting::check(char* s) {
-    if (sys.state != State::Idle && sys.state != State::Alarm) {
+    if (sys.state != State::Idle && sys.state != State::Alarm && !gc_state.Rownd_special) {
         return Error::IdleError;
     }
     if (!_checker) {

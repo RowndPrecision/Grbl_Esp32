@@ -146,12 +146,14 @@ Error __attribute__((weak)) rownd_G33(parser_block_t* gc_block, float* position)
 // }
 
 bool user_defined_homing(uint8_t cycle_mask) {
-    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "home usr def mask: %d", cycle_mask);
+    if (rownd_verbose_enable->get())
+        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "home usr def mask: %d", cycle_mask);
     if (bitnum_istrue(cycle_mask, X_AXIS) || bitnum_istrue(cycle_mask, Z_AXIS) || cycle_mask == 0) {
         return false;
     }
 
-    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "TODO home: %d", cycle_mask);
+    if (rownd_verbose_enable->get())
+        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "TODO home: %d", cycle_mask);
     return false;
 }
 

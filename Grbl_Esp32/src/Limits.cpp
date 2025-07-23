@@ -142,7 +142,8 @@ void saveLimitsTaskFunction(void* pvParameters) {
 
         Error err1 = limit_axis_move_negative->saveValue();
         Error err2 = limit_axis_move_positive->saveValue();
-        grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "LAMN: %s, LAMP %s", errorString(err1), errorString(err2));
+        if (rownd_verbose_enable->get())
+            grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "LAMN: %s, LAMP %s", errorString(err1), errorString(err2));
         dirBlock = NULL;
     }
 }
@@ -199,7 +200,8 @@ void limits_go_home(uint8_t cycle_mask) {
         if (bit_istrue(cycle_mask, bit(idx))) {
             // Set target based on max_travel setting. Ensure homing switches engaged with search scalar.
             max_travel = MAX(max_travel, (HOMING_AXIS_SEARCH_SCALAR)*axis_settings[idx]->max_travel->get());
-            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "h %c: %f", "XYZABC"[idx], max_travel);
+            if (rownd_verbose_enable->get())
+                grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "h %c: %f", "XYZABC"[idx], max_travel);
         }
     }
     // Set search mode with approach at seek rate to quickly engage the specified cycle_mask limit switches.
@@ -353,13 +355,14 @@ void limits_go_home(uint8_t cycle_mask) {
             } else {
                 sys_position[idx] = (mpos - pulloff) * steps;
             }
-            // if (idx == REMOVABLE_AXIS_LIMIT) {
-            //     gc_state.Rownd_special = true;
-            //     Error err1             = tool_selected->setValue(1);
-            //     Error err2             = tool_active->setValue(1);
-            //     gc_state.Rownd_special = false;
-            //     grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "tool set to sel: %i (%s), act: %i (%s)", tool_selected->get(), errorString(err1), tool_active->get(), errorString(err2));
-            // }
+            if (idx == REMOVABLE_AXIS_LIMIT) {
+                gc_state.Rownd_special = true;
+                Error err1             = tool_selected->setValue(1);
+                Error err2             = tool_active->setValue(1);
+                gc_state.Rownd_special = false;
+                if (rownd_verbose_enable->get())
+                    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "tool set to sel: %i (%s), act: %i (%s)", tool_selected->get(), errorString(err1), tool_active->get(), errorString(err2));
+            }
         }
     }
     sys.step_control = {};                      // Return step control to normal operation.
@@ -383,14 +386,17 @@ void limits_init() {
             // if ((pin = limit_pins[axis][gang_index]) != UNDEFINED_PIN && isAxisValid(axis)) {
             if ((pin = limit_pins[axis][gang_index]) != UNDEFINED_PIN) {
                 pinMode(pin, mode);
-                grbl_sendf(CLIENT_SERIAL, "[test: limit: %c | pin:  %i]\r\n", "XYZABC"[axis], pin);
+                if (rownd_verbose_enable->get())
+                    grbl_sendf(CLIENT_SERIAL, "[test: limit: %c | pin:  %i]\r\n", "XYZABC"[axis], pin);
                 limit_mask |= bit(axis);
                 if (hard_limits->get()) {
                     attachInterruptArg(pin, isr_limit_switches, (void*)axis, RISING);
-                    grbl_sendf(CLIENT_SERIAL, "[test: attach: %c | pin:  %i]\r\n", "XYZABC"[axis], pin);
+                    if (rownd_verbose_enable->get())
+                        grbl_sendf(CLIENT_SERIAL, "[test: attach: %c | pin:  %i]\r\n", "XYZABC"[axis], pin);
                 } else {
                     detachInterrupt(pin);
-                    grbl_sendf(CLIENT_SERIAL, "[test: deattach: %c | pin:  %i]\r\n", "XYZABC"[axis], pin);
+                    if (rownd_verbose_enable->get())
+                        grbl_sendf(CLIENT_SERIAL, "[test: deattach: %c | pin:  %i]\r\n", "XYZABC"[axis], pin);
                 }
 
                 if (limit_sw_queue == NULL) {
@@ -430,7 +436,8 @@ void limits_disable() {
             uint8_t pin = limit_pins[axis][gang_index];
             if (pin != UNDEFINED_PIN) {
                 detachInterrupt(pin);
-                grbl_sendf(CLIENT_SERIAL, "[disable: deattach: %c | pin:  %i]\r\n", "XYZABC"[axis], pin);
+                if (rownd_verbose_enable->get())
+                    grbl_sendf(CLIENT_SERIAL, "[disable: deattach: %c | pin:  %i]\r\n", "XYZABC"[axis], pin);
             }
         }
     }
@@ -535,7 +542,8 @@ void limitCheckTask(void* pvParameters) {
         AxisMask switch_state;
         switch_state = limits_get_state();
         maskToString(switch_state, msg);
-        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "sw algilandi %s, axis: %c", msg, "XYZABC"[axis]);
+        if (rownd_verbose_enable->get())
+            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "sw algilandi %s, axis: %c", msg, "XYZABC"[axis]);
         if (bit_istrue(switch_state, bit(axis))) {
             if (!atc_connected->get() && bit_is_match(switch_state, bit(REMOVABLE_AXIS_LIMIT))) {
                 gc_state.Rownd_special = true;
@@ -548,16 +556,19 @@ void limitCheckTask(void* pvParameters) {
                 // spindle_type->setEnumValue((int8_t)SpindleType::ASDA_CN1);
                 atc_connected->setBoolValue(true);  // auto detect?
                 gc_state.Rownd_special = false;
-                grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "atc algilandi %s, %i", msg, atc_connected->get());
+                if (rownd_verbose_enable->get())
+                    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "atc algilandi %s, %i", msg, atc_connected->get());
                 atc_connected->setBoolValue(true);  // auto detect?
             } else if (atc_connected->get() && bit_is_match(switch_state, bit(REMOVABLE_AXIS_LIMIT))) {
                 if (dirBlock == NULL) {
                     gc_state.Rownd_special = true;
                     atc_connected->setBoolValue(false);  // auto detect?
                     gc_state.Rownd_special = false;
-                    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "atc söküldü %s", msg);
+                    if (rownd_verbose_enable->get())
+                        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "atc söküldü %s", msg);
                 } else {
-                    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "atc tur atti %s", msg);
+                    if (rownd_verbose_enable->get())
+                        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "atc tur atti %s", msg);
                 }
                 // ignore
             } else {

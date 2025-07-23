@@ -19,7 +19,8 @@ namespace Spindles {
 
 #ifdef ASDA_CN1_S_P_PIN
         digitalWrite(ASDA_CN1_S_P_PIN, true);
-        grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "cn1 SP on");
+        if (rownd_verbose_enable->get())
+            grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "cn1 SP on");
 #else
         grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Warning: ASDA_CN1_S_P_PIN not defined");
         return;  // We cannot continue without the output pin
@@ -207,7 +208,8 @@ namespace Spindles {
 
 #ifdef ASDA_CN1_S_P_PIN
         digitalWrite(ASDA_CN1_S_P_PIN, false);
-        grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "cn1 SP off");
+        if (rownd_verbose_enable->get())
+            grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "cn1 SP off");
 #else
         grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Warning: ASDA_CN1_S_P_PIN not defined");
         return;  // We cannot continue without the output pin
