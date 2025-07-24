@@ -65,7 +65,7 @@
 #define DEFAULT_HOMING_CYCLE_4  0
 #define DEFAULT_HOMING_CYCLE_5  0
 
-#define SPINDLE_TYPE            SpindleType::PWM
+#define SPINDLE_TYPE            SpindleType::ASDA_CN1
 #define DEFAULT_SPINDLE_FREQ    5000.0f
 
 #define SPINDLE_OUTPUT_PIN      GPIO_NUM_17
@@ -78,6 +78,7 @@
 #define ASDA_CN1_DIR_PIN        I2SO(3)
 
 #define DEFAULT_ROWND_VERBOSE 0
+#define DEFAULT_ROWND_ATC_HOME_DIRECTION_V2 false
 #define DEFAULT_ROWND_G76_IGNORE_OFFSET false
 #define DEFAULT_ROWND_IGNORE_DOOR_SWITCH false
 
@@ -95,7 +96,7 @@
 #define DEFAULT_INVERT_CHUCK_DIRECTION_PIN    false
 
 #define DEFAULT_INVERT_LASER_OUTPUT_PIN       false
-#define DEFAULT_INVERT_LASER_ENABLE_PIN       false
+#define DEFAULT_INVERT_LASER_ENABLE_PIN       true
 #define DEFAULT_INVERT_LASER_DIRECTION_PIN    false
 
 
@@ -165,7 +166,7 @@
 #define DEFAULT_X_MAX_TRAVEL 100.0  // mm NOTE: Must be a positive value.
 #define DEFAULT_Y_MAX_TRAVEL 0.0    // 0 = inf
 #define DEFAULT_Z_MAX_TRAVEL 300.0  // This is percent in servo mode...used for calibration
-#define DEFAULT_A_MAX_TRAVEL 40.0   // This is percent in servo mode...used for calibration
+#define DEFAULT_A_MAX_TRAVEL 13.0   // This is percent in servo mode...used for calibration
 
 #define DEFAULT_ATC_STATE false
 

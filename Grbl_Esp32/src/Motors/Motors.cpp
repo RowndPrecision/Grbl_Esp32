@@ -423,7 +423,7 @@ bool motors_direction(uint8_t dir_mask) {
         previous_dir = dir_mask;
 
         for (int axis = X_AXIS; axis < n_axis; axis++) {
-            if (!isAxisOperationAllowed(axis)) {
+            if (!isAxisValid(axis)) {
                 continue;
             }
             bool thisDir = bitnum_istrue(dir_mask, axis);

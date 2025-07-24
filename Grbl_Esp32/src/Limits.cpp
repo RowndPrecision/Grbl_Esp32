@@ -95,10 +95,10 @@ void saveLimitsTaskFunction(void* pvParameters) {
         if (pinMask) {
             AxisMask is_test  = 0;
             AxisMask is_limit = 0;
-            char     msg[20]  = "";
+            char     msg[10]  = "";
             auto     n_axis   = number_axis->get();
             for (int axis = 0; axis < n_axis; axis++) {
-                if (bitnum_istrue(pinMask, axis) && isAxisOperationAllowed(axis)) {
+                if (bitnum_istrue(pinMask, axis) && isAxisValid(axis)) {
                     if (dirBlock == NULL)
                         dirBlock = plan_get_current_block();
                     if (dirBlock != NULL && dirBlock->steps[axis] != 0) {
@@ -142,8 +142,9 @@ void saveLimitsTaskFunction(void* pvParameters) {
 
         Error err1 = limit_axis_move_negative->saveValue();
         Error err2 = limit_axis_move_positive->saveValue();
-        if (rownd_verbose_enable->get())
+        if (rownd_verbose_enable->get()) {
             grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "LAMN: %s, LAMP %s", errorString(err1), errorString(err2));
+        }
         dirBlock = NULL;
     }
 }
@@ -160,11 +161,31 @@ void limits_go_home(uint8_t cycle_mask) {
         return;  // Block if system reset has been issued.
     }
 
-    if (bit_istrue(cycle_mask, bit(REMOVABLE_AXIS_LIMIT)) && !atc_connected->get()) {
-        grbl_msg_sendf(CLIENT_ALL, MsgLevel::Warning, "ATC homing blocked: ATC connection is required.");
-        return;
+    uint8_t cycle_count = (2 * (n_homing_locate_cycle + 1));
+
+    if (bit_istrue(cycle_mask, bit(REMOVABLE_AXIS_LIMIT))) {
+        if (!atc_connected->get()) {
+            grbl_msg_sendf(CLIENT_ALL, MsgLevel::Warning, "ATC homing blocked: ATC connection is required.");
+            return;
+        } else if (!bit_is_match(cycle_mask, bit(REMOVABLE_AXIS_LIMIT))) {
+            grbl_msg_sendf(CLIENT_ALL, MsgLevel::Warning, "ATC homing blocked: must be performed independently");
+            if (rownd_verbose_enable->get()) {
+                char msg[10] = "";
+                grbl_msg_sendf(CLIENT_ALL, MsgLevel::Warning, "cycle_mask: %s, (%i)", maskToString(cycle_mask, msg), cycle_mask);
+            }
+            return;
+        } else {
+            if (rownd_param_ATC_home_direction_v2->get()) {
+                cycle_count = 3;
+            }
+        }
     }
 
+    if (rownd_verbose_enable->get()) {
+        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Homing cycle count: %i", cycle_count);
+    }
+
+    bool         is_ErrorDebugSent = false;
     static float temp_target[MAX_N_AXIS];
 
     // Initialize plan data struct for homing motion. Spindle and coolant are disabled.
@@ -188,8 +209,9 @@ void limits_go_home(uint8_t cycle_mask) {
 #ifdef USE_LINE_NUMBERS
     pl_data->line_number = HOMING_CYCLE_LINE_NUMBER;
 #endif
+    // Changed from do/while to for loop to count forward with 1-based cycle numbering
     // Initialize variables used for homing computations.
-    uint8_t n_cycle = (2 * n_homing_locate_cycle + 1);
+    // uint8_t n_cycle = (2 * n_homing_locate_cycle + 1);
     uint8_t step_pin[MAX_N_AXIS];
     float   max_travel = 0.0;
 
@@ -200,8 +222,9 @@ void limits_go_home(uint8_t cycle_mask) {
         if (bit_istrue(cycle_mask, bit(idx))) {
             // Set target based on max_travel setting. Ensure homing switches engaged with search scalar.
             max_travel = MAX(max_travel, (HOMING_AXIS_SEARCH_SCALAR)*axis_settings[idx]->max_travel->get());
-            if (rownd_verbose_enable->get())
+            if (rownd_verbose_enable->get()) {
                 grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "h %c: %f", "XYZABC"[idx], max_travel);
+            }
         }
     }
     // Set search mode with approach at seek rate to quickly engage the specified cycle_mask limit switches.
@@ -209,7 +232,7 @@ void limits_go_home(uint8_t cycle_mask) {
     float    homing_rate = homing_seek_rate->get();
     uint8_t  n_active_axis;
     AxisMask limit_state, axislock;
-    do {
+    for (uint8_t n_cycle = 1; n_cycle <= cycle_count; ++n_cycle) {
         float* target = system_get_mpos();
         // Initialize and declare variables needed for homing routine.
         axislock      = 0;
@@ -239,6 +262,10 @@ void limits_go_home(uint8_t cycle_mask) {
                         target[idx] = -max_travel;
                     }
                 }
+                if (rownd_verbose_enable->get()) {
+                    grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "cycle: %i, axis: %c, target: %f", n_cycle, "XYZABC"[idx], target[idx]);
+                }
+
                 // Apply axislock to the step port pins active in this cycle.
                 axislock |= step_pin[idx];
             }
@@ -263,8 +290,15 @@ void limits_go_home(uint8_t cycle_mask) {
                 limit_state = limits_get_state();
                 for (uint8_t idx = 0; idx < n_axis; idx++) {
                     if (axislock & step_pin[idx]) {
-                        if (limit_state & bit(idx)) {
-                            axislock &= ~(step_pin[idx]);
+                        if (bit_istrue(limit_state, bit(idx))) {
+                            if (idx == REMOVABLE_AXIS_LIMIT && n_cycle > 1 && rownd_param_ATC_home_direction_v2->get()) {
+                                if (rownd_verbose_enable->get() && !is_ErrorDebugSent) {
+                                    grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Unexpected switch trigger after first stage while homing ATC (V2)!");
+                                    is_ErrorDebugSent = true;
+                                }
+                            } else {
+                                axislock &= ~(step_pin[idx]);
+                            }
                         }
                     }
                 }
@@ -289,7 +323,13 @@ void limits_go_home(uint8_t cycle_mask) {
                 }
                 // Homing failure condition: Limit switch not found during approach.
                 if (approach && cycle_stop) {
-                    sys_rt_exec_alarm = ExecAlarm::HomingFailApproach;
+                    if (rownd_param_ATC_home_direction_v2->get() && n_cycle == cycle_count) {
+                        if (rownd_verbose_enable->get()) {
+                            grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "ATC homing completed using V2 algorithm");
+                        }
+                    } else {
+                        sys_rt_exec_alarm = ExecAlarm::HomingFailApproach;
+                    }
                 }
 
                 if (sys_rt_exec_alarm != ExecAlarm::None) {
@@ -320,7 +360,28 @@ void limits_go_home(uint8_t cycle_mask) {
         // After first cycle, homing enters locating phase. Shorten search to pull-off distance.
         max_travel = homing_pulloff->get();
         if (bit_istrue(cycle_mask, bit(REMOVABLE_AXIS_LIMIT))) {
-            max_travel = MAX(max_travel, atc_distance->get() + atc_offset->get());
+            if (rownd_param_ATC_home_direction_v2->get()) {
+                switch (n_cycle) {
+                    case 1:
+                        max_travel = -atc_offset->get();
+                        break;
+                    case 2:
+                        max_travel = -(atc_distance->get() + atc_offset->get());
+                        max_travel /= HOMING_AXIS_LOCATE_SCALAR;
+                        break;
+                    case 3:
+                        max_travel = atc_distance->get() + atc_offset->get();
+                        continue;
+                        break;
+                    default:
+                        if (rownd_verbose_enable->get()) {
+                            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC homing should never reach this stage! cycle: %i, max_tr: %f", n_cycle, max_travel);
+                        }
+                        break;
+                }
+            } else {
+                max_travel = atc_distance->get() + atc_offset->get();
+            }
         }
         if (approach) {
             max_travel *= HOMING_AXIS_LOCATE_SCALAR;
@@ -328,7 +389,7 @@ void limits_go_home(uint8_t cycle_mask) {
         } else {
             homing_rate = homing_seek_rate->get();
         }
-    } while (n_cycle-- > 0);
+    }
     // The active cycle axes should now be homed and machine limits have been located. By
     // default, Grbl defines machine space as all negative, as do most CNCs. Since limit switches
     // can be on either side of an axes, check and set axes machine zero appropriately. Also,
@@ -360,8 +421,9 @@ void limits_go_home(uint8_t cycle_mask) {
                 Error err1             = tool_selected->setValue(1);
                 Error err2             = tool_active->setValue(1);
                 gc_state.Rownd_special = false;
-                if (rownd_verbose_enable->get())
+                if (rownd_verbose_enable->get()) {
                     grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "tool set to sel: %i (%s), act: %i (%s)", tool_selected->get(), errorString(err1), tool_active->get(), errorString(err2));
+                }
             }
         }
     }
@@ -386,17 +448,20 @@ void limits_init() {
             // if ((pin = limit_pins[axis][gang_index]) != UNDEFINED_PIN && isAxisValid(axis)) {
             if ((pin = limit_pins[axis][gang_index]) != UNDEFINED_PIN) {
                 pinMode(pin, mode);
-                if (rownd_verbose_enable->get())
+                if (rownd_verbose_enable->get()) {
                     grbl_sendf(CLIENT_SERIAL, "[test: limit: %c | pin:  %i]\r\n", "XYZABC"[axis], pin);
+                }
                 limit_mask |= bit(axis);
                 if (hard_limits->get()) {
                     attachInterruptArg(pin, isr_limit_switches, (void*)axis, RISING);
-                    if (rownd_verbose_enable->get())
+                    if (rownd_verbose_enable->get()) {
                         grbl_sendf(CLIENT_SERIAL, "[test: attach: %c | pin:  %i]\r\n", "XYZABC"[axis], pin);
+                    }
                 } else {
                     detachInterrupt(pin);
-                    if (rownd_verbose_enable->get())
+                    if (rownd_verbose_enable->get()) {
                         grbl_sendf(CLIENT_SERIAL, "[test: deattach: %c | pin:  %i]\r\n", "XYZABC"[axis], pin);
+                    }
                 }
 
                 if (limit_sw_queue == NULL) {
@@ -436,8 +501,9 @@ void limits_disable() {
             uint8_t pin = limit_pins[axis][gang_index];
             if (pin != UNDEFINED_PIN) {
                 detachInterrupt(pin);
-                if (rownd_verbose_enable->get())
+                if (rownd_verbose_enable->get()) {
                     grbl_sendf(CLIENT_SERIAL, "[disable: deattach: %c | pin:  %i]\r\n", "XYZABC"[axis], pin);
+                }
             }
         }
     }
@@ -542,8 +608,9 @@ void limitCheckTask(void* pvParameters) {
         AxisMask switch_state;
         switch_state = limits_get_state();
         maskToString(switch_state, msg);
-        if (rownd_verbose_enable->get())
-            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "sw algilandi %s, axis: %c", msg, "XYZABC"[axis]);
+        if (rownd_verbose_enable->get()) {
+            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Switches: %s, axis: %c", msg, "XYZABC"[axis]);
+        }
         if (bit_istrue(switch_state, bit(axis))) {
             if (!atc_connected->get() && bit_is_match(switch_state, bit(REMOVABLE_AXIS_LIMIT))) {
                 gc_state.Rownd_special = true;
@@ -556,19 +623,22 @@ void limitCheckTask(void* pvParameters) {
                 // spindle_type->setEnumValue((int8_t)SpindleType::ASDA_CN1);
                 atc_connected->setBoolValue(true);  // auto detect?
                 gc_state.Rownd_special = false;
-                if (rownd_verbose_enable->get())
-                    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "atc algilandi %s, %i", msg, atc_connected->get());
+                if (rownd_verbose_enable->get()) {
+                    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC connection detected: %s, %i", msg, atc_connected->get());
+                }
                 atc_connected->setBoolValue(true);  // auto detect?
             } else if (atc_connected->get() && bit_is_match(switch_state, bit(REMOVABLE_AXIS_LIMIT))) {
                 if (dirBlock == NULL) {
                     gc_state.Rownd_special = true;
                     atc_connected->setBoolValue(false);  // auto detect?
                     gc_state.Rownd_special = false;
-                    if (rownd_verbose_enable->get())
-                        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "atc söküldü %s", msg);
+                    if (rownd_verbose_enable->get()) {
+                        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC connection removed: %s", msg);
+                    }
                 } else {
-                    if (rownd_verbose_enable->get())
-                        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "atc tur atti %s", msg);
+                    if (rownd_verbose_enable->get()) {
+                        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC switch triggered during revolution (ignored as expected): %s", msg);
+                    }
                 }
                 // ignore
             } else {

@@ -40,6 +40,7 @@ IntSetting*   status_mask;
 FloatSetting* junction_deviation;
 FloatSetting* arc_tolerance;
 
+FlagSetting* rownd_param_ATC_home_direction_v2;
 FlagSetting* rownd_param_G76_ignore_offset;
 FlagSetting* rownd_param_ignore_door_switch;
 
@@ -83,6 +84,7 @@ IntSetting*   spindle_pwm_bit_precision;
 
 EnumSetting* spindle_type;
 
+FlagSetting*  atc_allow_debug;
 FlagSetting*  atc_connected;
 FloatSetting* atc_speed;
 FloatSetting* atc_distance;
@@ -490,6 +492,8 @@ void make_settings() {
 
     // Tool settings
 
+    atc_allow_debug = new FlagSetting(EXTENDED, WG, "69", "ATC/AllowDebug", DEFAULT_ATC_STATE, NULL);
+
     atc_connected = new FlagSetting(EXTENDED, WG, "68", "ATC/state", DEFAULT_ATC_STATE, checkATCChange);
 
     atc_speed    = new FloatSetting(EXTENDED, WG, "67", "ATC/speed", DEFAULT_ATC_SPEED, 0.0, DEFAULT_ATC_SPEED_MAX, NULL);
@@ -501,6 +505,8 @@ void make_settings() {
     tool_count    = new IntSetting(EXTENDED, WG, "60", "Tool/Count", DEFAULT_TOOL_COUNT_MAX, 1, DEFAULT_TOOL_COUNT_MAX, NULL);
 
     // Rownd options 1
+
+    rownd_param_ATC_home_direction_v2 = new FlagSetting(EXTENDED, WG, "56", "RowndATCHomeDirectionV2", DEFAULT_ROWND_ATC_HOME_DIRECTION_V2, NULL);
 
     rownd_param_G76_ignore_offset = new FlagSetting(EXTENDED, WG, "55", "RowndG76IgnoreOffset", DEFAULT_ROWND_G76_IGNORE_OFFSET, NULL);
 

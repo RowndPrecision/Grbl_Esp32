@@ -39,7 +39,7 @@ bool isAxisValid(int axis) {
 }
 
 bool isAxisOperationAllowed(int axis) {
-    if ((!isAxisValid(axis)) || (axis == REMOVABLE_AXIS_LIMIT && (!gc_state.Rownd_isAtc || !rownd_verbose_enable->get()))) {
+    if ((!isAxisValid(axis)) || (axis == REMOVABLE_AXIS_LIMIT && (!gc_state.Rownd_isAtc && !atc_allow_debug->get()))) {
         return false;
     }
     return true;

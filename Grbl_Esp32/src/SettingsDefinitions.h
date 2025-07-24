@@ -45,6 +45,7 @@ extern FloatSetting* arc_tolerance;
 extern FlagSetting* led_state;
 extern FlagSetting* led_inverse;
 
+extern FlagSetting* rownd_param_ATC_home_direction_v2;
 extern FlagSetting* rownd_param_G76_ignore_offset;
 extern FlagSetting* rownd_param_ignore_door_switch;
 
@@ -84,6 +85,7 @@ extern IntSetting*   spindle_pwm_bit_precision;
 
 extern EnumSetting* spindle_type;
 
+extern FlagSetting*  atc_allow_debug;
 extern FlagSetting*  atc_connected;
 extern FloatSetting* atc_speed;
 extern FloatSetting* atc_distance;
