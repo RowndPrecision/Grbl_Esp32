@@ -16,9 +16,11 @@ bool notCycleOrHold() {
     return sys.state == State::Cycle && sys.state == State::Hold;
 }
 bool isAxisAsda(int axis) {
+#ifdef POSITIONABLE_AXIS_CONVERT
     if (axis == POSITIONABLE_SPINDLE_AXIS && static_cast<SpindleType>(spindle_type->get()) == SpindleType::ASDA_CN1) {
         return true;
     }
+#endif
     return false;
 }
 bool isAxisRpm(int axis) {

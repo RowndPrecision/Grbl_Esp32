@@ -641,8 +641,10 @@ Error gc_execute_line(char* line, uint8_t client) {
                                 FAIL(Error::AsdaMode);
                             if (!isAxisOperationAllowed(DEFAULT_SWAP_A))
                                 FAIL(Error::GcodeAxisCommandConflict);
+#ifdef POSITIONABLE_AXIS_CONVERT
                             if (isAxisRpm(DEFAULT_SWAP_A))
                                 value /= axis_convet_multiplier->get();
+#endif
 
                             if (DEFAULT_SWAP_A == A_AXIS)
                                 axis_word_bit = GCodeWord::A;
@@ -671,8 +673,10 @@ Error gc_execute_line(char* line, uint8_t client) {
                                 FAIL(Error::AsdaMode);
                             if (!isAxisOperationAllowed(DEFAULT_SWAP_B))
                                 FAIL(Error::GcodeAxisCommandConflict);
+#ifdef POSITIONABLE_AXIS_CONVERT
                             if (isAxisRpm(DEFAULT_SWAP_B))
                                 value /= axis_convet_multiplier->get();
+#endif
 
                             if (DEFAULT_SWAP_B == A_AXIS)
                                 axis_word_bit = GCodeWord::A;
@@ -701,9 +705,10 @@ Error gc_execute_line(char* line, uint8_t client) {
                                 FAIL(Error::AsdaMode);
                             if (!isAxisOperationAllowed(DEFAULT_SWAP_C))
                                 FAIL(Error::GcodeAxisCommandConflict);
-                            if (isAxisRpm(DEFAULT_SWAP_C)) {
+#ifdef POSITIONABLE_AXIS_CONVERT
+                            if (isAxisRpm(DEFAULT_SWAP_C))
                                 value /= axis_convet_multiplier->get();
-                            }
+#endif
 
                             if (DEFAULT_SWAP_C == A_AXIS)
                                 axis_word_bit = GCodeWord::A;
@@ -794,8 +799,10 @@ Error gc_execute_line(char* line, uint8_t client) {
                                 FAIL(Error::AsdaMode);
                             if (!isAxisOperationAllowed(DEFAULT_SWAP_X))
                                 FAIL(Error::GcodeAxisCommandConflict);
+#ifdef POSITIONABLE_AXIS_CONVERT
                             if (isAxisRpm(DEFAULT_SWAP_X))
                                 value /= axis_convet_multiplier->get();
+#endif
 
                             if (DEFAULT_SWAP_X == A_AXIS)
                                 axis_word_bit = GCodeWord::A;
@@ -825,8 +832,10 @@ Error gc_execute_line(char* line, uint8_t client) {
                                 FAIL(Error::AsdaMode);
                             if (!isAxisOperationAllowed(DEFAULT_SWAP_Y))
                                 FAIL(Error::GcodeAxisCommandConflict);
+#ifdef POSITIONABLE_AXIS_CONVERT
                             if (isAxisRpm(DEFAULT_SWAP_Y))
                                 value /= axis_convet_multiplier->get();
+#endif
 
                             if (DEFAULT_SWAP_Y == A_AXIS)
                                 axis_word_bit = GCodeWord::A;
@@ -855,8 +864,10 @@ Error gc_execute_line(char* line, uint8_t client) {
                                 FAIL(Error::AsdaMode);
                             if (!isAxisOperationAllowed(DEFAULT_SWAP_Z))
                                 FAIL(Error::GcodeAxisCommandConflict);
+#ifdef POSITIONABLE_AXIS_CONVERT
                             if (isAxisRpm(DEFAULT_SWAP_Z))
                                 value /= axis_convet_multiplier->get();
+#endif
 
                             if (DEFAULT_SWAP_Z == A_AXIS)
                                 axis_word_bit = GCodeWord::A;

@@ -282,6 +282,7 @@ Error user_tool_change(uint8_t new_tool) {
 }
 
 float calculate_G76_feed(float s, float rev, float dz, float dx) {
+#ifdef POSITIONABLE_AXIS_CONVERT
     float feed_out = 0;
 
     if (rev != 0) {
@@ -298,6 +299,9 @@ float calculate_G76_feed(float s, float rev, float dz, float dx) {
         feed_out *= -1;
 
     return feed_out;
+#else
+    return -1;
+#endif
 }
 
 Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state_t* gc_state) {

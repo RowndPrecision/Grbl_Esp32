@@ -54,7 +54,9 @@ extern AxisMaskSetting* limit_axis_move_negative;
 
 extern FlagSetting* rownd_verbose_enable;
 
+#ifdef POSITIONABLE_AXIS_CONVERT
 extern FloatSetting* axis_convet_multiplier;
+#endif
 
 extern FloatSetting* homing_feed_rate;
 extern FloatSetting* homing_seek_rate;

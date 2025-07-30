@@ -733,3 +733,7 @@
 #ifndef DEFAULT_ATC_OFFSET_MAX
 #    define DEFAULT_ATC_OFFSET_MAX 1
 #endif
+
+#ifndef REMOVABLE_AXIS_LIMIT
+#    define REMOVABLE_AXIS_LIMIT MAX_AXES + 1
+#endif

@@ -49,7 +49,9 @@ AxisMaskSetting* limit_axis_move_negative;
 
 FlagSetting* rownd_verbose_enable;
 
+#ifdef POSITIONABLE_AXIS_CONVERT
 FloatSetting* axis_convet_multiplier;
+#endif
 
 FlagSetting* led_state;
 FlagSetting* led_inverse;
@@ -522,7 +524,9 @@ void make_settings() {
 
     // special variables
 
+#ifdef POSITIONABLE_AXIS_CONVERT
     axis_convet_multiplier = new FloatSetting(GRBL, WG, "49", "AxisConvertMultiplier", POSITIONABLE_AXIS_CONVERT, 0, 100000);
+#endif
 
     led_state   = new FlagSetting(EXTENDED, WG, "48", "led/state", DEFAULT_LED_STATE, checkLedChange);
     led_inverse = new FlagSetting(EXTENDED, WG, "47", "led/inverse", DEFAULT_LED_INVERSE, checkLedChange);
