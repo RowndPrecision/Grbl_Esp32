@@ -89,6 +89,8 @@ enum class Error : uint8_t {
     AtcIncompatibleOperation    = 141,  // The requested operation conflicts with the ATC state
     AtcUnexpectedConnection     = 142,  // ATC reported connected, but action is not possible
     AtcUnexpectedRemoval        = 143,  // ATC reported removed, but action is not possible
+    AtcNeedsG28                 = 144,  // ATC movement requires return to G28 (predefined safety position)
+    AtcInsufficientRadius       = 145,  // Not enough turning radius for ATC movement
     AsdaMode                    = 150,  // Current servo mode is not compatible with the G Code input
     AsdaAlarm                   = 151,  // Serve fell in to alarm mode
     InvalidWorkPlane            = 160,  // Work Plane miss match

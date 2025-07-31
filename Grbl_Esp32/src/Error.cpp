@@ -85,6 +85,8 @@ std::map<Error, const char*> ErrorNames = {
     { Error::AtcIncompatibleOperation, "ATC operation conflict" },
     { Error::AtcUnexpectedConnection, "Unexpected ATC connection" },
     { Error::AtcUnexpectedRemoval, "Unexpected ATC removal" },
+    { Error::AtcNeedsG28, "ATC requires G28 position" },
+    { Error::AtcInsufficientRadius, "ATC turning radius too small" },
     { Error::AsdaMode, "Incompatible servo mode" },
     { Error::AsdaAlarm, "Servo ALARM" },
     { Error::InvalidWorkPlane, "Work Plane miss match" },

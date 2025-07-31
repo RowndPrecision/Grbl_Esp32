@@ -161,6 +161,23 @@ Error user_tool_change(uint8_t new_tool) {
     if (!atc_connected->get()) {
         return Error::AtcNotConnected;
     }
+
+    protocol_buffer_synchronize();
+
+    float* curr_mpos = system_get_mpos();  // returns MAX_N_AXIS lenght array
+
+    auto n_axis = number_axis->get();  // is N_AXIS and can be <= MAX_N_AXIS
+    for (uint8_t idx = 0; idx < n_axis; idx++) {
+        if (idx != REMOVABLE_AXIS_LIMIT && idx != POSITIONABLE_SPINDLE_AXIS) {
+            if (curr_mpos[idx] != coords[CoordIndex::G28]->get()[idx]) {
+                return Error::AtcNeedsG28;
+            }
+            if (curr_mpos[idx] != coords[CoordIndex::G28]->get()[idx]) {  // WIP
+                return Error::AtcInsufficientRadius;
+            }
+        }
+    }
+
     Error oPut = Error::Ok;
 
     bool  is_absolute          = gc_state.modal.distance == Distance::Absolute;
@@ -187,8 +204,6 @@ Error user_tool_change(uint8_t new_tool) {
     if (is_imperial) {
         gc_state.modal.units = Units::Mm;
     }
-
-    protocol_buffer_synchronize();
 
     gc_state.Rownd_isAtc = true;
 
