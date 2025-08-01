@@ -228,7 +228,8 @@ Error home(int cycle) {
     if (system_check_safety_door_ajar()) {
         return Error::CheckDoor;  // Block if safety door is ajar.
     }
-    sys.state = State::Homing;  // Set system state variable
+    State prev_state = sys.state;
+    sys.state        = State::Homing;  // Set system state variable
 #ifdef USE_I2S_STEPS
     stepper_id_t save_stepper = current_stepper;
     if (save_stepper == ST_I2S_STREAM) {
@@ -243,12 +244,14 @@ Error home(int cycle) {
 #else
     mc_homing_cycle(cycle);
 #endif
-    if (!sys.abort) {             // Execute startup scripts after successful homing.
-        sys.state = State::Idle;  // Set to IDLE when complete.
-        st_go_idle();             // Set steppers to the settings idle state before returning.
+    if (!sys.abort) {  // Execute startup scripts after successful homing.
         if (cycle == HOMING_CYCLE_ALL) {
+            sys.state = State::Idle;  // Set to IDLE when complete.
+            st_go_idle();             // Set steppers to the settings idle state before returning.
             char line[128];
             system_execute_startup(line);
+        } else {
+            sys.state = prev_state;  // Restore previous state if homing was not a full-cycle.
         }
     }
     return Error::Ok;
