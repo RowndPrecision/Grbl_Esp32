@@ -1554,6 +1554,12 @@ Error gc_execute_line(char* line, uint8_t client) {
                         }
                     } else {
                         axis_command = AxisCommand::None;  // Set to none if no intermediate motion.
+                        // Move only the axes specified in secondary move.
+                        for (idx = 0; idx < n_axis; idx++) {
+                            if (idx == REMOVABLE_AXIS_LIMIT || idx == POSITIONABLE_SPINDLE_AXIS) {
+                                coord_data[idx] = gc_state.position[idx];
+                            }
+                        }
                     }
                     break;
                 case NonModal::SetHome0:  // G28.1
