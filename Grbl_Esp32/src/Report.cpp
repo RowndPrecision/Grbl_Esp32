@@ -168,11 +168,16 @@ static void report_util_axis_values(float* axis_value, char* rpt) {
     for (idx = 0; idx < n_axis; idx++) {
 #ifdef POSITIONABLE_AXIS_CONVERT
         if (isAxisRpm(idx)) {
-            rpm_conv = axis_convet_multiplier->get();
+            rpm_conv = axis_convert_multiplier->get();
         } else {
             rpm_conv = 1.0;
         }
 #endif
+        if (rownd_param_experimental_position_mode->get()) {
+            if (idx == POSITIONABLE_SPINDLE_AXIS) {
+                axis_value[idx] = fmodf(axis_value[idx], (360.0 / rpm_conv));
+            }
+        }
         snprintf(axisVal, coordStringLen - 1, format, axis_value[idx] * unit_conv * rpm_conv);
         strcat(rpt, axisVal);
         if (idx < (number_axis->get() - 1)) {
@@ -653,7 +658,9 @@ void report_realtime_status(uint8_t client) {
     strcat(status, report_state_text());
 
     // Report position
-    float* print_position = system_get_mpos();
+    // float* print_position = system_get_mpos();
+    float print_position[MAX_N_AXIS];
+    memcpy(print_position, system_get_mpos(), sizeof(print_position));
     if (bit_istrue(status_mask->get(), RtStatus::Position)) {
         strcat(status, "|MPos:");
     } else {

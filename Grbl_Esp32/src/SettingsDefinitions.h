@@ -45,6 +45,7 @@ extern FloatSetting* arc_tolerance;
 extern FlagSetting* led_state;
 extern FlagSetting* led_inverse;
 
+extern FlagSetting* rownd_param_experimental_position_mode;
 extern FlagSetting* rownd_param_ATC_home_direction_v2;
 extern FlagSetting* rownd_param_G76_ignore_offset;
 extern FlagSetting* rownd_param_ignore_door_switch;
@@ -55,7 +56,7 @@ extern AxisMaskSetting* limit_axis_move_negative;
 extern FlagSetting* rownd_verbose_enable;
 
 #ifdef POSITIONABLE_AXIS_CONVERT
-extern FloatSetting* axis_convet_multiplier;
+extern FloatSetting* axis_convert_multiplier;
 #endif
 
 extern FloatSetting* homing_feed_rate;

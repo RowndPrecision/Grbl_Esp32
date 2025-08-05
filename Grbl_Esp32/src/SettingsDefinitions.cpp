@@ -40,6 +40,7 @@ IntSetting*   status_mask;
 FloatSetting* junction_deviation;
 FloatSetting* arc_tolerance;
 
+FlagSetting* rownd_param_experimental_position_mode;
 FlagSetting* rownd_param_ATC_home_direction_v2;
 FlagSetting* rownd_param_G76_ignore_offset;
 FlagSetting* rownd_param_ignore_door_switch;
@@ -50,7 +51,7 @@ AxisMaskSetting* limit_axis_move_negative;
 FlagSetting* rownd_verbose_enable;
 
 #ifdef POSITIONABLE_AXIS_CONVERT
-FloatSetting* axis_convet_multiplier;
+FloatSetting* axis_convert_multiplier;
 #endif
 
 FlagSetting* led_state;
@@ -321,6 +322,40 @@ bool initialATCCheck() {
     return true;
 }
 
+static bool checkAxisConvertChange(char* value) {
+    atc_connected->_checkError = Error::Ok;
+
+    if (!value) {
+        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "PSACM: %s", axis_convert_multiplier->getStringValue());
+        return true;
+    }
+
+    bool _convertedValue = (strcasecmp(value, "on") == 0) || (strcasecmp(value, "true") == 0) || (strcasecmp(value, "enabled") == 0) || (strcasecmp(value, "yes") == 0) || (strcasecmp(value, "1") == 0);
+
+    if (atc_connected->get() == _convertedValue) {
+        // No state change, do nothing
+        // grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC: %s", value);
+        return true;
+    }
+
+    if (static_cast<SpindleType>(spindle_type->get()) != SpindleType::ASDA_CN1 && !gc_state.Rownd_special) {
+        atc_connected->_checkError = _convertedValue ? Error::AtcUnexpectedConnection : Error::AtcUnexpectedRemoval;
+        return false;
+    }
+
+    Error temp = limit_invert->setAxis(A_AXIS, !_convertedValue);
+    if (temp == Error::Ok) {
+        temp = limit_invert->saveValue();
+    }
+    if (temp != Error::Ok) {
+        atc_connected->_checkError = temp;
+        return false;
+    }
+
+    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC %s", _convertedValue ? "connected" : "removed");
+    return true;
+}
+
 static bool checkLedChange() {
     bool temp = led_state->get();
     if (led_inverse->get()) {
@@ -508,6 +543,8 @@ void make_settings() {
 
     // Rownd options 1
 
+    rownd_param_experimental_position_mode = new FlagSetting(EXTENDED, WG, "57", "RowndExperimentalPositionMode", DEFAULT_ROWND_EXPERIMENTAL_POSITION_MODE, NULL);
+
     rownd_param_ATC_home_direction_v2 = new FlagSetting(EXTENDED, WG, "56", "RowndATCHomeDirectionV2", DEFAULT_ROWND_ATC_HOME_DIRECTION_V2, NULL);
 
     rownd_param_G76_ignore_offset = new FlagSetting(EXTENDED, WG, "55", "RowndG76IgnoreOffset", DEFAULT_ROWND_G76_IGNORE_OFFSET, NULL);
@@ -525,7 +562,7 @@ void make_settings() {
     // special variables
 
 #ifdef POSITIONABLE_AXIS_CONVERT
-    axis_convet_multiplier = new FloatSetting(GRBL, WG, "49", "AxisConvertMultiplier", POSITIONABLE_AXIS_CONVERT, 0, 100000);
+    axis_convert_multiplier = new FloatSetting(GRBL, WG, "49", "AxisConvertMultiplier", POSITIONABLE_AXIS_CONVERT, 0, 100000, checkAxisConvertChange);
 #endif
 
     led_state   = new FlagSetting(EXTENDED, WG, "48", "led/state", DEFAULT_LED_STATE, checkLedChange);

@@ -643,7 +643,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                                 FAIL(Error::GcodeAxisCommandConflict);
 #ifdef POSITIONABLE_AXIS_CONVERT
                             if (isAxisRpm(DEFAULT_SWAP_A))
-                                value /= axis_convet_multiplier->get();
+                                value /= axis_convert_multiplier->get();
 #endif
 
                             if (DEFAULT_SWAP_A == A_AXIS)
@@ -675,7 +675,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                                 FAIL(Error::GcodeAxisCommandConflict);
 #ifdef POSITIONABLE_AXIS_CONVERT
                             if (isAxisRpm(DEFAULT_SWAP_B))
-                                value /= axis_convet_multiplier->get();
+                                value /= axis_convert_multiplier->get();
 #endif
 
                             if (DEFAULT_SWAP_B == A_AXIS)
@@ -707,7 +707,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                                 FAIL(Error::GcodeAxisCommandConflict);
 #ifdef POSITIONABLE_AXIS_CONVERT
                             if (isAxisRpm(DEFAULT_SWAP_C))
-                                value /= axis_convet_multiplier->get();
+                                value /= axis_convert_multiplier->get();
 #endif
 
                             if (DEFAULT_SWAP_C == A_AXIS)
@@ -801,7 +801,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                                 FAIL(Error::GcodeAxisCommandConflict);
 #ifdef POSITIONABLE_AXIS_CONVERT
                             if (isAxisRpm(DEFAULT_SWAP_X))
-                                value /= axis_convet_multiplier->get();
+                                value /= axis_convert_multiplier->get();
 #endif
 
                             if (DEFAULT_SWAP_X == A_AXIS)
@@ -834,7 +834,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                                 FAIL(Error::GcodeAxisCommandConflict);
 #ifdef POSITIONABLE_AXIS_CONVERT
                             if (isAxisRpm(DEFAULT_SWAP_Y))
-                                value /= axis_convet_multiplier->get();
+                                value /= axis_convert_multiplier->get();
 #endif
 
                             if (DEFAULT_SWAP_Y == A_AXIS)
@@ -866,7 +866,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                                 FAIL(Error::GcodeAxisCommandConflict);
 #ifdef POSITIONABLE_AXIS_CONVERT
                             if (isAxisRpm(DEFAULT_SWAP_Z))
-                                value /= axis_convet_multiplier->get();
+                                value /= axis_convert_multiplier->get();
 #endif
 
                             if (DEFAULT_SWAP_Z == A_AXIS)

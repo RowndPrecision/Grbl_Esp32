@@ -152,9 +152,14 @@ bool user_defined_homing(uint8_t cycle_mask) {
         return false;
     }
 
+    if (bitnum_istrue(cycle_mask, POSITIONABLE_SPINDLE_AXIS)) {
+        sys_position[POSITIONABLE_SPINDLE_AXIS] = 0;
+        return true;
+    }
     if (rownd_verbose_enable->get())
         grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "TODO home: %d", cycle_mask);
-    return false;
+
+    return true;
 }
 
 Error user_tool_change(uint8_t new_tool) {
@@ -302,7 +307,7 @@ float calculate_G76_feed(float s, float rev, float dz, float dx) {
 
     if (rev != 0) {
         float duration = rev / s;
-        float feed_c   = (s * 360.0 / axis_convet_multiplier->get());
+        float feed_c   = (s * 360.0 / axis_convert_multiplier->get());
         float feed_z   = dz / duration;
         float feed_x   = dx / duration;
         feed_out       = sqrtf((feed_c * feed_c) + (feed_z * feed_z) + (feed_x * feed_x));
@@ -326,6 +331,7 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
     bool  is_lathe       = static_cast<SpindleType>(spindle_type->get()) == SpindleType::ASDA_CN1;
     bool  is_absolute    = gc_block->modal.distance == Distance::Absolute;
     bool  is_inverseTime = gc_block->modal.feed_rate == FeedRate::InverseTime;
+    bool  is_inches      = gc_block->modal.units == Units::Inches;
     float dirMultiplier  = (gc_block->modal.spindle == SpindleState::Ccw) ? -1.0f : 1.0f;
     float feed_in        = gc_block->values.s;
     float feed_out       = 0;
@@ -359,7 +365,11 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
     protocol_buffer_synchronize();
 
     if (is_inverseTime) {
-        gc_block->modal.feed_rate = FeedRate::UnitsPerMin;
+        gc_state->modal.feed_rate = FeedRate::UnitsPerMin;
+    }
+
+    if (is_inches) {
+        gc_state->modal.units = Units::Mm;
     }
 
     // calculate variables 1 (for loop)
@@ -707,7 +717,11 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
     }
 
     if (is_inverseTime) {
-        gc_block->modal.feed_rate = FeedRate::InverseTime;
+        gc_state->modal.feed_rate = FeedRate::InverseTime;
+    }
+
+    if (is_inches) {
+        gc_state->modal.units = Units::Inches;
     }
 
     gc_state->Rownd_thread = false;
