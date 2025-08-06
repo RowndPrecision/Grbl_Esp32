@@ -377,9 +377,19 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
     // No tapered threading only works on Z axis
     for (size_t idx = 0; idx < MAX_N_AXIS; ++idx) {
         pos_start[idx] = gc_state->position[idx] - gc_state->coord_system[idx] - gc_state->coord_offset[idx] - gc_state->tool_length_offset[idx];
+
+#ifdef POSITIONABLE_AXIS_CONVERT
+        if (idx == POSITIONABLE_SPINDLE_AXIS) {
+            pos_start[idx] *= axis_convert_multiplier->get();
+        }
+#else
+        return Error::AnotherInterfaceBusy;
+#endif
+        grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "sta_pos[%c]: %f", "XYZABC"[idx], pos_start[idx]);
         // pos_diff[idx]  = gc_block->values.xyz[idx] - pos_start[idx];
         // total_dist += pos_diff[idx];
     }
+    // oPut = Error::AnotherInterfaceBusy;  // TODO remove
 
     if (g76_params->degression < 1)
         g76_params->degression = 1;
