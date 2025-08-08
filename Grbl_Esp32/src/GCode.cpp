@@ -158,6 +158,9 @@ Error gc_execute_line(char* line, uint8_t client) {
     float    coord_data[MAX_N_AXIS];  // Used by WCO-related commands
     float    tlo_data[MAX_N_AXIS];    // Used by TLO-related commands
     uint8_t  pValue;                  // Integer value of P word
+    float    delta_real    = 0;
+    float    delta_reduced = 0;
+    float    temp_wcs      = 0;
 
     // Determine if the line is a jogging motion or a normal g-code block.
     if (line[0] == '$') {  // NOTE: `$J=` already parsed when passed to this function.
@@ -1525,9 +1528,44 @@ Error gc_execute_line(char* line, uint8_t client) {
                             if (gc_block.non_modal_command != NonModal::AbsoluteOverride) {
                                 // Apply coordinate offsets based on distance mode.
                                 if (gc_block.modal.distance == Distance::Absolute) {
+                                    if (rownd_param_experimental_position_mode->get() && !gc_state.Rownd_thread) {
+                                        if (idx == POSITIONABLE_SPINDLE_AXIS) {
+                                            temp_wcs   = gc_state.position[idx] - (block_coord_system[idx] + gc_state.coord_offset[idx] + gc_state.tool_length_offset[idx]);
+                                            delta_real = gc_block.values.xyz[idx] - temp_wcs;
+                                            if (abs(delta_real) >= (360.0 / axis_convert_multiplier->get())) {
+                                                delta_reduced = fmodf(delta_real, (360.0 / axis_convert_multiplier->get()));
+
+                                                gc_block.rownd_aamr = delta_real - delta_reduced;
+                                                grbl_msg_sendf(CLIENT_ALL,
+                                                               MsgLevel::Info,
+                                                               "wcs g90 ayna gcbl: %.2f, gcst: %.2f, twcs: %.2f, delrl: %.2f, delrd: %.2f, raamr: %.2f",
+                                                               gc_block.values.xyz[idx],
+                                                               gc_state.position[idx],
+                                                               temp_wcs,
+                                                               delta_real,
+                                                               delta_reduced,
+                                                               gc_block.rownd_aamr);
+                                                gc_block.values.xyz[idx] = delta_reduced + temp_wcs;
+                                            }
+                                        }
+                                    }
                                     gc_block.values.xyz[idx] += block_coord_system[idx] + gc_state.coord_offset[idx] + gc_state.tool_length_offset[idx];
                                 } else {  // Incremental mode
                                     gc_block.values.xyz[idx] += gc_state.position[idx];
+                                }
+                            } else {
+                                if (rownd_param_experimental_position_mode->get() && !gc_state.Rownd_thread) {
+                                    if (idx == POSITIONABLE_SPINDLE_AXIS) {
+                                        delta_real = gc_block.values.xyz[idx] - gc_state.position[idx];
+                                        if (abs(delta_real) >= (360.0 / axis_convert_multiplier->get())) {
+                                            delta_reduced = fmodf(delta_real, (360.0 / axis_convert_multiplier->get()));
+
+                                            gc_block.rownd_aamr = delta_real - delta_reduced;
+                                            grbl_msg_sendf(
+                                                CLIENT_ALL, MsgLevel::Info, "g53 ayna gcbl: %.2f, gcst: %.2f, delrl: %.2f, delrd: %.2f, raamr: %.2f", gc_block.values.xyz[idx], gc_state.position[idx], delta_real, delta_reduced, gc_block.rownd_aamr);
+                                            gc_block.values.xyz[idx] = delta_reduced + gc_state.position[idx];
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1878,6 +1916,9 @@ Error gc_execute_line(char* line, uint8_t client) {
     pl_data->line_number = gc_state.line_number;  // Record data for planner use.
 #endif
     // [1. Comments feedback ]:  NOT SUPPORTED
+    if (gc_block.rownd_aamr != 0) {
+        pl_data->rownd_aamr = gc_block.rownd_aamr;
+    }
     // [2. Set feed rate mode ]:
     gc_state.modal.feed_rate = gc_block.modal.feed_rate;
     if (gc_state.modal.feed_rate == FeedRate::InverseTime) {
@@ -2114,6 +2155,11 @@ Error gc_execute_line(char* line, uint8_t client) {
             // motion control system might still be processing the action and the real tool position
             // in any intermediate location.
             if (gc_update_pos == GCUpdatePos::Target) {
+                if (rownd_param_experimental_position_mode->get() && !gc_state.Rownd_thread) {
+                    if (gc_block.rownd_aamr != 0) {
+                        gc_block.values.xyz[POSITIONABLE_SPINDLE_AXIS] = delta_real + gc_state.position[POSITIONABLE_SPINDLE_AXIS];
+                    }
+                }
                 memcpy(gc_state.position, gc_block.values.xyz, sizeof(gc_block.values.xyz));  // gc_state.position[] = gc_block.values.xyz[]
             } else if (gc_update_pos == GCUpdatePos::System) {
                 gc_sync_position();  // gc_state.position[] = sys_position

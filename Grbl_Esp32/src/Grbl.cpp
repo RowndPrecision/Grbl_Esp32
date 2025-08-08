@@ -325,7 +325,6 @@ float calculate_G76_feed(float s, float rev, float dz, float dx) {
 }
 
 Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state_t* gc_state) {
-    // float pos_diff[MAX_N_AXIS];
     float pos_start[MAX_N_AXIS];
     char  g76_line[50];
     bool  is_lathe       = static_cast<SpindleType>(spindle_type->get()) == SpindleType::ASDA_CN1;
@@ -385,11 +384,9 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
 #else
         return Error::AnotherInterfaceBusy;
 #endif
-        grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "sta_pos[%c]: %f", "XYZABC"[idx], pos_start[idx]);
-        // pos_diff[idx]  = gc_block->values.xyz[idx] - pos_start[idx];
-        // total_dist += pos_diff[idx];
+        if (rownd_verbose_enable->get())
+            grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "sta_pos[%c]: %f", "XYZABC"[idx], pos_start[idx]);
     }
-    // oPut = Error::AnotherInterfaceBusy;  // TODO remove
 
     if (g76_params->degression < 1)
         g76_params->degression = 1;

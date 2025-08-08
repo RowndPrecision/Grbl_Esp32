@@ -913,6 +913,13 @@ void st_prep_buffer() {
                     sys.step_control.endMotion = true;
                     return;
                 }
+                // grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "end of block?");
+                if (pl_block->rownd_aamr != 0) {
+                    grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "end of block raamr st: %i", sys_position[POSITIONABLE_SPINDLE_AXIS]);
+                    // sys_position[POSITIONABLE_SPINDLE_AXIS] += lround(pl_block->rownd_aamr * axis_settings[POSITIONABLE_SPINDLE_AXIS]->steps_per_mm->get() * (360.0 / axis_convert_multiplier->get()));
+                    sys_position[POSITIONABLE_SPINDLE_AXIS] += lround(pl_block->rownd_aamr * axis_settings[POSITIONABLE_SPINDLE_AXIS]->steps_per_mm->get());
+                    grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "last st: %i", sys_position[POSITIONABLE_SPINDLE_AXIS]);
+                }
                 pl_block = NULL;  // Set pointer to indicate check and load next planner block.
                 plan_discard_current_block();
             }

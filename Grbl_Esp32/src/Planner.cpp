@@ -303,6 +303,7 @@ uint8_t plan_buffer_line(float* target, plan_line_data_t* pl_data) {
     block->coolant       = pl_data->coolant;
     block->spindle       = pl_data->spindle;
     block->spindle_speed = pl_data->spindle_speed;
+    block->rownd_aamr    = pl_data->rownd_aamr;
 
 #ifdef USE_LINE_NUMBERS
     block->line_number = pl_data->line_number;
@@ -398,11 +399,9 @@ uint8_t plan_buffer_line(float* target, plan_line_data_t* pl_data) {
                 block->max_junction_speed_sqr = SOME_LARGE_VALUE;
             } else {
                 convert_delta_vector_to_unit_vector(junction_unit_vec);
-                float junction_acceleration = limit_acceleration_by_axis_maximum(junction_unit_vec);
-                float sin_theta_d2          = sqrt(0.5 * (1.0 - junction_cos_theta));  // Trig half angle identity. Always positive.
-                block->max_junction_speed_sqr =
-                    MAX(MINIMUM_JUNCTION_SPEED * MINIMUM_JUNCTION_SPEED,
-                        (junction_acceleration * junction_deviation->get() * sin_theta_d2) / (1.0 - sin_theta_d2));
+                float junction_acceleration   = limit_acceleration_by_axis_maximum(junction_unit_vec);
+                float sin_theta_d2            = sqrt(0.5 * (1.0 - junction_cos_theta));  // Trig half angle identity. Always positive.
+                block->max_junction_speed_sqr = MAX(MINIMUM_JUNCTION_SPEED * MINIMUM_JUNCTION_SPEED, (junction_acceleration * junction_deviation->get() * sin_theta_d2) / (1.0 - sin_theta_d2));
             }
         }
     }

@@ -50,9 +50,9 @@ struct PlMotion {
 typedef struct {
     // Fields used by the bresenham algorithm for tracing the line
     // NOTE: Used by stepper algorithm to execute the block correctly. Do not alter these values.
-    uint32_t steps[MAX_N_AXIS];     // Step count along each axis
-    uint32_t step_event_count;  // The maximum step axis count and number of steps required to complete this block.
-    uint8_t  direction_bits;    // The direction bit set for this block (refers to *_DIRECTION_BIT in config.h)
+    uint32_t steps[MAX_N_AXIS];  // Step count along each axis
+    uint32_t step_event_count;   // The maximum step axis count and number of steps required to complete this block.
+    uint8_t  direction_bits;     // The direction bit set for this block (refers to *_DIRECTION_BIT in config.h)
 
     // Block condition data to ensure correct execution depending on states and overrides.
     PlMotion     motion;   // Block bitflag motion conditions. Copied from pl_line_data.
@@ -79,6 +79,7 @@ typedef struct {
     // Stored spindle speed data used by spindle overrides and resuming methods.
     float spindle_speed;  // Block spindle speed. Copied from pl_line_data.
     //#endif
+    float rownd_aamr;  // full name: rownd_angular_axis_movement_reduction. Positionable spindle axis (aka angular axis) doesn't need to move the full distance in some cases, but even if the physical position ends up the same, we still need to synchronize the software side. This variable is used after the movement to handle that.
 } plan_block_t;
 
 // Planner data prototype. Must be used when passing new motions to the planner.
@@ -91,7 +92,10 @@ typedef struct {
 #ifdef USE_LINE_NUMBERS
     int32_t line_number;  // Desired line number to report when executing.
 #endif
-    bool         is_jog;         // true if this was generated due to a jog command
+    bool is_jog;  // true if this was generated due to a jog command
+
+    float rownd_aamr;  // full name: rownd_angular_axis_movement_reduction. Bridge between parser_block_t andplan_block_t
+
 } plan_line_data_t;
 
 // Initialize and reset the motion plan subsystem

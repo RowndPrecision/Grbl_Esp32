@@ -347,6 +347,9 @@ typedef struct {
     float coord_offset[MAX_N_AXIS];  // Retains the G92 coordinate offset (work coordinates) relative to
     // machine zero in mm. Non-persistent. Cleared upon reset and boot.
     float tool_length_offset[MAX_N_AXIS];  // Tracks tool length offset value when enabled.
+
+    float rownd_aamr;  // full name: rownd_angular_axis_movement_reduction. Related but distinct from the planner block's variable. It tracks the reduction until the reduced movement is performed, ensuring it doesn't influence preceding or following moves.
+
 } parser_state_t;
 extern parser_state_t gc_state;
 
@@ -355,6 +358,7 @@ typedef struct {
     gc_modal_t   modal;
     gc_values_t  values;
     GCodeCoolant coolant;
+    float rownd_aamr;  // full name: rownd_angular_axis_movement_reduction. Related but distinct from the planner block's variable. It tracks the reduction until the reduced movement is performed, ensuring it doesn't influence preceding or following moves.
 } parser_block_t;
 
 enum class AxisCommand : uint8_t {
