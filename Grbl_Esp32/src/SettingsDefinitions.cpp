@@ -40,6 +40,7 @@ IntSetting*   status_mask;
 FloatSetting* junction_deviation;
 FloatSetting* arc_tolerance;
 
+FlagSetting* rownd_param_experimental_axis_feed;
 FlagSetting* rownd_param_experimental_position_mode;
 FlagSetting* rownd_param_ATC_home_direction_v2;
 FlagSetting* rownd_param_G76_ignore_offset;
@@ -542,6 +543,8 @@ void make_settings() {
     tool_count    = new IntSetting(EXTENDED, WG, "60", "Tool/Count", DEFAULT_TOOL_COUNT_MAX, 1, DEFAULT_TOOL_COUNT_MAX, NULL);
 
     // Rownd options 1
+
+    rownd_param_experimental_axis_feed = new FlagSetting(EXTENDED, WG, "58", "RowndExperimentalAxisFeed", DEFAULT_ROWND_EXPERIMENTAL_AXIS_FEED, NULL);
 
     rownd_param_experimental_position_mode = new FlagSetting(EXTENDED, WG, "57", "RowndExperimentalPositionMode", DEFAULT_ROWND_EXPERIMENTAL_POSITION_MODE, NULL);
 
