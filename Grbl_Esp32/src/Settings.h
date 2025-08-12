@@ -368,6 +368,7 @@ private:
     float _storedValue;
     float _minValue;
     float _maxValue;
+    float _oldValue;
 
 public:
     FloatSetting(const char* description, type_t type, permissions_t permissions, const char* grblName, const char* name, float defVal, float minVal, float maxVal, bool (*checker)(char*));
@@ -385,6 +386,7 @@ public:
     const char* getDefaultString();
 
     float get() { return _currentValue; }
+    float get_old() { return _oldValue; }
 };
 
 class StringSetting : public Setting {

@@ -175,7 +175,10 @@ Error IntSetting::setStringValue(char* s) {
             _storedValue = convertedValue;
         }
     }
-    check(NULL);
+    err = check(NULL);
+    if (err != Error::Ok) {
+        return err;
+    }
     return Error::Ok;
 }
 
@@ -208,7 +211,10 @@ Error IntSetting::setValue(int32_t value) {
             _storedValue = convertedValue;
         }
     }
-    check(NULL);
+    err = check(NULL);
+    if (err != Error::Ok) {
+        return err;
+    }
     return Error::Ok;
 }
 
@@ -325,7 +331,10 @@ Error AxisMaskSetting::setStringValue(char* s) {
             _storedValue = _currentValue;
         }
     }
-    check(NULL);
+    err = check(NULL);
+    if (err != Error::Ok) {
+        return err;
+    }
     return Error::Ok;
 }
 
@@ -401,6 +410,7 @@ Error FloatSetting::setStringValue(char* s) {
     if (convertedValue < _minValue || convertedValue > _maxValue) {
         return Error::NumberRange;
     }
+    _oldValue     = _currentValue;
     _currentValue = convertedValue;
     if (_storedValue != _currentValue) {
         if (_currentValue == _defaultValue) {
@@ -417,7 +427,10 @@ Error FloatSetting::setStringValue(char* s) {
             _storedValue = _currentValue;
         }
     }
-    check(NULL);
+    err = check(NULL);
+    if (err != Error::Ok) {
+        return err;
+    }
     return Error::Ok;
 }
 
@@ -434,6 +447,7 @@ Error FloatSetting::setValue(float value) {
     if (convertedValue < _minValue || convertedValue > _maxValue) {
         return Error::NumberRange;
     }
+    _oldValue     = _currentValue;
     _currentValue = convertedValue;
     if (_storedValue != _currentValue) {
         if (_currentValue == _defaultValue) {
@@ -450,7 +464,10 @@ Error FloatSetting::setValue(float value) {
             _storedValue = _currentValue;
         }
     }
-    check(NULL);
+    err = check(NULL);
+    if (err != Error::Ok) {
+        return err;
+    }
     return Error::Ok;
 }
 
@@ -532,7 +549,10 @@ Error StringSetting::setStringValue(char* s) {
             _storedValue = _currentValue;
         }
     }
-    check(NULL);
+    err = check(NULL);
+    if (err != Error::Ok) {
+        return err;
+    }
     return Error::Ok;
 }
 
@@ -654,7 +674,10 @@ Error EnumSetting::setStringValue(char* s) {
             _storedValue = _currentValue;
         }
     }
-    check(NULL);
+    err = check(NULL);
+    if (err != Error::Ok) {
+        return err;
+    }
     return Error::Ok;
 }
 
@@ -686,7 +709,10 @@ Error EnumSetting::setEnumValue(int8_t value) {
             _storedValue = _currentValue;
         }
     }
-    check(NULL);
+    err = check(NULL);
+    if (err != Error::Ok) {
+        return err;
+    }
     return Error::Ok;
 }
 
@@ -761,7 +787,10 @@ Error FlagSetting::setBoolValue(bool value) {
             _storedValue = _currentValue;
         }
     }
-    check(NULL);
+    err = check(NULL);
+    if (err != Error::Ok) {
+        return err;
+    }
     return Error::Ok;
 }
 
@@ -784,7 +813,10 @@ Error FlagSetting::setStringValue(char* s) {
             _storedValue = _currentValue;
         }
     }
-    check(NULL);
+    err = check(NULL);
+    if (err != Error::Ok) {
+        return err;
+    }
     return Error::Ok;
 }
 const char* FlagSetting::getDefaultString() {
@@ -853,7 +885,10 @@ Error IPaddrSetting::setStringValue(char* s) {
             _storedValue = _currentValue;
         }
     }
-    check(NULL);
+    err = check(NULL);
+    if (err != Error::Ok) {
+        return err;
+    }
     return Error::Ok;
 }
 

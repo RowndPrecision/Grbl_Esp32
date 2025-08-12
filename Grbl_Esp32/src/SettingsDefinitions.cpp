@@ -324,36 +324,39 @@ bool initialATCCheck() {
 }
 
 static bool checkAxisConvertChange(char* value) {
-    atc_connected->_checkError = Error::Ok;
+    axis_convert_multiplier->_checkError = Error::Ok;
 
     if (!value) {
-        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "PSACM: %s", axis_convert_multiplier->getStringValue());
+        int   step2mm_old = axis_settings[POSITIONABLE_SPINDLE_AXIS]->steps_per_mm->get();
+        float maxRate_old = axis_settings[POSITIONABLE_SPINDLE_AXIS]->max_rate->get();
+        float accelrt_old = axis_settings[POSITIONABLE_SPINDLE_AXIS]->acceleration->get();
+        float acm_old     = axis_convert_multiplier->get_old();
+        float acm_new     = axis_convert_multiplier->get();
+        int   step2mm_new = step2mm_old * acm_new / acm_old;  // directly proportional
+        float maxRate_new = maxRate_old * acm_old / acm_new;  // inversely proportional
+        float accelrt_new = accelrt_old * acm_old / acm_new;  // inversely proportional
+        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "PoSpAxCoMu(old): %.2f, ms(old): %i, rt(old): %.2f, ac(old): %.2f", acm_old, step2mm_old, maxRate_old, accelrt_old);
+
+        Error temp = axis_settings[POSITIONABLE_SPINDLE_AXIS]->steps_per_mm->setValue(step2mm_new);
+        if (temp != Error::Ok) {
+            axis_convert_multiplier->_checkError = temp;
+            return false;
+        }
+        temp = axis_settings[POSITIONABLE_SPINDLE_AXIS]->max_rate->setValue(maxRate_new);
+        if (temp != Error::Ok) {
+            axis_convert_multiplier->_checkError = temp;
+            return false;
+        }
+        temp = axis_settings[POSITIONABLE_SPINDLE_AXIS]->acceleration->setValue(accelrt_new);
+        if (temp != Error::Ok) {
+            axis_convert_multiplier->_checkError = temp;
+            return false;
+        }
+
+        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "PoSpAxCoMu(new): %.2f, ms(new): %i, rt(new): %.2f, ac(new): %.2f", acm_new, step2mm_new, maxRate_new, accelrt_new);
+
         return true;
     }
-
-    bool _convertedValue = (strcasecmp(value, "on") == 0) || (strcasecmp(value, "true") == 0) || (strcasecmp(value, "enabled") == 0) || (strcasecmp(value, "yes") == 0) || (strcasecmp(value, "1") == 0);
-
-    if (atc_connected->get() == _convertedValue) {
-        // No state change, do nothing
-        // grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC: %s", value);
-        return true;
-    }
-
-    if (static_cast<SpindleType>(spindle_type->get()) != SpindleType::ASDA_CN1 && !gc_state.Rownd_special) {
-        atc_connected->_checkError = _convertedValue ? Error::AtcUnexpectedConnection : Error::AtcUnexpectedRemoval;
-        return false;
-    }
-
-    Error temp = limit_invert->setAxis(A_AXIS, !_convertedValue);
-    if (temp == Error::Ok) {
-        temp = limit_invert->saveValue();
-    }
-    if (temp != Error::Ok) {
-        atc_connected->_checkError = temp;
-        return false;
-    }
-
-    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC %s", _convertedValue ? "connected" : "removed");
     return true;
 }
 
