@@ -156,10 +156,11 @@ static const int axesStringLen  = coordStringLen * MAX_N_AXIS;
 static void report_util_axis_values(float* axis_value, char* rpt) {
     uint8_t     idx;
     char        axisVal[coordStringLen];
-    float       unit_conv = 1.0;      // unit conversion multiplier..default is mm
-    float       rpm_conv  = 1.0;      // unit conversion multiplier..default is mm
-    const char* format    = "%4.3f";  // Default - report mm to 3 decimal places
-    rpt[0]                = '\0';
+    float       unit_conv  = 1.0;      // unit conversion multiplier..default is mm
+    float       rpm_conv   = 1.0;      // unit conversion multiplier..default is mm
+    float       zero_toler = -0.001f;  // Due to axis reduction (experimental), small rounding errors may cause "-0"
+    const char* format     = "%4.3f";  // Default - report mm to 3 decimal places
+    rpt[0]                 = '\0';
     if (report_inches->get()) {
         unit_conv = 1.0 / MM_PER_INCH;
         format    = "%4.4f";  // Report inches to 4 decimal places
@@ -177,6 +178,9 @@ static void report_util_axis_values(float* axis_value, char* rpt) {
             if (idx == POSITIONABLE_SPINDLE_AXIS) {
                 axis_value[idx] = fmodf(axis_value[idx], (360.0 / rpm_conv));
             }
+        }
+        if (axis_value[idx] <= 0 && axis_value[idx] >= zero_toler) {
+            axis_value[idx] = 0;
         }
         snprintf(axisVal, coordStringLen - 1, format, axis_value[idx] * unit_conv * rpm_conv);
         strcat(rpt, axisVal);

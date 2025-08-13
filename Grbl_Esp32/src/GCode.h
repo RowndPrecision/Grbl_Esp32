@@ -348,7 +348,10 @@ typedef struct {
     // machine zero in mm. Non-persistent. Cleared upon reset and boot.
     float tool_length_offset[MAX_N_AXIS];  // Tracks tool length offset value when enabled.
 
-    float rownd_aamr;  // full name: rownd_angular_axis_movement_reduction. Related but distinct from the planner block's variable. It tracks the reduction until the reduced movement is performed, ensuring it doesn't influence preceding or following moves.
+    float rownd_aamr;  // full name: rownd_angular_axis_movement_reduction. Related but distinct from the planner block's variable. Tracks the reduction until the reduced movement is performed, ensuring it doesn't influence preceding or following moves.
+    float rownd_aupr;   // full name: rownd_axis_units_per_revolution. One complete revolution expressed in axis coordinate units.
+    float rownd_rwt_d;  // full name: rownd_rotation_wrap_tolerance_degrees. Design-defined tolerance in degrees for determining wrap-around adjustments.
+    float rownd_rwt;    // full name: rownd_rotation_wrap_tolerance. Rotation wrap tolerance converted from degrees to axis coordinate units.
 
 } parser_state_t;
 extern parser_state_t gc_state;

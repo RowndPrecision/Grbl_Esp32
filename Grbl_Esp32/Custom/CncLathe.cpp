@@ -96,9 +96,11 @@ bool cartesian_to_motors(float* target, plan_line_data_t* pl_data, float* positi
             f_mm  = pl_data->feed_rate;
             f_deg = (d_deg / d_mm) * f_mm;
 
-            grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "f_in: %.2f, f_out: %.2f", f_mm, f_deg);
-            grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "dx: %.2f, dz: %.2f", dx, dz);
-            grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "dc_deg: %.2f, dc_mm: %.2f", dc_deg, dc_mm);
+            if (rownd_verbose_enable->get()) {
+                grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "f_in: %.2f, f_out: %.2f", f_mm, f_deg);
+                grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "dx: %.2f, dz: %.2f", dx, dz);
+                grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "dc_deg: %.2f, dc_mm: %.2f", dc_deg, dc_mm);
+            }
         }
     }
 
@@ -327,7 +329,7 @@ float calculate_G76_feed(float s, float rev, float dz, float dx) {
 
     if (rev != 0) {
         float duration = rev / s;
-        float feed_c   = (s * 360.0 / axis_convert_multiplier->get());
+        float feed_c   = (s * gc_state.rownd_aupr);
         float feed_z   = dz / duration;
         float feed_x   = dx / duration;
         feed_out       = sqrtf((feed_c * feed_c) + (feed_z * feed_z) + (feed_x * feed_x));

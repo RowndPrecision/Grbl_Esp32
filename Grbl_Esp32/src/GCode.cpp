@@ -54,6 +54,8 @@ void gc_init() {
     // gc_state.modal.spindle      = SpindleState::Disable;
     // gc_state.modal.coolant      = {};
 
+    updatePositionableAxisParams();
+
     // Load default G54 coordinate system.
     coords[gc_state.modal.coord_select]->get(gc_state.coord_system);
 }
@@ -1532,20 +1534,33 @@ Error gc_execute_line(char* line, uint8_t client) {
                                         if (idx == POSITIONABLE_SPINDLE_AXIS) {
                                             temp_wcs   = gc_state.position[idx] - (block_coord_system[idx] + gc_state.coord_offset[idx] + gc_state.tool_length_offset[idx]);
                                             delta_real = gc_block.values.xyz[idx] - temp_wcs;
-                                            if (abs(delta_real) >= (360.0 / axis_convert_multiplier->get())) {
-                                                delta_reduced = fmodf(delta_real, (360.0 / axis_convert_multiplier->get()));
+                                            if (abs(delta_real) >= gc_state.rownd_aupr) {
+                                                delta_reduced = fmodf(delta_real, gc_state.rownd_aupr);
+
+                                                // Ensure delta_reduced is never 0 on full-turn moves
+                                                // (avoids downstream logic treating it as 'no movement')
+                                                if (abs(delta_reduced) <= gc_state.rownd_rwt) {
+                                                    if (delta_real >= 0) {
+                                                        delta_reduced += gc_state.rownd_aupr;
+                                                    } else {
+                                                        delta_reduced -= gc_state.rownd_aupr;
+                                                    }
+                                                }
 
                                                 gc_block.rownd_aamr = delta_real - delta_reduced;
-                                                grbl_msg_sendf(CLIENT_ALL,
-                                                               MsgLevel::Info,
-                                                               "wcs g90 ayna gcbl: %.2f, gcst: %.2f, twcs: %.2f, delrl: %.2f, delrd: %.2f, raamr: %.2f",
-                                                               gc_block.values.xyz[idx],
-                                                               gc_state.position[idx],
-                                                               temp_wcs,
-                                                               delta_real,
-                                                               delta_reduced,
-                                                               gc_block.rownd_aamr);
+                                                if (rownd_verbose_enable->get())
+                                                    grbl_msg_sendf(CLIENT_ALL,
+                                                                   MsgLevel::Info,
+                                                                   "wcs g90 ayna gcbl: %.2f, gcst: %.2f, twcs: %.2f, delrl: %.2f, delrd: %.2f, raamr: %.2f",
+                                                                   gc_block.values.xyz[idx],
+                                                                   gc_state.position[idx],
+                                                                   temp_wcs,
+                                                                   delta_real,
+                                                                   delta_reduced,
+                                                                   gc_block.rownd_aamr);
                                                 gc_block.values.xyz[idx] = delta_reduced + temp_wcs;
+                                                if (rownd_verbose_enable->get())
+                                                    grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "wcs g90 ayna gcbl: %.2f, gcst: %.2f", gc_block.values.xyz[idx], gc_state.position[idx]);
                                             }
                                         }
                                     }
@@ -1557,12 +1572,29 @@ Error gc_execute_line(char* line, uint8_t client) {
                                 if (rownd_param_experimental_position_mode->get() && !gc_state.Rownd_thread) {
                                     if (idx == POSITIONABLE_SPINDLE_AXIS) {
                                         delta_real = gc_block.values.xyz[idx] - gc_state.position[idx];
-                                        if (abs(delta_real) >= (360.0 / axis_convert_multiplier->get())) {
-                                            delta_reduced = fmodf(delta_real, (360.0 / axis_convert_multiplier->get()));
+                                        if (abs(delta_real) >= gc_state.rownd_aupr) {
+                                            delta_reduced = fmodf(delta_real, gc_state.rownd_aupr);
+
+                                            // Ensure delta_reduced is never 0 on full-turn moves
+                                            // (avoids downstream logic treating it as 'no movement')
+                                            if (abs(delta_reduced) <= gc_state.rownd_rwt) {
+                                                if (delta_real >= 0) {
+                                                    delta_reduced += gc_state.rownd_aupr;
+                                                } else {
+                                                    delta_reduced -= gc_state.rownd_aupr;
+                                                }
+                                            }
 
                                             gc_block.rownd_aamr = delta_real - delta_reduced;
-                                            grbl_msg_sendf(
-                                                CLIENT_ALL, MsgLevel::Info, "g53 ayna gcbl: %.2f, gcst: %.2f, delrl: %.2f, delrd: %.2f, raamr: %.2f", gc_block.values.xyz[idx], gc_state.position[idx], delta_real, delta_reduced, gc_block.rownd_aamr);
+                                            if (rownd_verbose_enable->get())
+                                                grbl_msg_sendf(CLIENT_ALL,
+                                                               MsgLevel::Info,
+                                                               "g53 ayna gcbl: %.2f, gcst: %.2f, delrl: %.2f, delrd: %.2f, raamr: %.2f",
+                                                               gc_block.values.xyz[idx],
+                                                               gc_state.position[idx],
+                                                               delta_real,
+                                                               delta_reduced,
+                                                               gc_block.rownd_aamr);
                                             gc_block.values.xyz[idx] = delta_reduced + gc_state.position[idx];
                                         }
                                     }
@@ -2200,6 +2232,9 @@ Error gc_execute_line(char* line, uint8_t client) {
             gc_state.modal.coord_select = CoordIndex::G54;
             gc_state.modal.spindle      = SpindleState::Disable;
             gc_state.modal.coolant      = {};
+
+            updatePositionableAxisParams();
+
 #ifdef ENABLE_PARKING_OVERRIDE_CONTROL
 #    ifdef DEACTIVATE_PARKING_UPON_INIT
             gc_state.modal.override = Override::Disabled;

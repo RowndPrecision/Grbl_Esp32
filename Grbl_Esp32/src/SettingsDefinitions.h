@@ -109,3 +109,4 @@ extern StringSetting* user_macro3;
 extern EnumSetting* message_level;
 
 bool initialATCCheck();
+void updatePositionableAxisParams();

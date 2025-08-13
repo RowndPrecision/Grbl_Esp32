@@ -323,6 +323,12 @@ bool initialATCCheck() {
     return true;
 }
 
+void updatePositionableAxisParams() {
+    gc_state.rownd_aupr  = 360.0 / axis_convert_multiplier->get();
+    gc_state.rownd_rwt_d = 180.0;
+    gc_state.rownd_rwt   = gc_state.rownd_rwt_d / axis_convert_multiplier->get();
+}
+
 static bool checkAxisConvertChange(char* value) {
     axis_convert_multiplier->_checkError = Error::Ok;
 
@@ -354,6 +360,8 @@ static bool checkAxisConvertChange(char* value) {
         }
 
         grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "PoSpAxCoMu(new): %.2f, ms(new): %i, rt(new): %.2f, ac(new): %.2f", acm_new, step2mm_new, maxRate_new, accelrt_new);
+
+        updatePositionableAxisParams();
 
         return true;
     }
