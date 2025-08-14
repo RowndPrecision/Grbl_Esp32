@@ -75,74 +75,81 @@ namespace Spindles {
         _spinup_delay   = spindle_delay_spinup->get() * 1000.0;
         _spindown_delay = spindle_delay_spindown->get() * 1000.0;
     }
-    /*
+
+    // /*
     uint32_t AsdaCN1::set_rpm(uint32_t rpm_target) {
-        uint32_t pwm_value;
-        uint32_t rpm_current = 0;  // Initialize to ensure it's defined
-        uint32_t rpm_init;
+        if (rownd_param_experimental_servo_ramp->get() && gc_state.Rownd_special) {
+            uint32_t pwm_value;
+            uint32_t rpm_current = 0;  // Initialize to ensure it's defined
+            uint32_t rpm_init;
 
-        if (_output_pin == UNDEFINED_PIN) {
-            return rpm_target;
-        }
-
-        // Apply override
-        rpm_target = rpm_target * sys.spindle_speed_ovr / 100;  // Scale by spindle speed override value (uint8_t percent)
-
-        // Apply limits
-        if ((_min_rpm >= _max_rpm) || (rpm_target >= _max_rpm)) {
-            rpm_target = _max_rpm;
-        } else if (rpm_target != 0 && rpm_target <= _min_rpm) {
-            rpm_target = _min_rpm;
-        }
-
-        rpm_init    = sys.spindle_speed;
-        rpm_current = rpm_init;
-
-        int32_t cnt_spin;
-        int32_t rpm_diff = rpm_target - rpm_init;
-
-        // Determine the number of steps based on the dynamic ramp time
-        if (rpm_diff > 0) {
-            cnt_spin = map_uint32_t(rpm_diff, 0, _max_rpm - _min_rpm, 0, _spinup_delay);
-        } else {
-            cnt_spin = map_uint32_t(-rpm_diff, 0, _max_rpm - _min_rpm, 0, _spindown_delay);
-        }
-
-        float rpm_step = (cnt_spin > 0) ? ((float)rpm_diff / (float)cnt_spin) : 0.0;
-
-        for (uint32_t cnt = 0; cnt < cnt_spin; cnt++) {
-            if ((rpm_step > 0 && rpm_current >= rpm_target) || (rpm_step < 0 && rpm_current <= rpm_target) || (rpm_step == 0)) {
-                break;  // Stop if target RPM is reached
+            if (_output_pin == UNDEFINED_PIN) {
+                return rpm_target;
             }
 
-            rpm_current = rpm_init + (uint32_t)((float)cnt * rpm_step);
-            if (rpm_current < 0)
-                rpm_current = 0;  // Prevent negative RPM
+            // Apply override
+            rpm_target = rpm_target * sys.spindle_speed_ovr / 100;  // Scale by spindle speed override value (uint8_t percent)
 
-            // Set PWM value based on current RPM
-            sys.spindle_speed = rpm_current;
+            // Apply limits
+            if ((_min_rpm >= _max_rpm) || (rpm_target >= _max_rpm)) {
+                rpm_target = _max_rpm;
+            } else if (rpm_target != 0 && rpm_target <= _min_rpm) {
+                rpm_target = _min_rpm;
+            }
 
-            pwm_value = (rpm_current == 0) ? _pwm_off_value : map_uint32_t(rpm_current, _min_rpm, _max_rpm, _pwm_min_value, _pwm_max_value);
+            rpm_init    = sys.spindle_speed;
+            rpm_current = rpm_init;
+
+            int32_t cnt_spin;
+            int32_t rpm_diff = rpm_target - rpm_init;
+
+            // Determine the number of steps based on the dynamic ramp time
+            if (rpm_diff > 0) {
+                cnt_spin = map_uint32_t(rpm_diff, 0, _max_rpm - _min_rpm, 0, _spinup_delay);
+            } else {
+                cnt_spin = map_uint32_t(-rpm_diff, 0, _max_rpm - _min_rpm, 0, _spindown_delay);
+            }
+
+            float rpm_step = (cnt_spin > 0) ? ((float)rpm_diff / (float)cnt_spin) : 0.0;
+
+            for (uint32_t cnt = 0; cnt < cnt_spin; cnt++) {
+                if ((rpm_step > 0 && rpm_current >= rpm_target) || (rpm_step < 0 && rpm_current <= rpm_target) || (rpm_step == 0)) {
+                    break;  // Stop if target RPM is reached
+                }
+
+                rpm_current = rpm_init + (uint32_t)((float)cnt * rpm_step);
+                if (rpm_current < 0)
+                    rpm_current = 0;  // Prevent negative RPM
+
+                // Set PWM value based on current RPM
+                sys.spindle_speed = rpm_current;
+
+                pwm_value = (rpm_current == 0) ? _pwm_off_value : map_uint32_t(rpm_current, _min_rpm, _max_rpm, _pwm_min_value, _pwm_max_value);
+
+                set_output(pwm_value);
+
+                delay(1);  // Short delay for smooth ramping
+            }
+
+            // Final update to ensure target RPM is set
+            sys.spindle_speed = rpm_target;
+
+            pwm_value = (rpm_target == 0) ? _pwm_off_value : map_uint32_t(rpm_target, _min_rpm, _max_rpm, _pwm_min_value, _pwm_max_value);
 
             set_output(pwm_value);
 
-            delay(1);  // Short delay for smooth ramping
-        }
-
-        // Final update to ensure target RPM is set
-        sys.spindle_speed = rpm_target;
-
-        pwm_value = (rpm_target == 0) ? _pwm_off_value : map_uint32_t(rpm_target, _min_rpm, _max_rpm, _pwm_min_value, _pwm_max_value);
-
-        set_output(pwm_value);
-
-        return 0;
+            return 0;
+        } else
+            return PWM::set_rpm(rpm_target);  // calls the base class implementation as default
     }
-*/
+    // */
+
     void AsdaCN1::set_state(SpindleState state, uint32_t rpm) {
         if (sys.abort) {
             return;  // Block during abort.
         }
+
+        gc_state.Rownd_special = true;
 
         if (state == SpindleState::Disable) {  // Halt or set spindle direction and rpm.
             stop();
@@ -159,6 +166,8 @@ namespace Spindles {
             set_rpm(rpm);
             set_enable_pin(state != SpindleState::Disable);  // must be done after setting rpm for enable features to work
         }
+
+        gc_state.Rownd_special = false;
 
         _current_state = state;
 

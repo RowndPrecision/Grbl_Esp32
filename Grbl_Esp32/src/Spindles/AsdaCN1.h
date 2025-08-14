@@ -13,9 +13,9 @@ namespace Spindles {
         AsdaCN1& operator=(const AsdaCN1&) = delete;
         AsdaCN1& operator=(AsdaCN1&&)      = delete;
 
-        // virtual uint32_t set_rpm(uint32_t rpm) override;
-        void set_state(SpindleState state, uint32_t rpm) override;
-        void stop() override;
+        virtual uint32_t set_rpm(uint32_t rpm) override;
+        void             set_state(SpindleState state, uint32_t rpm) override;
+        void             stop() override;
 
         void deinit() override;
         void get_pins_and_settings() override;

@@ -45,6 +45,7 @@ extern FloatSetting* arc_tolerance;
 extern FlagSetting* led_state;
 extern FlagSetting* led_inverse;
 
+extern FlagSetting* rownd_param_experimental_servo_ramp;
 extern FlagSetting* rownd_param_experimental_axis_feed;
 extern FlagSetting* rownd_param_experimental_position_mode;
 extern FlagSetting* rownd_param_ATC_home_direction_v2;
