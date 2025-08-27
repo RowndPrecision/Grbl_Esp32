@@ -414,7 +414,9 @@ uint8_t plan_buffer_line(float* target, plan_line_data_t* pl_data) {
         memcpy(pl.previous_unit_vec, unit_vec, sizeof(unit_vec));  // pl.previous_unit_vec[] = unit_vec[]
         memcpy(pl.position, target_steps, sizeof(target_steps));   // pl.position[] = target_steps[]
         if (pl_data->rownd_aamr != 0) {
+#if POSITIONABLE_SPINDLE_AXIS > 0
             pl.position[POSITIONABLE_SPINDLE_AXIS] += lround(pl_data->rownd_aamr * axis_settings[POSITIONABLE_SPINDLE_AXIS]->steps_per_mm->get());
+#endif
         }
         // New block is all set. Update buffer head and next buffer head indices.
         block_buffer_head = next_buffer_head;

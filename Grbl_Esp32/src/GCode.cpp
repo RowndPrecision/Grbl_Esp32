@@ -2189,7 +2189,9 @@ Error gc_execute_line(char* line, uint8_t client) {
             if (gc_update_pos == GCUpdatePos::Target) {
                 if (rownd_param_experimental_position_mode->get() && !gc_state.Rownd_thread) {
                     if (gc_block.rownd_aamr != 0) {
+#if POSITIONABLE_SPINDLE_AXIS > 0
                         gc_block.values.xyz[POSITIONABLE_SPINDLE_AXIS] = delta_real + gc_state.position[POSITIONABLE_SPINDLE_AXIS];
+#endif
                     }
                 }
                 memcpy(gc_state.position, gc_block.values.xyz, sizeof(gc_block.values.xyz));  // gc_state.position[] = gc_block.values.xyz[]

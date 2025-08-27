@@ -917,8 +917,10 @@ void st_prep_buffer() {
 
                 // This check is technically unnecessary because rownd_angular_axis_movement_reduction(aamr) should not affect normal calculations, but it is kept as an extra safeguard against unexpected cases.
                 if (pl_block->rownd_aamr != 0) {
+#if POSITIONABLE_SPINDLE_AXIS > 0
                     // sys_position[POSITIONABLE_SPINDLE_AXIS] += lround(pl_block->rownd_aamr * axis_settings[POSITIONABLE_SPINDLE_AXIS]->steps_per_mm->get() * (360.0 / axis_convert_multiplier->get()));
                     sys_position[POSITIONABLE_SPINDLE_AXIS] += lround(pl_block->rownd_aamr * axis_settings[POSITIONABLE_SPINDLE_AXIS]->steps_per_mm->get());
+#endif
                 }
                 pl_block = NULL;  // Set pointer to indicate check and load next planner block.
                 plan_discard_current_block();

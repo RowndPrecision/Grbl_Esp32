@@ -64,14 +64,9 @@
 #define SPINDLE_TYPE            SpindleType::PWM
 #define DEFAULT_SPINDLE_FREQ    5000.0f
 
-#define SPINDLE_OUTPUT_PIN      GPIO_NUM_17
-// #define SPINDLE_DIR_PIN         I2SO(5)
-#define SPINDLE_ENABLE_PIN      I2SO(7)
-
-// #define ASDA_CN1_OUTPUT_PIN     GPIO_NUM_16
-// #define ASDA_CN1_S_P_PIN        I2SO(1)
-// #define ASDA_CN1_ENABLE_PIN     I2SO(2)
-// #define ASDA_CN1_DIR_PIN        I2SO(3)
+#define SPINDLE_OUTPUT_PIN      GPIO_NUM_16
+#define SPINDLE_DIR_PIN         I2SO(2)
+#define SPINDLE_ENABLE_PIN      I2SO(3)
 
 #define DEFAULT_ROWND_VERBOSE 0
 #define DEFAULT_ROWND_ATC_HOME_DIRECTION_V2 false

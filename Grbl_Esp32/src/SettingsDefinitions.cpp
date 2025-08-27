@@ -52,9 +52,9 @@ AxisMaskSetting* limit_axis_move_negative;
 
 FlagSetting* rownd_verbose_enable;
 
-#ifdef POSITIONABLE_AXIS_CONVERT
+// #ifdef POSITIONABLE_AXIS_CONVERT
 FloatSetting* axis_convert_multiplier;
-#endif
+// #endif
 
 FlagSetting* led_state;
 FlagSetting* led_inverse;
