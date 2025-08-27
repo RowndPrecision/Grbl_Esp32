@@ -54,7 +54,9 @@ void gc_init() {
     // gc_state.modal.spindle      = SpindleState::Disable;
     // gc_state.modal.coolant      = {};
 
+#ifdef POSITIONABLE_AXIS_CONVERT
     updatePositionableAxisParams();
+#endif
 
     // Load default G54 coordinate system.
     coords[gc_state.modal.coord_select]->get(gc_state.coord_system);
@@ -1531,6 +1533,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                                 // Apply coordinate offsets based on distance mode.
                                 if (gc_block.modal.distance == Distance::Absolute) {
                                     if (rownd_param_experimental_position_mode->get() && !gc_state.Rownd_thread) {
+#ifdef POSITIONABLE_SPINDLE_AXIS
                                         if (idx == POSITIONABLE_SPINDLE_AXIS) {
                                             temp_wcs   = gc_state.position[idx] - (block_coord_system[idx] + gc_state.coord_offset[idx] + gc_state.tool_length_offset[idx]);
                                             delta_real = gc_block.values.xyz[idx] - temp_wcs;
@@ -1563,6 +1566,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                                                     grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "wcs g90 ayna gcbl: %.2f, gcst: %.2f", gc_block.values.xyz[idx], gc_state.position[idx]);
                                             }
                                         }
+#endif
                                     }
                                     gc_block.values.xyz[idx] += block_coord_system[idx] + gc_state.coord_offset[idx] + gc_state.tool_length_offset[idx];
                                 } else {  // Incremental mode
@@ -1570,6 +1574,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                                 }
                             } else {
                                 if (rownd_param_experimental_position_mode->get() && !gc_state.Rownd_thread) {
+#ifdef POSITIONABLE_SPINDLE_AXIS
                                     if (idx == POSITIONABLE_SPINDLE_AXIS) {
                                         delta_real = gc_block.values.xyz[idx] - gc_state.position[idx];
                                         if (abs(delta_real) >= gc_state.rownd_aupr) {
@@ -1598,6 +1603,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                                             gc_block.values.xyz[idx] = delta_reduced + gc_state.position[idx];
                                         }
                                     }
+#endif
                                 }
                             }
                         }
@@ -1626,9 +1632,16 @@ Error gc_execute_line(char* line, uint8_t client) {
                         axis_command = AxisCommand::None;  // Set to none if no intermediate motion.
                         // Move only the axes specified in secondary move.
                         for (idx = 0; idx < n_axis; idx++) {
-                            if (idx == REMOVABLE_AXIS_LIMIT || idx == POSITIONABLE_SPINDLE_AXIS) {
+#ifdef POSITIONABLE_SPINDLE_AXIS
+                            if (idx == POSITIONABLE_SPINDLE_AXIS) {
                                 coord_data[idx] = gc_state.position[idx];
                             }
+#endif
+#ifdef REMOVABLE_AXIS_LIMIT
+                            if (idx == REMOVABLE_AXIS_LIMIT) {
+                                coord_data[idx] = gc_state.position[idx];
+                            }
+#endif
                         }
                     }
                     break;
@@ -2189,7 +2202,7 @@ Error gc_execute_line(char* line, uint8_t client) {
             if (gc_update_pos == GCUpdatePos::Target) {
                 if (rownd_param_experimental_position_mode->get() && !gc_state.Rownd_thread) {
                     if (gc_block.rownd_aamr != 0) {
-#if POSITIONABLE_SPINDLE_AXIS > 0
+#ifdef POSITIONABLE_SPINDLE_AXIS
                         gc_block.values.xyz[POSITIONABLE_SPINDLE_AXIS] = delta_real + gc_state.position[POSITIONABLE_SPINDLE_AXIS];
 #endif
                     }
@@ -2235,7 +2248,9 @@ Error gc_execute_line(char* line, uint8_t client) {
             gc_state.modal.spindle      = SpindleState::Disable;
             gc_state.modal.coolant      = {};
 
+#ifdef POSITIONABLE_AXIS_CONVERT
             updatePositionableAxisParams();
+#endif
 
 #ifdef ENABLE_PARKING_OVERRIDE_CONTROL
 #    ifdef DEACTIVATE_PARKING_UPON_INIT

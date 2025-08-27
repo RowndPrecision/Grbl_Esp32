@@ -7,7 +7,7 @@
 
 // #define SERVO_MODE // Distinguishes between regular machines and those upgraded with a servo  
 
-// #define CUSTOM_CODE_FILENAME    "../Custom/CncLathe.cpp"
+#define CUSTOM_CODE_FILENAME    "../Custom/Cnc3axis.cpp"
 
 #define USE_I2S_OUT
 
@@ -68,18 +68,13 @@
 #define SPINDLE_DIR_PIN         I2SO(2)
 #define SPINDLE_ENABLE_PIN      I2SO(3)
 
-#define DEFAULT_ROWND_VERBOSE 0
-#define DEFAULT_ROWND_ATC_HOME_DIRECTION_V2 false
-#define DEFAULT_ROWND_G76_IGNORE_OFFSET false
-#define DEFAULT_ROWND_IGNORE_DOOR_SWITCH false
-
 #define LED_PIN     I2SO(4)
 #define DEFAULT_LED_STATE 1
 #define DEFAULT_LED_INVERSE 0
 
 
 #define DEFAULT_INVERT_SPINDLE_OUTPUT_PIN       false
-#define DEFAULT_INVERT_SPINDLE_ENABLE_PIN       true
+#define DEFAULT_INVERT_SPINDLE_ENABLE_PIN       false
 #define DEFAULT_INVERT_SPINDLE_DIRECTION_PIN    false
 
 #define DEFAULT_INVERT_CHUCK_OUTPUT_PIN       false
@@ -135,7 +130,7 @@
 #define DEFAULT_Z_HOMING_MPOS 3.0 // mm
 
 #define DEFAULT_CHUCK_RPM_MAX 3000.0 // rpm
-#define DEFAULT_SPINDLE_RPM_MAX 12000.0 // rpm
+#define DEFAULT_SPINDLE_RPM_MAX 18000.0 // rpm
 #define DEFAULT_SPINDLE_RPM_MIN 0.0 // rpm
 
 #define DEFAULT_LASER_MODE 0 // false

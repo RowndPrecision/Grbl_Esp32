@@ -174,11 +174,13 @@ static void report_util_axis_values(float* axis_value, char* rpt) {
             rpm_conv = 1.0;
         }
 #endif
+#ifdef POSITIONABLE_SPINDLE_AXIS
         if (rownd_param_experimental_position_mode->get()) {
             if (idx == POSITIONABLE_SPINDLE_AXIS) {
                 axis_value[idx] = fmodf(axis_value[idx], (360.0 / rpm_conv));
             }
         }
+#endif
         if (axis_value[idx] <= 0 && axis_value[idx] >= zero_toler) {
             axis_value[idx] = 0;
         }

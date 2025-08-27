@@ -141,7 +141,7 @@ Error __attribute__((weak)) rownd_G33(parser_block_t* gc_block, float* position)
     return Error::Ok;
 }
 
-Error __attribute__((weak)) rownd_G76(parser_block_t* gc_block, parser_state_t* gc_state) {
+Error __attribute__((weak)) rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state_t* gc_state) {
     return Error::Ok;
 }
 

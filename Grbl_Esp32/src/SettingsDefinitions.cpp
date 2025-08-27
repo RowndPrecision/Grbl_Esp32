@@ -52,9 +52,9 @@ AxisMaskSetting* limit_axis_move_negative;
 
 FlagSetting* rownd_verbose_enable;
 
-// #ifdef POSITIONABLE_AXIS_CONVERT
+#ifdef POSITIONABLE_AXIS_CONVERT
 FloatSetting* axis_convert_multiplier;
-// #endif
+#endif
 
 FlagSetting* led_state;
 FlagSetting* led_inverse;
@@ -324,6 +324,7 @@ bool initialATCCheck() {
     return true;
 }
 
+#ifdef POSITIONABLE_AXIS_CONVERT
 void updatePositionableAxisParams() {
     gc_state.rownd_aupr  = 360.0 / axis_convert_multiplier->get();
     gc_state.rownd_rwt_d = 180.0;
@@ -368,6 +369,7 @@ static bool checkAxisConvertChange(char* value) {
     }
     return true;
 }
+#endif
 
 static bool checkLedChange() {
     bool temp = led_state->get();
