@@ -69,7 +69,7 @@ bool kinematics_pre_homing(uint8_t cycle_mask) {
  float *position:				The previous "from" location of the move
 */
 bool cartesian_to_motors(float* target, plan_line_data_t* pl_data, float* position) {
-    if (rownd_param_experimental_axis_feed->get()) {
+    if (rownd_param_experimental_axis_feed->get() && !gc_state.Rownd_thread) {
         float dx;
         float dz;
         float dc_mm;
