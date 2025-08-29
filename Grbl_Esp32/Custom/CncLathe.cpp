@@ -96,6 +96,8 @@ bool cartesian_to_motors(float* target, plan_line_data_t* pl_data, float* positi
             f_mm  = pl_data->feed_rate;
             f_deg = (d_deg / d_mm) * f_mm;
 
+            pl_data->feed_rate = f_deg;
+
             if (rownd_verbose_enable->get()) {
                 grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "f_in: %.2f, f_out: %.2f", f_mm, f_deg);
                 grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "dx: %.2f, dz: %.2f", dx, dz);

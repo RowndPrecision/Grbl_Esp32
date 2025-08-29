@@ -77,7 +77,7 @@ const double INCH_PER_MM = (0.0393701);
 
 // Macro to create a bitmask for a specific bit position 'n'
 // It shifts 1 to the left by 'n' positions
-#define bit(n) (1 << static_cast<unsigned int>(n))
+#define bit(num) (1 << static_cast<unsigned int>(num))
 
 // Macro to set a specific bit (using a mask) to true (1)
 // It performs a bitwise OR operation

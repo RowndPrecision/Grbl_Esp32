@@ -45,6 +45,10 @@ extern FloatSetting* arc_tolerance;
 extern FlagSetting* led_state;
 extern FlagSetting* led_inverse;
 
+#ifdef DEFAULT_ROWND_TCP
+extern FlagSetting* tcp_active;
+#endif
+
 extern FlagSetting* rownd_param_experimental_servo_ramp;
 extern FlagSetting* rownd_param_experimental_axis_feed;
 extern FlagSetting* rownd_param_experimental_position_mode;

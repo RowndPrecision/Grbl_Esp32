@@ -46,6 +46,30 @@ bool kinematics_pre_homing(uint8_t cycle_mask) {
 }
 
 /*
+ Apply inverse kinematics for a lathe spindle
+ 
+ float target: 					The desired target location in machine space
+ plan_line_data_t *pl_data:		Plan information like feed rate, etc
+ float *position:				The previous "from" location of the move
+*/
+bool cartesian_to_motors(float* target, plan_line_data_t* pl_data, float* position) {
+#ifdef DEFAULT_ROWND_TCP
+    if (tcp_active->get()) {
+        float delta[MAX_N_AXIS];
+
+        for (size_t idx = 0; idx < MAX_N_AXIS; ++idx) {
+            delta[idx] = target[idx] - position[idx];
+        }
+        target[X_AXIS] = delta[X_AXIS];
+    }
+#endif
+
+    // mc_line() returns false if a jog is cancelled.
+    // In that case we stop sending segments to the planner.
+    return mc_line(target, pl_data);
+}
+
+/*
   user_tool_change() is called when tool change gcode is received,
   to perform appropriate actions for your machine.
 */

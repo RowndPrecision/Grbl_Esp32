@@ -27,8 +27,8 @@
 #define REMOVABLE_AXIS_LIMIT -1
 // #define BLOCK_AXIS_ON_PWM_MODE  A_AXIS
 
-#define POSITIONABLE_SPINDLE_AXIS -1 // -1 to disable
-#define POSITIONABLE_AXIS_CONVERT 1.0f // 360.0f
+// #define POSITIONABLE_SPINDLE_AXIS -1 // -1 to disable
+// #define POSITIONABLE_AXIS_CONVERT 1.0f // 360.0f
 
 #define X_STEP_PIN              GPIO_NUM_27
 #define X_DIRECTION_PIN         GPIO_NUM_14
@@ -77,7 +77,8 @@
 #define ASDA_CN1_ENABLE_PIN     I2SO(3)
 #define ASDA_CN1_DIR_PIN        I2SO(3)
 
-#define DEFAULT_ROWND_VERBOSE 0
+#define DEFAULT_ROWND_VERBOSE false
+#define DEFAULT_ROWND_TCP false
 
 #define LED_PIN     I2SO(4)
 #define DEFAULT_LED_STATE 1
@@ -170,6 +171,7 @@
 #define DEFAULT_A_MAX_TRAVEL 0.0   // This is percent in servo mode...used for calibration
 #define DEFAULT_B_MAX_TRAVEL 0.0   // This is percent in servo mode...used for calibration
 
+#define DEFAULT_ATC_STATE false
 
 #define DEFAULT_ATC_SPEED 100
 

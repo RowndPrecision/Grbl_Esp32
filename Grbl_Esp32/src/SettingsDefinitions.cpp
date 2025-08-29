@@ -40,6 +40,9 @@ IntSetting*   status_mask;
 FloatSetting* junction_deviation;
 FloatSetting* arc_tolerance;
 
+#ifdef DEFAULT_ROWND_TCP
+FlagSetting* tcp_active;
+#endif
 FlagSetting* rownd_param_experimental_servo_ramp;
 FlagSetting* rownd_param_experimental_axis_feed;
 FlagSetting* rownd_param_experimental_position_mode;
@@ -543,6 +546,10 @@ void make_settings() {
     }
 
     // Tool settings
+
+#ifdef DEFAULT_ROWND_TCP
+    tcp_active = new FlagSetting(EXTENDED, WG, "70", "TCP/State", DEFAULT_ROWND_TCP, NULL);
+#endif
 
     atc_allow_debug = new FlagSetting(EXTENDED, WG, "69", "ATC/AllowDebug", DEFAULT_ATC_STATE, NULL);
 
