@@ -338,6 +338,7 @@ static bool checkAxisConvertChange(char* value) {
     axis_convert_multiplier->_checkError = Error::Ok;
 
     if (!value) {
+#    ifdef POSITIONABLE_SPINDLE_AXIS
         int   step2mm_old = axis_settings[POSITIONABLE_SPINDLE_AXIS]->steps_per_mm->get();
         float maxRate_old = axis_settings[POSITIONABLE_SPINDLE_AXIS]->max_rate->get();
         float accelrt_old = axis_settings[POSITIONABLE_SPINDLE_AXIS]->acceleration->get();
@@ -367,7 +368,7 @@ static bool checkAxisConvertChange(char* value) {
         grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "PoSpAxCoMu(new): %.2f, ms(new): %i, rt(new): %.2f, ac(new): %.2f", acm_new, step2mm_new, maxRate_new, accelrt_new);
 
         updatePositionableAxisParams();
-
+#    endif
         return true;
     }
     return true;

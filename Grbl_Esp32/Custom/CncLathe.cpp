@@ -25,6 +25,23 @@ bool limitsCheckTravel() {
     return false;
 }
 
+Error check_atc_move() {
+    float* curr_mpos = system_get_mpos();  // returns MAX_N_AXIS lenght array
+
+    auto n_axis = number_axis->get();  // is N_AXIS and can be <= MAX_N_AXIS
+    for (uint8_t idx = 0; idx < n_axis; idx++) {
+        if (idx != REMOVABLE_AXIS_LIMIT && idx != POSITIONABLE_SPINDLE_AXIS) {
+            if (curr_mpos[idx] != coords[CoordIndex::G28]->get()[idx]) {
+                return Error::AtcNeedsG28;
+            }
+            if (curr_mpos[idx] != coords[CoordIndex::G28]->get()[idx]) {  // WIP
+                return Error::AtcInsufficientRadius;
+            }
+        }
+    }
+    return Error::Ok;
+}
+
 /*
   user_defined_homing(uint8_t cycle_mask) is called at the begining of the normal Grbl_ESP32 homing
   sequence.  If user_defined_homing(uint8_t cycle_mask) returns false, the rest of normal Grbl_ESP32
@@ -38,6 +55,15 @@ bool user_defined_homing(uint8_t cycle_mask) {
     if (rownd_verbose_enable->get())
         grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "home usr def mask: %d", cycle_mask);
     if (bitnum_istrue(cycle_mask, X_AXIS) || bitnum_istrue(cycle_mask, Z_AXIS) || cycle_mask == 0) {
+        return false;
+    }
+
+    if (bitnum_istrue(cycle_mask, REMOVABLE_AXIS_LIMIT)) {
+        Error oPut = check_atc_move();
+        if (oPut != Error::Ok) {
+            grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Atc Homing error: %s", errorString(oPut));
+            return true;
+        }
         return false;
     }
 
@@ -122,21 +148,7 @@ Error user_tool_change(uint8_t new_tool) {
 
     protocol_buffer_synchronize();
 
-    float* curr_mpos = system_get_mpos();  // returns MAX_N_AXIS lenght array
-
-    auto n_axis = number_axis->get();  // is N_AXIS and can be <= MAX_N_AXIS
-    for (uint8_t idx = 0; idx < n_axis; idx++) {
-        if (idx != REMOVABLE_AXIS_LIMIT && idx != POSITIONABLE_SPINDLE_AXIS) {
-            if (curr_mpos[idx] != coords[CoordIndex::G28]->get()[idx]) {
-                return Error::AtcNeedsG28;
-            }
-            if (curr_mpos[idx] != coords[CoordIndex::G28]->get()[idx]) {  // WIP
-                return Error::AtcInsufficientRadius;
-            }
-        }
-    }
-
-    Error oPut = Error::Ok;
+    Error oPut = check_atc_move();
 
     bool  is_absolute          = gc_state.modal.distance == Distance::Absolute;
     bool  is_inverseTime       = gc_state.modal.feed_rate == FeedRate::InverseTime;

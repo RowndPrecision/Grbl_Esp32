@@ -1627,6 +1627,16 @@ Error gc_execute_line(char* line, uint8_t client) {
                             if (bit_isfalse(axis_words, bit(idx))) {
                                 coord_data[idx] = gc_state.position[idx];
                             }
+#ifdef POSITIONABLE_SPINDLE_AXIS
+                            if (idx == POSITIONABLE_SPINDLE_AXIS) {
+                                coord_data[idx] = gc_state.position[idx];
+                            }
+#endif
+#ifdef REMOVABLE_AXIS_LIMIT
+                            if (idx == REMOVABLE_AXIS_LIMIT) {
+                                coord_data[idx] = gc_state.position[idx];
+                            }
+#endif
                         }
                     } else {
                         axis_command = AxisCommand::None;  // Set to none if no intermediate motion.
