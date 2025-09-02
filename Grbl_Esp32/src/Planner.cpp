@@ -333,6 +333,12 @@ uint8_t plan_buffer_line(float* target, plan_line_data_t* pl_data) {
             block->direction_bits |= bit(idx);
         }
     }
+    // This check is technically unnecessary because rownd_angular_axis_movement_reduction(aamr) should not affect normal calculations, but it is kept as an extra safeguard against unexpected cases.
+    if (pl_data->rownd_aamr != 0) {
+#ifdef POSITIONABLE_SPINDLE_AXIS
+        target_steps[POSITIONABLE_SPINDLE_AXIS] += lround(pl_data->rownd_aamr * axis_settings[POSITIONABLE_SPINDLE_AXIS]->steps_per_mm->get());
+#endif
+    }
     // Bail if this is a zero-length block. Highly unlikely to occur.
     if (block->step_event_count == 0) {
         return PLAN_EMPTY_BLOCK;
