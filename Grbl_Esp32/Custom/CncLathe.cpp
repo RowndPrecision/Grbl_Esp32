@@ -150,6 +150,10 @@ Error user_tool_change(uint8_t new_tool) {
 
     Error oPut = check_atc_move();
 
+    if (oPut != Error::Ok) {
+        return oPut;
+    }
+
     bool  is_absolute          = gc_state.modal.distance == Distance::Absolute;
     bool  is_inverseTime       = gc_state.modal.feed_rate == FeedRate::InverseTime;
     bool  is_imperial          = gc_state.modal.units == Units::Inches;

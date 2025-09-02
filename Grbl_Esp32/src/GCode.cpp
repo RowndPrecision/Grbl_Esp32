@@ -1629,12 +1629,14 @@ Error gc_execute_line(char* line, uint8_t client) {
                             }
 #ifdef POSITIONABLE_SPINDLE_AXIS
                             if (idx == POSITIONABLE_SPINDLE_AXIS) {
-                                coord_data[idx] = gc_state.position[idx];
+                                coord_data[idx]          = gc_state.position[idx];
+                                gc_block.values.xyz[idx] = coord_data[idx];
                             }
 #endif
 #ifdef REMOVABLE_AXIS_LIMIT
                             if (idx == REMOVABLE_AXIS_LIMIT) {
-                                coord_data[idx] = gc_state.position[idx];
+                                coord_data[idx]          = gc_state.position[idx];
+                                gc_block.values.xyz[idx] = coord_data[idx];
                             }
 #endif
                         }
@@ -1644,12 +1646,14 @@ Error gc_execute_line(char* line, uint8_t client) {
                         for (idx = 0; idx < n_axis; idx++) {
 #ifdef POSITIONABLE_SPINDLE_AXIS
                             if (idx == POSITIONABLE_SPINDLE_AXIS) {
-                                coord_data[idx] = gc_state.position[idx];
+                                coord_data[idx]          = gc_state.position[idx];
+                                gc_block.values.xyz[idx] = coord_data[idx];
                             }
 #endif
 #ifdef REMOVABLE_AXIS_LIMIT
                             if (idx == REMOVABLE_AXIS_LIMIT) {
-                                coord_data[idx] = gc_state.position[idx];
+                                coord_data[idx]          = gc_state.position[idx];
+                                gc_block.values.xyz[idx] = coord_data[idx];
                             }
 #endif
                         }
