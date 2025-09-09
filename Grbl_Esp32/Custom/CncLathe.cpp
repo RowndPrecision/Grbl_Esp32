@@ -96,6 +96,7 @@ bool kinematics_pre_homing(uint8_t cycle_mask) {
 */
 bool cartesian_to_motors(float* target, plan_line_data_t* pl_data, float* position) {
     if (rownd_param_experimental_axis_feed->get() && !gc_state.Rownd_thread) {
+        float radus;
         float dx;
         float dz;
         float dc_mm;
@@ -108,26 +109,31 @@ bool cartesian_to_motors(float* target, plan_line_data_t* pl_data, float* positi
         dx     = target[X_AXIS] - position[X_AXIS];
         dz     = target[Z_AXIS] - position[Z_AXIS];
         dc_deg = target[POLAR_AXIS] - position[POLAR_AXIS];
-        // dc_deg *= axis_convert_multiplier->get();
         if (dc_deg != 0) {
-            // if (position[RADIUS_AXIS] <= 0) {
-            //     grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "radius should be positive:", position[RADIUS_AXIS]);
-            //     return false;
-            // }
-            dc_mm = DEG_TO_RAD * dc_deg * position[RADIUS_AXIS] * axis_convert_multiplier->get();
+            radus = (position[RADIUS_AXIS] + (dx / 2));
+            if (radus == 0) {
+                if (rownd_verbose_enable->get()) {
+                    grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "%.2f deg movement on C-axis but radius is zero -> feedrate taken as RPM", dc_deg);
+                    // grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "%.2f° movement on C-axis but radius is zero → feedrate taken as RPM", dc_deg);
+                }
+            } else {
+                dc_mm = DEG_TO_RAD * dc_deg * radus * axis_convert_multiplier->get();
 
-            d_deg = sqrtf((dx * dx) + (dz * dz) + (dc_deg * dc_deg));
-            d_mm  = sqrtf((dx * dx) + (dz * dz) + (dc_mm * dc_mm));
+                d_deg = sqrtf((dx * dx) + (dz * dz) + (dc_deg * dc_deg));
+                d_mm  = sqrtf((dx * dx) + (dz * dz) + (dc_mm * dc_mm));
 
-            f_mm  = pl_data->feed_rate;
-            f_deg = (d_deg / d_mm) * f_mm;
+                f_mm  = pl_data->feed_rate;
+                f_deg = (d_deg / d_mm) * f_mm;
 
-            pl_data->feed_rate = f_deg;
+                pl_data->feed_rate = f_deg;
 
-            if (rownd_verbose_enable->get()) {
-                grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "f_in: %.2f, f_out: %.2f", f_mm, f_deg);
-                grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "dx: %.2f, dz: %.2f", dx, dz);
-                grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "dc_deg: %.2f, dc_mm: %.2f", dc_deg, dc_mm);
+                if (rownd_verbose_enable->get()) {
+                    grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Feed in: %.2f, Feed out: %.2f", f_mm, f_deg);
+                    grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "dX: %.2f, dZ: %.2f, Radius: %.2f", dx, dz, radus);
+                    // grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "ΔX: %.2f, ΔZ: %.2f, Radius: %.2f", dx, dz, radus);
+                    grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "dC (deg): %.2f, dC (mm): %.2f", dc_deg, dc_mm);
+                    // grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "ΔC (deg): %.2f, ΔC (mm): %.2f", dc_deg, dc_mm);
+                }
             }
         }
     }
