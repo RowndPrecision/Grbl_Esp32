@@ -122,7 +122,7 @@
 #define DEFAULT_STEPPER_IDLE_LOCK_TIME 255 // 0xFF = stay on
 
 #define DEFAULT_STEPPING_INVERT_MASK 0 // uint8_t
-#define DEFAULT_DIRECTION_INVERT_MASK (bit(Z_AXIS) | bit(A_AXIS)) // uint8_t
+#define DEFAULT_DIRECTION_INVERT_MASK bit(Z_AXIS) // uint8_t
 #define DEFAULT_INVERT_LIMIT_PINS bit(A_AXIS) // uint8_t
 #define DEFAULT_INVERT_PROBE_PIN 1 // boolean
 
