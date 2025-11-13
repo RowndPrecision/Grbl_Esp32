@@ -510,6 +510,7 @@ extern bool  isAxisAsda(int axis);
 extern bool  isAxisRpm(int axis);
 extern bool  isAxisValid(int axis);
 extern bool  isAxisOperationAllowed(int axis);
+extern Error setMachineMode(SpecialActions mMode);
 extern Error setDisableDoor(bool isDisabled);
 extern Error setATCConnection(bool isConnected);
 

@@ -974,13 +974,9 @@ Error gc_execute_line(char* line, uint8_t client) {
         };
         switch (gc_block.modal.RowndAction) {
             case SpecialActions::ModeSwitchLathe:
-                return spindle_type->setEnumValue((int8_t)SpindleType::ASDA_CN1);
-                break;
             case SpecialActions::ModeSwitch4thAxis:
-                return spindle_type->setEnumValue((int8_t)SpindleType::PWM);
-                break;
             case SpecialActions::ModeSwitchLaser:
-                return spindle_type->setEnumValue((int8_t)SpindleType::LASER);
+                return setMachineMode(gc_block.modal.RowndAction);
                 break;
             case SpecialActions::DisableDoor:
                 return setDisableDoor(true);

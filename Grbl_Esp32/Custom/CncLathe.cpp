@@ -29,8 +29,22 @@ Error check_atc_move() {
     float* curr_mpos = system_get_mpos();  // returns MAX_N_AXIS lenght array
 
     auto n_axis = number_axis->get();  // is N_AXIS and can be <= MAX_N_AXIS
+    bool skip   = false;
     for (uint8_t idx = 0; idx < n_axis; idx++) {
-        if (idx != REMOVABLE_AXIS_LIMIT && idx != POSITIONABLE_SPINDLE_AXIS) {
+        skip = false;
+#ifdef REMOVABLE_AXIS_LIMIT
+        if (idx == REMOVABLE_AXIS_LIMIT) {
+            skip = true;
+        }
+#endif
+
+#ifdef POSITIONABLE_SPINDLE_AXIS
+        if (idx == POSITIONABLE_SPINDLE_AXIS) {
+            skip = true;
+        }
+#endif
+
+        if (!skip) {
             if (curr_mpos[idx] != coords[CoordIndex::G28]->get()[idx]) {
                 return Error::AtcNeedsG28;
             }
@@ -58,6 +72,7 @@ bool user_defined_homing(uint8_t cycle_mask) {
         return false;
     }
 
+#ifdef REMOVABLE_AXIS_LIMIT
     if (bitnum_istrue(cycle_mask, REMOVABLE_AXIS_LIMIT)) {
         Error oPut = check_atc_move();
         if (oPut != Error::Ok) {
@@ -66,11 +81,13 @@ bool user_defined_homing(uint8_t cycle_mask) {
         }
         return false;
     }
-
+#endif
+#ifdef POSITIONABLE_SPINDLE_AXIS
     if (bitnum_istrue(cycle_mask, POSITIONABLE_SPINDLE_AXIS)) {
         sys_position[POSITIONABLE_SPINDLE_AXIS] = 0;
         return true;
     }
+#endif
     if (rownd_verbose_enable->get())
         grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "TODO home: %d", cycle_mask);
 
@@ -95,6 +112,7 @@ bool kinematics_pre_homing(uint8_t cycle_mask) {
  float *position:				The previous "from" location of the move
 */
 bool cartesian_to_motors(float* target, plan_line_data_t* pl_data, float* position) {
+#ifdef POSITIONABLE_SPINDLE_AXIS
     if (rownd_param_experimental_axis_feed->get() && !gc_state.Rownd_thread) {
         float radus;
         float dx;
@@ -137,7 +155,7 @@ bool cartesian_to_motors(float* target, plan_line_data_t* pl_data, float* positi
             }
         }
     }
-
+#endif
     // mc_line() returns false if a jog is cancelled.
     // In that case we stop sending segments to the planner.
     return mc_line(target, pl_data);
@@ -423,7 +441,7 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
     for (size_t idx = 0; idx < MAX_N_AXIS; ++idx) {
         pos_start[idx] = gc_state->position[idx] - gc_state->coord_system[idx] - gc_state->coord_offset[idx] - gc_state->tool_length_offset[idx];
 
-#ifdef POSITIONABLE_AXIS_CONVERT
+#ifdef POSITIONABLE_SPINDLE_AXIS
         if (idx == POSITIONABLE_SPINDLE_AXIS) {
             pos_start[idx] *= axis_convert_multiplier->get();
         }

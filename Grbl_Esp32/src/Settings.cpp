@@ -47,6 +47,28 @@ bool isAxisOperationAllowed(int axis) {
     return true;
 }
 
+Error setMachineMode(SpecialActions mMode) {
+    Error temp = Error::Ok;
+    protocol_buffer_synchronize();
+    switch (mMode)
+    {
+    case SpecialActions::ModeSwitchLathe :
+        temp =  spindle_type->setEnumValue((int8_t)SpindleType::ASDA_CN1);
+        break;
+    case SpecialActions::ModeSwitch4thAxis :
+        temp =  spindle_type->setEnumValue((int8_t)SpindleType::PWM);
+        break;
+    case SpecialActions::ModeSwitchLaser :
+        temp =  spindle_type->setEnumValue((int8_t)SpindleType::LASER);
+        break;
+    default:
+        temp = Error::SettingReadFail;
+        break;
+    }
+    protocol_buffer_synchronize();
+    return temp;
+}
+
 Error setDisableDoor(bool isDisabled) {
     protocol_buffer_synchronize();
     Error temp = rownd_param_ignore_door_switch->setBoolValue(isDisabled);
