@@ -128,7 +128,8 @@ bool cartesian_to_motors(float* target, plan_line_data_t* pl_data, float* positi
         dz     = target[Z_AXIS] - position[Z_AXIS];
         dc_deg = target[POLAR_AXIS] - position[POLAR_AXIS];
         if (dc_deg != 0) {
-            radus = (position[RADIUS_AXIS] + (dx / 2));
+            float* wco = get_wco();
+            radus      = (position[RADIUS_AXIS] + (dx / 2)) - wco[RADIUS_AXIS];
             if (radus == 0) {
                 if (rownd_verbose_enable->get()) {
                     grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "%.2f deg movement on C-axis but radius is zero -> feedrate taken as RPM", dc_deg);
@@ -147,10 +148,11 @@ bool cartesian_to_motors(float* target, plan_line_data_t* pl_data, float* positi
 
                 if (rownd_verbose_enable->get()) {
                     grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Feed in: %.2f, Feed out: %.2f", f_mm, f_deg);
-                    grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "dX: %.2f, dZ: %.2f, Radius: %.2f", dx, dz, radus);
-                    // grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "ΔX: %.2f, ΔZ: %.2f, Radius: %.2f", dx, dz, radus);
+                    grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "dX: %.2f, dZ: %.2f", dx, dz);
+                    // grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "ΔX: %.2f, ΔZ: %.2f", dx, dz);
                     grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "dC (deg): %.2f, dC (mm): %.2f", dc_deg, dc_mm);
                     // grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "ΔC (deg): %.2f, ΔC (mm): %.2f", dc_deg, dc_mm);
+                    grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "wco: %.2f, Radius: %.2f", wco[RADIUS_AXIS], radus);
                 }
             }
         }
