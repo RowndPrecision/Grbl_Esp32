@@ -53,14 +53,70 @@ bool kinematics_pre_homing(uint8_t cycle_mask) {
  float *position:				The previous "from" location of the move
 */
 bool cartesian_to_motors(float* target, plan_line_data_t* pl_data, float* position) {
-#ifdef DEFAULT_ROWND_TCP
-    if (tcp_active->get()) {
-        float delta[MAX_N_AXIS];
+    float delta_in[MAX_N_AXIS];
+    float delta_out[MAX_N_AXIS];
+
+    for (size_t idx = 0; idx < MAX_N_AXIS; ++idx) {
+        delta_in[idx] = target[idx] - position[idx];
+    }
+
+    if (rownd_param_experimental_axis_feed->get() && !gc_state.Rownd_thread) {
+        float d_mm  = 0;
+        float d_deg = 0;
+        float f_mm;
+        float f_deg;
+        float cosA;
+        float sinA;
+        float y_projected;
+        float radius_a;
+        float radius_a0;
+        float radius_a1;
+        float radius_c;
+        float radius_c0;
+        float radius_c1;
 
         for (size_t idx = 0; idx < MAX_N_AXIS; ++idx) {
-            delta[idx] = target[idx] - position[idx];
+            // there are no B-axis and A-axis is fixed along the X-axis but C-axis is not fixed and can rotate as A-axis changes
+            if (delta_in[idx] != 0 && idx == A_AXIS) {
+                radius_a0 = sqrtf(position[Y_AXIS] * position[Y_AXIS] + position[Z_AXIS] * position[Z_AXIS]);
+
+                radius_a1 = sqrtf(target[Y_AXIS] * target[Y_AXIS] + target[Z_AXIS] * target[Z_AXIS]);
+
+                delta_out[idx] = DEG_TO_RAD * delta_in[idx] * axis_convert_multiplier->get() * ((radius_a0 + radius_a1) / 2);
+            } else if (delta_in[idx] != 0 && idx == C_AXIS) {
+                cosA           = cosf(DEG_TO_RAD * position[A_AXIS]);
+                sinA           = sinf(DEG_TO_RAD * position[A_AXIS]);
+                y_projected    = position[Y_AXIS] * cosA + position[Z_AXIS] * sinA;
+                radius_c0      = sqrtf(position[X_AXIS] * position[X_AXIS] + y_projected * y_projected);
+                cosA           = cosf(DEG_TO_RAD * target[A_AXIS]);
+                sinA           = sinf(DEG_TO_RAD * target[A_AXIS]);
+                y_projected    = target[Y_AXIS] * cosA + target[Z_AXIS] * sinA;
+                radius_c1      = sqrtf(target[X_AXIS] * target[X_AXIS] + y_projected * y_projected);
+                radius_c       = (radius_c0 + radius_c1) / 2;
+                delta_out[idx] = DEG_TO_RAD * delta_in[idx] * axis_convert_multiplier->get() * radius_c;
+            } else {
+                delta_out[idx] = delta_in[idx];
+            }
+
+            d_deg += delta_in[idx] * delta_in[idx];
+            d_mm += delta_out[idx] * delta_out[idx];
         }
-        target[X_AXIS] = delta[X_AXIS];
+
+        d_deg = sqrtf(d_deg);
+        d_mm  = sqrtf(d_mm);
+
+        f_mm  = pl_data->feed_rate;
+        f_deg = (d_deg / d_mm) * f_mm;
+
+        pl_data->feed_rate = f_deg;
+
+        if (rownd_verbose_enable->get()) {
+            grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "f_in: %.2f, f_out: %.2f", f_mm, f_deg);
+        }
+    }
+#ifdef DEFAULT_ROWND_TCP
+    if (tcp_active->get()) {
+        target[X_AXIS] = delta_in[X_AXIS];
     }
 #endif
 

@@ -43,6 +43,8 @@ enum class ModalGroup : uint8_t {
     MG8  = 8,   // [G43,G43.1,G49] Tool length offset
     MG12 = 9,   // [G54,G55,G56,G57,G58,G59] Coordinate system selection
     MG13 = 10,  // [G61] Control mode
+    MG14 = 18,  // [G96,G97] Spindle Speed Mode
+    MG15 = 19,  // [G7,G8] Lathe Diameter Mode
     MM4  = 11,  // [M0,M1,M2,M30] Stopping
     MM5  = 12,  // [M62, M63, M64, M65, M67, M68] IO control
     MM6  = 13,  // [M6] Tool change
@@ -140,6 +142,18 @@ enum class CutterCompensation : uint8_t {
 // Modal Group MG13: Control mode
 enum class ControlMode : uint8_t {
     ExactPath = 0,  // G61 (Default: Must be zero)
+};
+
+// Modal Group MG14: Control mode
+enum class SpindleSpeedMode : uint8_t {
+    RPM                  = 0,  // G97 (Default: Must be zero)
+    ConstantSurfaceSpeed = 1,  //G96
+};
+
+// Modal Group MG15: Control mode
+enum class LatheDRMode : uint8_t {
+    Radius   = 0,  // G8 (Default: Must be zero)
+    Diameter = 1,  // G7
 };
 
 // Modal Group MM7: Spindle control
@@ -293,10 +307,11 @@ enum G76_taperModes : uint8_t {
 
 // NOTE: When this struct is zeroed, the 0 values in the above types set the system defaults.
 typedef struct {
-    Motion   motion;     // {G0,G1,G2,G3,G38.2,G80}
-    FeedRate feed_rate;  // {G93,G94}
-    Units    units;      // {G20,G21}
-    Distance distance;   // {G90,G91}
+    Motion      motion;     // {G0,G1,G2,G3,G38.2,G80}
+    FeedRate    feed_rate;  // {G93,G94}
+    LatheDRMode d_r_mode;   // {G7,G8}
+    Units       units;      // {G20,G21}
+    Distance    distance;   // {G90,G91}
     // ArcDistance distance_arc; // {G91.1} NOTE: Don't track. Only default supported.
     Plane plane_select;  // {G17,G18,G19}
     // CutterCompensation cutter_comp;  // CutterCompensation {G40} removed NOTE: Don't track. Only default supported.

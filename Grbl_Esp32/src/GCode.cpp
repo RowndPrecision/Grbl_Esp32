@@ -400,6 +400,14 @@ Error gc_execute_line(char* line, uint8_t client) {
                         gc_block.modal.units = Units::Mm;
                         mg_word_bit          = ModalGroup::MG6;
                         break;
+                    case 7:
+                        gc_block.modal.d_r_mode = LatheDRMode::Diameter;
+                        mg_word_bit             = ModalGroup::MG15;
+                        break;
+                    case 8:
+                        gc_block.modal.d_r_mode = LatheDRMode::Radius;
+                        mg_word_bit             = ModalGroup::MG15;
+                        break;
                     case 40:
                         // NOTE: Not required since cutter radius compensation is always disabled. Only here
                         // to support G40 commands that often appear in g-code program headers to setup defaults.
@@ -1319,6 +1327,12 @@ Error gc_execute_line(char* line, uint8_t client) {
             }
         }
     }
+    // Pre-convert X coordinate value to radius, if applicable.
+    if (gc_block.modal.d_r_mode == LatheDRMode::Diameter) {
+        if (bit_istrue(axis_words, bit(DEFAULT_SWAP_X))) {
+            gc_block.values.xyz[DEFAULT_SWAP_X] /= 2;
+        }
+    }
 
     // [13. Cutter radius compensation ]: G41/42 NOT SUPPORTED. Error, if enabled while G53 is active.
     // [G40 Errors]: G2/3 arc is programmed after a G40. The linear move after disabling is less than tool diameter.
@@ -1385,6 +1399,12 @@ Error gc_execute_line(char* line, uint8_t client) {
         } else {
             if (gc_block.values.l == 10 || gc_block.values.l == 1) {
                 gc_block.non_modal_command = NonModal::SetToolTableData;
+                // Revert X coordinate value to input, cause it indicates tool length and not diameter offset.
+                if (gc_block.modal.d_r_mode == LatheDRMode::Diameter) {
+                    if (bit_istrue(axis_words, bit(DEFAULT_SWAP_X))) {
+                        gc_block.values.xyz[DEFAULT_SWAP_X] *= 2;
+                    }
+                }
             } else if (gc_block.values.l == 20 || gc_block.values.l == 2) {
                 gc_block.non_modal_command = NonModal::SetCoordinateData;
             } else {
@@ -2091,7 +2111,8 @@ Error gc_execute_line(char* line, uint8_t client) {
     // [11. Set active plane ]:
     gc_state.modal.plane_select = gc_block.modal.plane_select;
     // [12. Set length units ]:
-    gc_state.modal.units = gc_block.modal.units;
+    gc_state.modal.units    = gc_block.modal.units;
+    gc_state.modal.d_r_mode = gc_block.modal.d_r_mode;
     // [13. Cutter radius compensation ]: G41/42 NOT SUPPORTED
     // gc_state.modal.cutter_comp = gc_block.modal.cutter_comp; // NOTE: Not needed since always disabled.
     // [14. Cutter length compensation ]: G43.1 and G49 supported. G43 NOT SUPPORTED.

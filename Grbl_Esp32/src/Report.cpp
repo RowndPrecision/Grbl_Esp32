@@ -181,6 +181,9 @@ static void report_util_axis_values(float* axis_value, char* rpt) {
             }
         }
 #endif
+        if (gc_state.modal.d_r_mode == LatheDRMode::Diameter && idx == DEFAULT_SWAP_X) {
+            axis_value[idx] *= 2;
+        }
         if (axis_value[idx] <= 0 && axis_value[idx] >= zero_toler) {
             axis_value[idx] = 0;
         }
@@ -198,14 +201,34 @@ static String report_util_axis_values(const float* axis_value) {
     uint8_t idx;
     char    axisVal[coordStringLen];
     float   unit_conv = 1.0;  // unit conversion multiplier..default is mm
+    float   rpm_conv  = 1.0;  // unit conversion multiplier..default is mm
     int     decimals  = 3;    // Default - report mm to 3 decimal places
+    float   axis_val_temp[MAX_N_AXIS];
     if (report_inches->get()) {
         unit_conv = 1.0 / MM_PER_INCH;
         decimals  = 4;  // Report inches to 4 decimal places
     }
     auto n_axis = number_axis->get();
     for (idx = 0; idx < n_axis; idx++) {
-        rpt += String(axis_value[idx] * unit_conv, decimals);
+        axis_val_temp[idx] = axis_value[idx];
+#ifdef POSITIONABLE_AXIS_CONVERT
+        if (isAxisRpm(idx)) {
+            rpm_conv = axis_convert_multiplier->get();
+        } else {
+            rpm_conv = 1.0;
+        }
+#endif
+#ifdef POSITIONABLE_SPINDLE_AXIS
+        if (rownd_param_experimental_position_mode->get()) {
+            if (idx == POSITIONABLE_SPINDLE_AXIS) {
+                axis_val_temp[idx] = fmodf(axis_val_temp[idx], (360.0 / rpm_conv));
+            }
+        }
+#endif
+        if (gc_state.modal.d_r_mode == LatheDRMode::Diameter && idx == DEFAULT_SWAP_X) {
+            axis_val_temp[idx] *= 2;
+        }
+        rpt += String(axis_val_temp[idx] * unit_conv, decimals);
         if (idx < (number_axis->get() - 1)) {
             rpt += ",";
         }
@@ -350,7 +373,14 @@ void report_ngc_parameters(uint8_t client) {
     ngc_rpt += report_util_axis_values(gc_state.coord_offset);
     ngc_rpt += "]\r\n";
     ngc_rpt += "[TLO:";  // Print tool length offset
-    ngc_rpt += report_util_axis_values(gc_state.tool_length_offset);
+
+    auto n_axis = number_axis->get();
+    for (int idx = 0; idx < n_axis; idx++) {
+        temp[idx] = gc_state.tool_length_offset[idx];
+    }
+    if (gc_state.modal.d_r_mode == LatheDRMode::Diameter)
+        temp[DEFAULT_SWAP_X] /= 2;
+    ngc_rpt += report_util_axis_values(temp);
     ngc_rpt += "]\r\n";
 
     // tool table
@@ -359,6 +389,8 @@ void report_ngc_parameters(uint8_t client) {
         ngc_rpt += idx + 1;
         ngc_rpt += ":";
         ToolTable->get_xyz(temp, idx);
+        if (gc_state.modal.d_r_mode == LatheDRMode::Diameter)
+            temp[DEFAULT_SWAP_X] /= 2;
         ngc_rpt += report_util_axis_values(temp);
         ngc_rpt += ", p:";
         ngc_rpt += ToolTable->get_p(idx);
@@ -446,6 +478,16 @@ void report_gcode_modes(uint8_t client) {
             break;
         case Units::Mm:
             mode = " G21";
+            break;
+    }
+    strcat(modes_rpt, mode);
+
+    switch (gc_state.modal.d_r_mode) {
+        case LatheDRMode::Diameter:
+            mode = " G7";
+            break;
+        case LatheDRMode::Radius:
+            mode = " G8";
             break;
     }
     strcat(modes_rpt, mode);

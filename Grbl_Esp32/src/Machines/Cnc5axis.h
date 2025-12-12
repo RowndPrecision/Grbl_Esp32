@@ -24,10 +24,7 @@
 #define DEFAULT_SWAP_B  C_AXIS
 #define DEFAULT_SWAP_C  B_AXIS
 
-#define REMOVABLE_AXIS_LIMIT -1
-// #define BLOCK_AXIS_ON_PWM_MODE  A_AXIS
-
-// #define POSITIONABLE_SPINDLE_AXIS -1 // -1 to disable
+#define POSITIONABLE_AXIS_CONVERT 360.0f // 1.0f
 // #define POSITIONABLE_AXIS_CONVERT 1.0f // 360.0f
 
 #define X_STEP_PIN              GPIO_NUM_27
