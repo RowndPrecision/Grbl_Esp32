@@ -403,10 +403,12 @@ Error gc_execute_line(char* line, uint8_t client) {
                     case 7:
                         gc_block.modal.d_r_mode = LatheDRMode::Diameter;
                         mg_word_bit             = ModalGroup::MG15;
+                        system_flag_wco_change();
                         break;
                     case 8:
                         gc_block.modal.d_r_mode = LatheDRMode::Radius;
                         mg_word_bit             = ModalGroup::MG15;
+                        system_flag_wco_change();
                         break;
                     case 40:
                         // NOTE: Not required since cutter radius compensation is always disabled. Only here
@@ -1400,11 +1402,6 @@ Error gc_execute_line(char* line, uint8_t client) {
             if (gc_block.values.l == 10 || gc_block.values.l == 1) {
                 gc_block.non_modal_command = NonModal::SetToolTableData;
                 // Revert X coordinate value to input, cause it indicates tool length and not diameter offset.
-                if (gc_block.modal.d_r_mode == LatheDRMode::Diameter) {
-                    if (bit_istrue(axis_words, bit(DEFAULT_SWAP_X))) {
-                        gc_block.values.xyz[DEFAULT_SWAP_X] *= 2;
-                    }
-                }
             } else if (gc_block.values.l == 20 || gc_block.values.l == 2) {
                 gc_block.non_modal_command = NonModal::SetCoordinateData;
             } else {
@@ -1446,6 +1443,12 @@ Error gc_execute_line(char* line, uint8_t client) {
                 // FAIL(Error::GcodeUnsupportedCommand);  // [Unsupported L]  // TODO add support
             } else {
                 // L1: Update tool table to programmed value.
+
+                if (gc_block.modal.d_r_mode == LatheDRMode::Diameter) {
+                    if (bit_istrue(axis_words, bit(DEFAULT_SWAP_X))) {
+                        gc_block.values.xyz[DEFAULT_SWAP_X] *= 2;
+                    }
+                }
                 for (int idx = 0; idx < n_axis; ++idx) {
                     coord_data[idx] = gc_block.values.xyz[idx];
                 }  // TODO test
