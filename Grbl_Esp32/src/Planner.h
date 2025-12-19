@@ -43,6 +43,7 @@ struct PlMotion {
     uint8_t systemMotion : 1;    // Single motion. Circumvents planner state. Used by home/park.
     uint8_t noFeedOverride : 1;  // Motion does not honor feed override.
     uint8_t inverseTime : 1;     // Interprets feed rate value as inverse time when set.
+    uint8_t mmPerRev : 1;        // Interprets feed rate value as mm/rev when set.
 };
 
 // This struct stores a linear movement of a g-code block motion with its critical "nominal" values

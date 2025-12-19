@@ -138,7 +138,7 @@ Error __attribute__((weak)) user_tool_change(uint8_t new_tool) {
 }
 
 Error __attribute__((weak)) rownd_G33(parser_block_t* gc_block, float* position) {
-    return Error::Ok;
+    return Error::GcodeUnsupportedCommand;
 }
 
 Error __attribute__((weak)) rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state_t* gc_state) {

@@ -528,6 +528,9 @@ void report_gcode_modes(uint8_t client) {
         case FeedRate::InverseTime:
             mode = " G93";
             break;
+        case FeedRate::UnitsPerRev:
+            mode = " G95";
+            break;
     }
     strcat(modes_rpt, mode);
 

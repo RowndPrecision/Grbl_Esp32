@@ -180,12 +180,13 @@ Error user_tool_change(uint8_t new_tool) {
         return oPut;
     }
 
-    bool  is_absolute          = gc_state.modal.distance == Distance::Absolute;
-    bool  is_inverseTime       = gc_state.modal.feed_rate == FeedRate::InverseTime;
-    bool  is_imperial          = gc_state.modal.units == Units::Inches;
-    int   tool_diff            = new_tool - tool_active->get();
-    int   tool_move            = (tool_diff < 0) ? tool_diff + tool_count->get() : tool_diff;
-    float lock_test_percentage = 0.1;
+    bool     is_absolute          = gc_state.modal.distance == Distance::Absolute;
+    FeedRate last_feed_mode       = gc_state.modal.feed_rate;
+    float    last_feed_value      = gc_state.feed_rate;
+    bool     is_imperial          = gc_state.modal.units == Units::Inches;
+    int      tool_diff            = new_tool - tool_active->get();
+    int      tool_move            = (tool_diff < 0) ? tool_diff + tool_count->get() : tool_diff;
+    float    lock_test_percentage = 0.1;
 
     // float mult_conv            = homing_pulloff->get() / (atc_distance->get() + atc_offset->get());
 
@@ -198,7 +199,7 @@ Error user_tool_change(uint8_t new_tool) {
         grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Active Tool No: %d | New Tool No: %d", tool_active->get(), new_tool);
     }
 
-    if (is_inverseTime) {
+    if (last_feed_mode != FeedRate::UnitsPerMin) {
         gc_state.modal.feed_rate = FeedRate::UnitsPerMin;
     }
     if (is_imperial) {
@@ -278,11 +279,10 @@ Error user_tool_change(uint8_t new_tool) {
     } else {
         gc_state.modal.distance = Distance::Incremental;
     }
-    if (is_inverseTime) {
-        gc_state.modal.feed_rate = FeedRate::InverseTime;
-    } else {
-        gc_state.modal.feed_rate = FeedRate::UnitsPerMin;
-    }
+
+    gc_state.modal.feed_rate = last_feed_mode;
+    gc_state.feed_rate       = last_feed_value;
+
     if (is_imperial) {
         gc_state.modal.units = Units::Inches;
     } else {
@@ -391,30 +391,31 @@ float calculate_G76_feed(float s, float rev, float dz, float dx) {
 }
 
 Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state_t* gc_state) {
-    float pos_start[MAX_N_AXIS];
-    char  g76_line[50];
-    bool  is_lathe       = static_cast<SpindleType>(spindle_type->get()) == SpindleType::ASDA_CN1;
-    bool  is_absolute    = gc_block->modal.distance == Distance::Absolute;
-    bool  is_inverseTime = gc_block->modal.feed_rate == FeedRate::InverseTime;
-    bool  is_inches      = gc_block->modal.units == Units::Inches;
-    float dirMultiplier  = (gc_block->modal.spindle == SpindleState::Ccw) ? -1.0f : 1.0f;
-    float feed_in        = gc_block->values.s;
-    float feed_out       = 0;
-    float magnitude      = 0;
-    float rev_total      = 0;
-    float rev_enter      = 0;
-    float rev_exit       = 0;
-    float rev_thread     = 0;
-    float rev_smooth     = 1;
-    float rev_offset     = 0;
-    float mult_smooth    = 1;
-    float total_dist     = 0;
-    float depth_line     = 0;
-    int   pass_count     = 0;
-    int   current_pass   = 0;
-    float depth_last     = 0;
-    float depth_current  = 0;
-    Error oPut           = Error::Ok;
+    float    pos_start[MAX_N_AXIS];
+    char     g76_line[50];
+    bool     is_lathe        = static_cast<SpindleType>(spindle_type->get()) == SpindleType::ASDA_CN1;
+    bool     is_absolute     = gc_block->modal.distance == Distance::Absolute;
+    bool     is_inches       = gc_block->modal.units == Units::Inches;
+    FeedRate last_feed_mode  = gc_block->modal.feed_rate;
+    float    last_feed_value = gc_block->values.f;
+    float    dirMultiplier   = (gc_block->modal.spindle == SpindleState::Ccw) ? -1.0f : 1.0f;
+    float    feed_in         = gc_block->values.s;
+    float    feed_out        = 0;
+    float    magnitude       = 0;
+    float    rev_total       = 0;
+    float    rev_enter       = 0;
+    float    rev_exit        = 0;
+    float    rev_thread      = 0;
+    float    rev_smooth      = 1;
+    float    rev_offset      = 0;
+    float    mult_smooth     = 1;
+    float    total_dist      = 0;
+    float    depth_line      = 0;
+    int      pass_count      = 0;
+    int      current_pass    = 0;
+    float    depth_last      = 0;
+    float    depth_current   = 0;
+    Error    oPut            = Error::Ok;
 
     if (is_lathe) {
         gc_state->Rownd_special = true;
@@ -429,7 +430,7 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
 
     protocol_buffer_synchronize();
 
-    if (is_inverseTime) {
+    if (last_feed_mode != FeedRate::UnitsPerMin) {
         gc_state->modal.feed_rate = FeedRate::UnitsPerMin;
     }
 
@@ -789,9 +790,8 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
         gc_state->Rownd_special = false;
     }
 
-    if (is_inverseTime) {
-        gc_state->modal.feed_rate = FeedRate::InverseTime;
-    }
+    gc_state->modal.feed_rate = last_feed_mode;
+    gc_state->feed_rate       = last_feed_value;
 
     if (is_inches) {
         gc_state->modal.units = Units::Inches;

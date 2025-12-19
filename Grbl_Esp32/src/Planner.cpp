@@ -360,6 +360,9 @@ uint8_t plan_buffer_line(float* target, plan_line_data_t* pl_data) {
         if (block->motion.inverseTime) {
             block->programmed_rate *= block->millimeters;
         }
+        if (block->motion.mmPerRev) {
+            block->programmed_rate *= block->spindle_speed;
+        }
     }
     // TODO: Need to check this method handling zero junction speeds when starting from rest.
     if ((block_buffer_head == block_buffer_tail) || (block->motion.systemMotion)) {

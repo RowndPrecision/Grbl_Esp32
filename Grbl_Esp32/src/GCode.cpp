@@ -392,6 +392,10 @@ Error gc_execute_line(char* line, uint8_t client) {
                         gc_block.modal.feed_rate = FeedRate::UnitsPerMin;
                         mg_word_bit              = ModalGroup::MG5;
                         break;
+                    case 95:
+                        gc_block.modal.feed_rate = FeedRate::UnitsPerRev;
+                        mg_word_bit              = ModalGroup::MG5;
+                        break;
                     case 20:
                         gc_block.modal.units = Units::Inches;
                         mg_word_bit          = ModalGroup::MG6;
@@ -1011,6 +1015,12 @@ Error gc_execute_line(char* line, uint8_t client) {
         }
     }
 
+    // [4. Set spindle speed ]: S is negative (done.)
+    if (bit_isfalse(value_words, bit(GCodeWord::S))) {
+        gc_block.values.s = gc_state.spindle_speed;
+    }
+    bit_false(value_words, bit(GCodeWord::S));  // NOTE: Single-meaning value word. Set at end of error-checking.
+
     // [2. Set feed rate mode ]: G93 F word missing with G1,G2/3 active, implicitly or explicitly. Feed rate
     //   is not defined after switching to G94 from G93.
     // NOTE: For jogging, ignore prior feed rate mode. Enforce G94 and check for required F word.
@@ -1028,7 +1038,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                 FAIL(Error::GcodeAxisCommandConflict);
             }
             if (axis_command == AxisCommand::MotionMode) {
-                if ((gc_block.modal.motion != Motion::None) || (gc_block.modal.motion != Motion::Seek)) {
+                if ((gc_block.modal.motion != Motion::None) && (gc_block.modal.motion != Motion::Seek)) {
                     if (bit_isfalse(value_words, bit(GCodeWord::F))) {
                         FAIL(Error::GcodeUndefinedFeedRate);  // [F word missing]
                     }
@@ -1045,6 +1055,174 @@ Error gc_execute_line(char* line, uint8_t client) {
             // value in the block. If no F word is passed with a motion command that requires a feed rate, this will error
             // out in the motion modes error-checking. However, if no F word is passed with NO motion command that requires
             // a feed rate, we simply move on and the state feed rate value gets updated to zero and remains undefined.
+        } else if (gc_block.modal.feed_rate == FeedRate::UnitsPerRev) {  // = G95
+            if (gc_block.modal.motion == Motion::G33 || gc_block.modal.motion == Motion::G76) {
+                if (gc_block.modal.motion == Motion::G76) {
+                    if (!g76_params.first_line) {
+                        memset(&g76_params, 0, sizeof(g76_params_t));
+                        if (bit_is_match(value_words, (bit(GCodeWord::P) | bit(GCodeWord::Q) | bit(GCodeWord::R)))) {
+                            FAIL(Error::GcodeUnsupportedCommand);  // TODO fanuc type dual line G76
+                        } else if (bit_istrue(value_words, bit(GCodeWord::A))) {
+                            FAIL(Error::GcodeUnsupportedCommand);  // TODO fanuc type dual line G76
+                        } else {
+                            if (gc_block.modal.plane_select != Plane::ZX) {
+                                FAIL(Error::InvalidWorkPlane);
+                            }
+
+                            if (!bit_is_match(axis_words, bit(Z_AXIS))) {
+                                FAIL(Error::GcodeAxisWordsExist);
+                            } else {
+                                bit_false(value_words, bit(GCodeWord::Z));
+                            }
+
+                            if (bit_istrue(value_words, bit(GCodeWord::R))) {
+                                if (gc_block.values.r < 1) {
+                                    FAIL(Error::InvalidValue);
+                                }
+                            } else {
+                                gc_block.values.r = 1.0;
+                            }
+                            bit_false(value_words, bit(GCodeWord::R));
+                            g76_params.degression = gc_block.values.r;
+
+                            // if (bit_isfalse(value_words, bit(GCodeWord::P)) | bit_isfalse(value_words, bit(GCodeWord::I)) | bit_isfalse(value_words, bit(GCodeWord::J)) | bit_isfalse(value_words, bit(GCodeWord::K))) {
+                            if (bit_isfalse(value_words, bit(GCodeWord::P)) | bit_isfalse(value_words, bit(GCodeWord::J)) | bit_isfalse(value_words, bit(GCodeWord::K))) {
+                                FAIL(Error::GcodeValueWordMissing);
+                            }
+
+                            if (bit_istrue(value_words, bit(GCodeWord::P))) {
+                                if (gc_block.values.p <= 0) {
+                                    FAIL(Error::NegativeValue);
+                                }
+                                if (gc_block.modal.units == Units::Inches) {
+                                    gc_block.values.p *= MM_PER_INCH;
+                                }
+                                bit_false(value_words, bit(GCodeWord::P));
+                                g76_params.pitch = gc_block.values.p;
+                            }
+
+                            if (bit_istrue(value_words, bit(GCodeWord::I))) {
+                                // Rownd version
+                                // if (gc_block.values.ijk[X_AXIS] <= 0) {
+                                //     FAIL(Error::in);
+                                // }
+                                if (gc_block.modal.units == Units::Inches) {
+                                    gc_block.values.ijk[X_AXIS] *= MM_PER_INCH;
+                                }
+                                bit_false(value_words, bit(GCodeWord::I));
+                                g76_params.offset_peak = gc_block.values.ijk[X_AXIS];
+                            } else
+                                g76_params.offset_peak = 0;
+
+                            if (bit_istrue(value_words, bit(GCodeWord::J))) {
+                                // if (gc_block.values.ijk[Y_AXIS] <= 0) {
+                                //     FAIL(Error::NegativeValue);
+                                // }
+                                if (gc_block.modal.units == Units::Inches) {
+                                    gc_block.values.ijk[Y_AXIS] *= MM_PER_INCH;
+                                }
+                                bit_false(value_words, bit(GCodeWord::J));
+                                g76_params.depth_first_cut = gc_block.values.ijk[Y_AXIS];
+                            }
+
+                            if (bit_istrue(value_words, bit(GCodeWord::K))) {
+                                // linuxCnc version
+                                // if (gc_block.values.ijk[Z_AXIS] <= 0) {
+                                //     FAIL(Error::NegativeValue);
+                                // }
+                                // Rownd version
+                                if (gc_block.values.ijk[Z_AXIS] == 0) {
+                                    FAIL(Error::InvalidValue);
+                                }
+                                if (gc_block.modal.units == Units::Inches) {
+                                    gc_block.values.ijk[Z_AXIS] *= MM_PER_INCH;
+                                }
+                                bit_false(value_words, bit(GCodeWord::K));
+                                g76_params.depth_thread = gc_block.values.ijk[Z_AXIS];
+                            }
+
+                            if (bit_istrue(value_words, bit(GCodeWord::H))) {
+                                if (gc_block.values.h < 0) {
+                                    FAIL(Error::NegativeValue);
+                                }
+                                bit_false(value_words, bit(GCodeWord::H));
+                                g76_params.spring_pass = gc_block.values.h;
+                            } else
+                                g76_params.spring_pass = 0;
+
+                            if (bit_istrue(value_words, bit(GCodeWord::Q))) {
+                                bit_false(value_words, bit(GCodeWord::Q));
+                                g76_params.slide_angle = gc_block.values.q;
+                            }
+
+                            if (bit_istrue(value_words, bit(GCodeWord::L))) {
+                                bit_false(value_words, bit(GCodeWord::L));
+                                g76_params.chamfer_mode = gc_block.values.l;
+                            }
+
+                            if (bit_istrue(value_words, bit(GCodeWord::E))) {
+                                if (gc_block.modal.units == Units::Inches) {
+                                    gc_block.values.e *= MM_PER_INCH;
+                                }
+                                if (gc_block.values.e > (abs(g76_params.depth_thread) + abs(g76_params.offset_peak)) / 2) {
+                                    FAIL(Error::GcodeMaxValueExceeded);
+                                }
+                                if (gc_block.values.e < 0) {
+                                    FAIL(Error::NegativeValue);
+                                }
+                                bit_false(value_words, bit(GCodeWord::E));
+                                g76_params.chamfer_angle = gc_block.values.e;
+                            } else
+                                g76_params.chamfer_angle = 0;
+
+                            if (bit_istrue(value_words, bit(GCodeWord::D))) {
+                                bit_false(value_words, bit(GCodeWord::D));
+                                if (gc_block.values.d >= 1)
+                                    g76_params.start_count = gc_block.values.d;
+                                else
+                                    g76_params.start_count = 1;
+                                bit_false(value_words, bit(GCodeWord::D));
+                            } else
+                                g76_params.start_count = 1;
+
+                            if (bit_istrue(value_words, bit(GCodeWord::T))) {
+                                bit_false(value_words, bit(GCodeWord::T));
+                                if (gc_block.values.t == 0)
+                                    g76_params.is_return_pullback = false;
+                                else
+                                    g76_params.is_return_pullback = true;
+                                bit_false(value_words, bit(GCodeWord::T));
+                            } else
+                                g76_params.is_return_pullback = true;
+                        }
+                    } else {
+                        FAIL(Error::GcodeUnsupportedCommand);  // TODO fanuc type dual line G76
+                    }
+                } else {
+                    FAIL(Error::GcodeUnsupportedCommand);  // TODO add G76
+                }
+            } else {
+                // - In units per rev mode: If F word passed, ensure value is in mm/min, otherwise push last state value.
+                if (bit_istrue(value_words, bit(GCodeWord::F))) {
+                    if (gc_block.modal.spindle == SpindleState::Disable || gc_block.values.s <= 0) {
+                        FAIL(Error::GcodeValueWordMissing);
+                    }
+                    if (gc_block.modal.units == Units::Inches) {
+                        gc_block.values.f *= MM_PER_INCH;
+                    }
+                }
+                if (gc_state.modal.feed_rate == FeedRate::UnitsPerRev) {  // Last state is also G95
+                    if (bit_isfalse(value_words, bit(GCodeWord::F))) {
+                        gc_block.values.f = gc_state.feed_rate;  // Push last state feed rate
+                        if (gc_block.modal.units == Units::Inches && gc_state.modal.units != Units::Inches) {
+                            gc_block.values.f *= MM_PER_INCH;
+                        }
+                        if (gc_block.modal.units != Units::Inches && gc_state.modal.units == Units::Inches) {
+                            gc_block.values.f /= MM_PER_INCH;
+                        }
+                    }
+                }  // Else, switching to G95 from G93 or G94, so don't push last state feed rate. Its undefined or the passed F word value.}
+            }
         } else {  // = G94
             if (gc_block.modal.motion == Motion::G33 || gc_block.modal.motion == Motion::G76) {
                 if (gc_block.modal.motion == Motion::G33) {
@@ -1230,24 +1408,26 @@ Error gc_execute_line(char* line, uint8_t client) {
                 }
             } else {
                 // - In units per mm mode: If F word passed, ensure value is in mm/min, otherwise push last state value.
+                if (bit_istrue(value_words, bit(GCodeWord::F))) {
+                    if (gc_block.modal.units == Units::Inches) {
+                        gc_block.values.f *= MM_PER_INCH;
+                    }
+                }
                 if (gc_state.modal.feed_rate == FeedRate::UnitsPerMin) {  // Last state is also G94
-                    if (bit_istrue(value_words, bit(GCodeWord::F))) {
-                        if (gc_block.modal.units == Units::Inches) {
+                    if (bit_isfalse(value_words, bit(GCodeWord::F))) {
+                        gc_block.values.f = gc_state.feed_rate;  // Push last state feed rate
+                        if (gc_block.modal.units == Units::Inches && gc_state.modal.units != Units::Inches) {
                             gc_block.values.f *= MM_PER_INCH;
                         }
-                    } else {
-                        gc_block.values.f = gc_state.feed_rate;  // Push last state feed rate
+                        if (gc_block.modal.units != Units::Inches && gc_state.modal.units == Units::Inches) {
+                            gc_block.values.f /= MM_PER_INCH;
+                        }
                     }
-                }  // Else, switching to G94 from G93, so don't push last state feed rate. Its undefined or the passed F word value.}
+                }  // Else, switching to G94 from G93 or G95, so don't push last state feed rate. Its undefined or the passed F word value.}
             }
         }
     }
     // bit_false(value_words,bit(GCodeWord::F)); // NOTE: Single-meaning value word. Set at end of error-checking.
-    // [4. Set spindle speed ]: S is negative (done.)
-    if (bit_isfalse(value_words, bit(GCodeWord::S))) {
-        gc_block.values.s = gc_state.spindle_speed;
-    }
-    bit_false(value_words, bit(GCodeWord::S));  // NOTE: Single-meaning value word. Set at end of error-checking.
 
     // [5. Select tool ]: NOT SUPPORTED. Only tracks value. T is negative (done.) Not an integer. Greater than max tool value.
     // bit_false(value_words,bit(GCodeWord::T)); // NOTE: Single-meaning value word. Set at end of error-checking.
@@ -2001,6 +2181,9 @@ Error gc_execute_line(char* line, uint8_t client) {
     gc_state.modal.feed_rate = gc_block.modal.feed_rate;
     if (gc_state.modal.feed_rate == FeedRate::InverseTime) {
         pl_data->motion.inverseTime = 1;  // Set condition flag for planner use.
+    }
+    if (gc_state.modal.feed_rate == FeedRate::UnitsPerRev) {
+        pl_data->motion.mmPerRev = 1;  // Set condition flag for planner use.
     }
     // [3. Set feed rate ]:
     gc_state.feed_rate = gc_block.values.f;   // Always copy this value. See feed rate error-checking.

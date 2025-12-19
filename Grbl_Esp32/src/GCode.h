@@ -125,6 +125,7 @@ enum class ProgramFlow : uint8_t {
 enum class FeedRate : uint8_t {
     UnitsPerMin = 0,  // G94 (Default: Must be zero)
     InverseTime = 1,  // G93 (Do not alter value)
+    UnitsPerRev = 2,  // G95
 };
 
 // Modal Group MG6: Units mode
@@ -308,7 +309,7 @@ enum G76_taperModes : uint8_t {
 // NOTE: When this struct is zeroed, the 0 values in the above types set the system defaults.
 typedef struct {
     Motion      motion;     // {G0,G1,G2,G3,G38.2,G80}
-    FeedRate    feed_rate;  // {G93,G94}
+    FeedRate    feed_rate;  // {G93,G94,G95}
     LatheDRMode d_r_mode;   // {G7,G8}
     Units       units;      // {G20,G21}
     Distance    distance;   // {G90,G91}
