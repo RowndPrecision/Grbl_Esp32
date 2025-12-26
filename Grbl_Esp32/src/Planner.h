@@ -86,7 +86,7 @@ typedef struct {
 // Planner data prototype. Must be used when passing new motions to the planner.
 typedef struct {
     float        feed_rate;      // Desired feed rate for line motion. Value is ignored, if rapid motion.
-    uint32_t     spindle_speed;  // Desired spindle speed through line motion.
+    float        spindle_speed;  // Desired spindle speed through line motion.
     PlMotion     motion;         // Bitflag variable to indicate motion conditions. See defines above.
     SpindleState spindle;        // Spindle enable state
     CoolantState coolant;        // Coolant state
