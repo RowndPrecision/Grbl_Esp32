@@ -1030,7 +1030,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                 return led_state->setBoolValue(true);
                 break;
             case SpecialActions::SpindleSpeedLimit:
-                gc_state.spingle_speed_limit = gc_block.values.s;
+                gc_state.spindle_speed_limit = gc_block.values.s;
                 spindle->sync(gc_state.modal.spindle, (uint32_t)gc_state.spindle_speed);
                 return Error::Ok;
                 break;
@@ -2109,10 +2109,12 @@ Error gc_execute_line(char* line, uint8_t client) {
                     }
                     break;
                 case Motion::G33:
+                    gc_state.Rownd_special = false;
                     return rownd_G33(&gc_block, gc_state.position);  // This code works, but not as well as we hoped, so we're disabling it for now. We might revisit and improve it in the distant future, but for now, it's on hold.
                     FAIL(Error::GcodeUnsupportedCommand);
                     break;
                 case Motion::G76:
+                    gc_state.Rownd_special = false;
                     return rownd_G76(&gc_block, &g76_params, &gc_state);
                     break;
                 default:

@@ -127,11 +127,9 @@ namespace Spindles {
         // apply override
         rpm = rpm * sys.spindle_speed_ovr / 100;  // Scale by spindle speed override value (uint8_t percent)
 
-        uint32_t rpm_g50 = (uint32_t)gc_state.spingle_speed_limit;
-
-        // apply limits
-        if (rpm_g50 != 0 && rpm >= rpm_g50) {
-            rpm = rpm_g50;
+        // Apply limits
+        if (_limit_rpm != 0 && rpm >= _limit_rpm) {
+            rpm = _limit_rpm;
         } else if ((_min_rpm >= _max_rpm) || (rpm >= _max_rpm)) {
             rpm = _max_rpm;
         } else if (rpm != 0 && rpm <= _min_rpm) {

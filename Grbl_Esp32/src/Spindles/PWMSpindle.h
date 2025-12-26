@@ -50,6 +50,7 @@ namespace Spindles {
         int32_t  _current_pwm_duty;
         uint32_t _min_rpm;
         uint32_t _max_rpm;
+        uint32_t _limit_rpm;
         uint32_t _pwm_off_value;
         uint32_t _pwm_min_value;
         uint32_t _pwm_max_value;

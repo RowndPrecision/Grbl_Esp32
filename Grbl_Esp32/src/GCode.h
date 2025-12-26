@@ -367,7 +367,7 @@ typedef struct {
     // machine zero in mm. Non-persistent. Cleared upon reset and boot.
     float tool_length_offset[MAX_N_AXIS];  // Tracks tool length offset value when enabled.
 
-    float spingle_speed_limit;  // G50
+    float spindle_speed_limit;  // G50
 
     float rownd_aamr;  // full name: rownd_angular_axis_movement_reduction. Related but distinct from the planner block's variable. Tracks the reduction until the reduced movement is performed, ensuring it doesn't influence preceding or following moves.
     float rownd_aupr;   // full name: rownd_axis_units_per_revolution. One complete revolution expressed in axis coordinate units.

@@ -611,6 +611,10 @@ void report_gcode_modes(uint8_t client) {
     strcat(modes_rpt, temp);
     sprintf(temp, " S%d", uint32_t(gc_state.spindle_speed));
     strcat(modes_rpt, temp);
+    if (gc_state.spindle_speed_limit != 0) {
+        sprintf(temp, " G50:%d", uint32_t(gc_state.spindle_speed_limit));
+        strcat(modes_rpt, temp);
+    }
     strcat(modes_rpt, "]\r\n");
     // grbl_send(client, modes_rpt);
     grbl_send(CLIENT_ALL, modes_rpt);
