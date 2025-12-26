@@ -401,6 +401,14 @@ Error gc_execute_line(char* line, uint8_t client) {
                         gc_block.modal.feed_rate = FeedRate::UnitsPerRev;
                         mg_word_bit              = ModalGroup::MG5;
                         break;
+                    case 96:
+                        gc_block.modal.spindle_speed_mode = SpindleSpeedMode::CSS;
+                        mg_word_bit                       = ModalGroup::MG14;
+                        break;
+                    case 97:
+                        gc_block.modal.spindle_speed_mode = SpindleSpeedMode::RPM;
+                        mg_word_bit                       = ModalGroup::MG14;
+                        break;
                     case 20:
                         gc_block.modal.units = Units::Inches;
                         mg_word_bit          = ModalGroup::MG6;
@@ -991,7 +999,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                     FAIL(Error::GcodeValueWordMissing);
                 }
             } else {
-            FAIL(Error::GcodeUnsupportedCommand);
+                FAIL(Error::GcodeUnsupportedCommand);
             }
         }
         if (bit_istrue(command_words, ~(bit(ModalGroup::MM10)))) {
@@ -1033,10 +1041,10 @@ Error gc_execute_line(char* line, uint8_t client) {
 
     // [4. Set spindle speed ]: S is negative (done.)
     if (gc_block.non_modal_command != NonModal::SpindleSpeedLimit && gc_block.modal.spindle_speed_mode == gc_state.modal.spindle_speed_mode) {
-    if (bit_isfalse(value_words, bit(GCodeWord::S))) {
-        gc_block.values.s = gc_state.spindle_speed;
-    }
-    bit_false(value_words, bit(GCodeWord::S));  // NOTE: Single-meaning value word. Set at end of error-checking.
+        if (bit_isfalse(value_words, bit(GCodeWord::S))) {
+            gc_block.values.s = gc_state.spindle_speed;
+        }
+        bit_false(value_words, bit(GCodeWord::S));  // NOTE: Single-meaning value word. Set at end of error-checking.
     } else {
         FAIL(Error::GcodeValueWordMissing);
     }
@@ -2246,6 +2254,12 @@ Error gc_execute_line(char* line, uint8_t client) {
         return user_tool_change(tool_selected->get());
     }
     // [7. Spindle control ]:
+    if (gc_state.modal.spindle_speed_mode != gc_block.modal.spindle_speed_mode) {
+        gc_state.modal.spindle_speed_mode = gc_block.modal.spindle_speed_mode;
+    }
+    if (gc_state.modal.spindle_speed_mode == SpindleSpeedMode::CSS) {
+        pl_data->motion.constantSurfaceSpeed = 1;
+    }
     if (gc_state.modal.spindle != gc_block.modal.spindle) {
         // Update spindle control and apply spindle speed when enabling it in this block.
         // NOTE: All spindle state changes are synced, even in laser mode. Also, pl_data,
@@ -2485,9 +2499,11 @@ Error gc_execute_line(char* line, uint8_t client) {
             gc_state.modal.distance     = Distance::Absolute;
             gc_state.modal.feed_rate    = FeedRate::UnitsPerMin;
             // gc_state.modal.cutter_comp = CutterComp::Disable; // Not supported.
-            gc_state.modal.coord_select = CoordIndex::G54;
-            gc_state.modal.spindle      = SpindleState::Disable;
-            gc_state.modal.coolant      = {};
+            gc_state.modal.coord_select       = CoordIndex::G54;
+            gc_state.spingle_speed_limit      = 0;
+            gc_state.modal.spindle_speed_mode = SpindleSpeedMode::RPM;
+            gc_state.modal.spindle            = SpindleState::Disable;
+            gc_state.modal.coolant            = {};
 
 #ifdef POSITIONABLE_AXIS_CONVERT
             updatePositionableAxisParams();

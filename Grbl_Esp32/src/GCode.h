@@ -148,8 +148,8 @@ enum class ControlMode : uint8_t {
 
 // Modal Group MG14: Control mode
 enum class SpindleSpeedMode : uint8_t {
-    RPM                  = 0,  // G97 (Default: Must be zero)
-    ConstantSurfaceSpeed = 1,  //G96
+    RPM = 0,  // G97 (Default: Must be zero)
+    CSS = 1,  // G96 constant surface speed (m/min)
 };
 
 // Modal Group MG15: Control mode
@@ -310,11 +310,12 @@ enum G76_taperModes : uint8_t {
 
 // NOTE: When this struct is zeroed, the 0 values in the above types set the system defaults.
 typedef struct {
-    Motion      motion;     // {G0,G1,G2,G3,G38.2,G80}
-    FeedRate    feed_rate;  // {G93,G94,G95}
-    LatheDRMode d_r_mode;   // {G7,G8}
-    Units       units;      // {G20,G21}
-    Distance    distance;   // {G90,G91}
+    Motion           motion;              // {G0,G1,G2,G3,G38.2,G80}
+    FeedRate         feed_rate;           // {G93,G94,G95}
+    SpindleSpeedMode spindle_speed_mode;  // {G96,G97}
+    LatheDRMode      d_r_mode;            // {G7,G8}
+    Units            units;               // {G20,G21}
+    Distance         distance;            // {G90,G91}
     // ArcDistance distance_arc; // {G91.1} NOTE: Don't track. Only default supported.
     Plane plane_select;  // {G17,G18,G19}
     // CutterCompensation cutter_comp;  // CutterCompensation {G40} removed NOTE: Don't track. Only default supported.
