@@ -266,6 +266,11 @@ Error gc_execute_line(char* line, uint8_t client) {
                         gc_block.non_modal_command = NonModal::Dwell;
                         mg_word_bit                = ModalGroup::MG0;
                         break;
+                    case 50:
+                        gc_block.non_modal_command = NonModal::SpindleSpeedLimit;
+                        gc_block.modal.RowndAction = SpecialActions::SpindleSpeedLimit;
+                        mg_word_bit                = ModalGroup::MM10;
+                        break;
                     case 53:
                         gc_block.non_modal_command = NonModal::AbsoluteOverride;
                         mg_word_bit                = ModalGroup::MG0;
@@ -981,7 +986,13 @@ Error gc_execute_line(char* line, uint8_t client) {
     if (gc_block.modal.RowndAction != SpecialActions::None) {
         // [Unused words] & [Unsupported Commands]
         if (value_words) {
-            FAIL(Error::GcodeUnsupportedCommand);
+            if (gc_block.modal.RowndAction == SpecialActions::SpindleSpeedLimit) {
+                if (!bit_is_match(value_words, bit(GCodeWord::S))) {
+                    FAIL(Error::GcodeValueWordMissing);
+                }
+            } else {
+                FAIL(Error::GcodeUnsupportedCommand);
+            }
         }
         if (bit_istrue(command_words, ~(bit(ModalGroup::MM10)))) {
             FAIL(Error::GcodeModalGroupViolation)
@@ -1010,16 +1021,25 @@ Error gc_execute_line(char* line, uint8_t client) {
             case SpecialActions::LEDON:
                 return led_state->setBoolValue(true);
                 break;
+            case SpecialActions::SpindleSpeedLimit:
+                gc_state.spindle_speed_limit = gc_block.values.s;
+                spindle->sync(gc_state.modal.spindle, (uint32_t)gc_state.spindle_speed);
+                return Error::Ok;
+                break;
             default:
                 break;
         }
     }
 
     // [4. Set spindle speed ]: S is negative (done.)
-    if (bit_isfalse(value_words, bit(GCodeWord::S))) {
-        gc_block.values.s = gc_state.spindle_speed;
+    if (gc_block.non_modal_command != NonModal::SpindleSpeedLimit) {
+        if (bit_isfalse(value_words, bit(GCodeWord::S))) {
+            gc_block.values.s = gc_state.spindle_speed;
+        }
+        bit_false(value_words, bit(GCodeWord::S));  // NOTE: Single-meaning value word. Set at end of error-checking.
+    } else {
+        FAIL(Error::GcodeValueWordMissing);
     }
-    bit_false(value_words, bit(GCodeWord::S));  // NOTE: Single-meaning value word. Set at end of error-checking.
 
     // [2. Set feed rate mode ]: G93 F word missing with G1,G2/3 active, implicitly or explicitly. Feed rate
     //   is not defined after switching to G94 from G93.
@@ -1866,6 +1886,10 @@ Error gc_execute_line(char* line, uint8_t client) {
                 case NonModal::ResetCoordinateOffset:
                     // NOTE: If axis words are passed here, they are interpreted as an implicit motion mode.
                     break;
+                case NonModal::SpindleSpeedLimit:
+                    if (spindle_type->get() != (int8_t)SpindleType::ASDA_CN1) {
+                        FAIL(Error::AsdaMode);
+                    }
                 case NonModal::AbsoluteOverride:
                     // [G53 Errors]: G0 and G1 are not active. Cutter compensation is enabled.
                     // NOTE: All explicit axis word commands are in this modal group. So no implicit check necessary.
@@ -2077,10 +2101,12 @@ Error gc_execute_line(char* line, uint8_t client) {
                     }
                     break;
                 case Motion::G33:
+                    gc_state.Rownd_special = false;
                     return rownd_G33(&gc_block, gc_state.position);  // This code works, but not as well as we hoped, so we're disabling it for now. We might revisit and improve it in the distant future, but for now, it's on hold.
                     FAIL(Error::GcodeUnsupportedCommand);
                     break;
                 case Motion::G76:
+                    gc_state.Rownd_special = false;
                     return rownd_G76(&gc_block, &g76_params, &gc_state);
                     break;
                 default:

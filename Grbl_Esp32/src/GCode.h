@@ -51,7 +51,7 @@ enum class ModalGroup : uint8_t {
     MM7  = 14,  // [M3,M4,M5] Spindle turning
     MM8  = 15,  // [M7,M8,M9] Coolant control
     MM9  = 16,  // [M56] Override control
-    MM10 = 17,  // [M100 - M199] User Defined http://linuxcnc.org/docs/html/gcode/overview.html#_modal_groups
+    MM10 = 17,  // [M100 - M199,G50] User Defined http://linuxcnc.org/docs/html/gcode/overview.html#_modal_groups + Rownd G50
 };
 
 // Command actions for within execution-type modal groups (motion, stopping, non-modal). Used
@@ -73,6 +73,7 @@ enum class NonModal : uint8_t {
     SetHome0              = 38,   // G28.1 (Do not alter value)
     GoHome1               = 30,   // G30 (Do not alter value)
     SetHome1              = 40,   // G30.1 (Do not alter value)
+    SpindleSpeedLimit     = 50,   // G50 (Do not alter value)
     AbsoluteOverride      = 53,   // G53 (Do not alter value)
     SetCoordinateOffset   = 92,   // G92 (Do not alter value)
     ResetCoordinateOffset = 102,  //G92.1 (Do not alter value)
@@ -186,16 +187,17 @@ struct CoolantState {
 
 // Modal Group MM10: User Defined Functions
 enum class SpecialActions : uint8_t {
-    None              = 0,  // Default. This means its safe to continue to the regular program flow
-    ModeSwitchLathe   = 1,  // M100
-    ModeSwitch4thAxis = 2,  // M101
-    ModeSwitchLaser   = 3,  // M102
-    ReEnableDoor      = 4,  // M110
-    DisableDoor       = 5,  // M111
-    DisconnectATC     = 6,  // M120
-    ConnectATC        = 7,  // M121
-    LEDOFF            = 8,  // M150
-    LEDON             = 9,  // M151
+    None              = 0,   // Default. This means its safe to continue to the regular program flow
+    ModeSwitchLathe   = 1,   // M100
+    ModeSwitch4thAxis = 2,   // M101
+    ModeSwitchLaser   = 3,   // M102
+    ReEnableDoor      = 4,   // M110
+    DisableDoor       = 5,   // M111
+    DisconnectATC     = 6,   // M120
+    ConnectATC        = 7,   // M121
+    LEDOFF            = 8,   // M150
+    LEDON             = 9,   // M151
+    SpindleSpeedLimit = 50,  // G50 Rownd specific
 };
 
 // Modal Group MM5: User I/O control
@@ -363,6 +365,8 @@ typedef struct {
     float coord_offset[MAX_N_AXIS];  // Retains the G92 coordinate offset (work coordinates) relative to
     // machine zero in mm. Non-persistent. Cleared upon reset and boot.
     float tool_length_offset[MAX_N_AXIS];  // Tracks tool length offset value when enabled.
+
+    float spindle_speed_limit;  // G50
 
     float rownd_aamr;  // full name: rownd_angular_axis_movement_reduction. Related but distinct from the planner block's variable. Tracks the reduction until the reduced movement is performed, ensuring it doesn't influence preceding or following moves.
     float rownd_aupr;   // full name: rownd_axis_units_per_revolution. One complete revolution expressed in axis coordinate units.
