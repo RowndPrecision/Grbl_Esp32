@@ -2502,7 +2502,7 @@ Error gc_execute_line(char* line, uint8_t client) {
             gc_state.modal.feed_rate    = FeedRate::UnitsPerMin;
             // gc_state.modal.cutter_comp = CutterComp::Disable; // Not supported.
             gc_state.modal.coord_select       = CoordIndex::G54;
-            gc_state.spingle_speed_limit      = 0;
+            gc_state.spindle_speed_limit      = 0;
             gc_state.modal.spindle_speed_mode = SpindleSpeedMode::RPM;
             gc_state.modal.spindle            = SpindleState::Disable;
             gc_state.modal.coolant            = {};
