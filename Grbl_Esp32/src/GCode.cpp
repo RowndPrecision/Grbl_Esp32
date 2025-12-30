@@ -1044,10 +1044,12 @@ Error gc_execute_line(char* line, uint8_t client) {
         if (bit_isfalse(value_words, bit(GCodeWord::S))) {
             gc_block.values.s = gc_state.spindle_speed;
         }
-        bit_false(value_words, bit(GCodeWord::S));  // NOTE: Single-meaning value word. Set at end of error-checking.
     } else {
-        FAIL(Error::GcodeValueWordMissing);
+        if (bit_isfalse(value_words, bit(GCodeWord::S))) {
+            FAIL(Error::GcodeValueWordMissing);
+        }
     }
+    bit_false(value_words, bit(GCodeWord::S));  // NOTE: Single-meaning value word. Set at end of error-checking.
 
     // [2. Set feed rate mode ]: G93 F word missing with G1,G2/3 active, implicitly or explicitly. Feed rate
     //   is not defined after switching to G94 from G93.
@@ -2224,6 +2226,12 @@ Error gc_execute_line(char* line, uint8_t client) {
     pl_data->feed_rate = gc_state.feed_rate;  // Record data for planner use.
 
     // [4. Set spindle speed ]:
+    if (gc_state.modal.spindle_speed_mode != gc_block.modal.spindle_speed_mode) {
+        gc_state.modal.spindle_speed_mode = gc_block.modal.spindle_speed_mode;
+    }
+    if (gc_state.modal.spindle_speed_mode == SpindleSpeedMode::CSS) {
+        pl_data->motion.constantSurfaceSpeed = 1;
+    }
     if ((gc_state.spindle_speed != gc_block.values.s) || bit_istrue(gc_parser_flags, GCParserFlags::GCParserLaserForceSync)) {
         if (gc_state.modal.spindle != SpindleState::Disable) {
             if (bit_isfalse(gc_parser_flags, GCParserFlags::GCParserLaserIsMotion)) {
@@ -2256,12 +2264,6 @@ Error gc_execute_line(char* line, uint8_t client) {
         return user_tool_change(tool_selected->get());
     }
     // [7. Spindle control ]:
-    if (gc_state.modal.spindle_speed_mode != gc_block.modal.spindle_speed_mode) {
-        gc_state.modal.spindle_speed_mode = gc_block.modal.spindle_speed_mode;
-    }
-    if (gc_state.modal.spindle_speed_mode == SpindleSpeedMode::CSS) {
-        pl_data->motion.constantSurfaceSpeed = 1;
-    }
     if (gc_state.modal.spindle != gc_block.modal.spindle) {
         // Update spindle control and apply spindle speed when enabling it in this block.
         // NOTE: All spindle state changes are synced, even in laser mode. Also, pl_data,

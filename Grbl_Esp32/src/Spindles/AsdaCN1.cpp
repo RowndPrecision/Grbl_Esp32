@@ -166,6 +166,27 @@ namespace Spindles {
                 set_rpm(0);
             }
 
+            if (gc_state.modal.spindle_speed_mode == SpindleSpeedMode::CSS) {
+                float* position = system_get_mpos();
+                float* wco      = get_wco();
+
+                float unit_mult = MM_PER_METER;  // m/min to mm/min
+                if (gc_state.modal.units == Units::Inches) {
+                    unit_mult = MM_PER_FEET;  // feet/min(SFM) to mm/min
+                }
+                float css = rpm * unit_mult;
+
+                float radius_tolerance = arc_tolerance->get() / 10;
+                float radus            = fabs(position[X_AXIS] - wco[X_AXIS]);
+                if (radus < radius_tolerance)
+                    radus = radius_tolerance;
+
+                rpm = css / (M_TWOPI * radus);  // spindle_speed = rpm
+
+                if (rpm > gc_state.spindle_speed_limit)
+                    rpm = gc_state.spindle_speed_limit;
+            }
+
             set_dir_pin(state == SpindleState::Cw);
             set_rpm(rpm);
             set_enable_pin(state != SpindleState::Disable);  // must be done after setting rpm for enable features to work

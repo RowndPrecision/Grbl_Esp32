@@ -114,22 +114,28 @@ bool kinematics_pre_homing(uint8_t cycle_mask) {
 bool cartesian_to_motors(float* target, plan_line_data_t* pl_data, float* position) {
 #ifdef POSITIONABLE_SPINDLE_AXIS
     if (rownd_param_experimental_axis_feed->get() && !gc_state.Rownd_thread) {
-        float radus;
-        float dx;
-        float dz;
-        float dc_mm;
-        float dc_deg;
-        float d_mm;
-        float d_deg;
-        float f_mm;
-        float f_deg;
+        float   radus;
+        float   dx;
+        float   dz;
+        float   dc_mm;
+        float   dc_deg;
+        float   d_mm;
+        float   d_deg;
+        float   f_mm;
+        float   f_deg;
+        int32_t segments;
+        float   line_tolerance   = arc_tolerance->get();
+        float   radius_tolerance = arc_tolerance->get() / 10;
 
-        dx     = target[X_AXIS] - position[X_AXIS];
-        dz     = target[Z_AXIS] - position[Z_AXIS];
-        dc_deg = target[POLAR_AXIS] - position[POLAR_AXIS];
+        dx       = target[X_AXIS] - position[X_AXIS];
+        dz       = target[Z_AXIS] - position[Z_AXIS];
+        dc_deg   = target[POLAR_AXIS] - position[POLAR_AXIS];
+        segments = ceil(fabs(dx) / line_tolerance);
+        if (segments < 1)
+            segments = 1;
         if (dc_deg != 0) {
             float* wco = get_wco();
-            radus      = (position[RADIUS_AXIS] + (dx / 2)) - wco[RADIUS_AXIS];
+            radus      = fabs((position[RADIUS_AXIS] + (dx / 2)) - wco[RADIUS_AXIS]);
             if (radus == 0) {
                 if (rownd_verbose_enable->get()) {
                     grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "%.2f deg movement on C-axis but radius is zero -> feedrate taken as RPM", dc_deg);
@@ -154,6 +160,38 @@ bool cartesian_to_motors(float* target, plan_line_data_t* pl_data, float* positi
                     // grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "ΔC (deg): %.2f, ΔC (mm): %.2f", dc_deg, dc_mm);
                     grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "wco: %.2f, Radius: %.2f", wco[RADIUS_AXIS], radus);
                 }
+            }
+        } else {
+            if (pl_data->motion.constantSurfaceSpeed) {
+                bool is_jogCancel = false;
+
+                float* wco = get_wco();
+
+                float unit_mult = MM_PER_METER;  // m/min to mm/min
+                if (gc_state.modal.units == Units::Inches) {
+                    unit_mult = MM_PER_FEET;  // feet/min(SFM) to mm/min
+                }
+                float css = pl_data->spindle_speed * unit_mult;
+
+                for (uint16_t i = 0; i < segments; i++) {
+                    target[X_AXIS] = position[X_AXIS] + dx / segments;
+                    target[Z_AXIS] = position[Z_AXIS] + dz / segments;
+
+                    radus = fabs((position[RADIUS_AXIS] + target[RADIUS_AXIS]) / 2 - wco[RADIUS_AXIS]);
+                    if (radus < radius_tolerance)
+                        radus = radius_tolerance;
+
+                    pl_data->spindle_speed = css / (M_TWOPI * radus);  // spindle_speed = rpm
+
+                    if (pl_data->spindle_speed > gc_state.spindle_speed_limit)
+                        pl_data->spindle_speed = gc_state.spindle_speed_limit;
+
+                    is_jogCancel = mc_line(target, pl_data);
+
+                    position[X_AXIS] = target[X_AXIS];
+                    position[Z_AXIS] = target[Z_AXIS];
+                }
+                return is_jogCancel;
             }
         }
     }

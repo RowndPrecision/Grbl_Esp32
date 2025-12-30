@@ -59,8 +59,11 @@ static inline int toMotor2(int axis) {
 }
 
 // Conversions
-const double MM_PER_INCH = (25.40);
-const double INCH_PER_MM = (0.0393701);
+const double MM_PER_INCH   = (25.40);
+const double INCH_PER_MM   = (0.0393701);
+const double MM_PER_METER  = (1000.00);
+const double INCH_PER_FEET = (12.00);
+const double MM_PER_FEET   = (MM_PER_INCH * INCH_PER_FEET);
 
 // Useful macros
 #define clear_vector(a) memset(a, 0, sizeof(a))

@@ -534,6 +534,16 @@ void report_gcode_modes(uint8_t client) {
     }
     strcat(modes_rpt, mode);
 
+    switch (gc_state.modal.spindle_speed_mode) {
+        case SpindleSpeedMode::CSS:
+            mode = " G96";
+            break;
+        case SpindleSpeedMode::RPM:
+            mode = " G97";
+            break;
+    }
+    strcat(modes_rpt, mode);
+
     //report_util_gcode_modes_M();
     switch (gc_state.modal.program_flow) {
         case ProgramFlow::Running:
