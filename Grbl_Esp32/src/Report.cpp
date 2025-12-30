@@ -609,6 +609,15 @@ void report_gcode_modes(uint8_t client) {
     }
     strcat(modes_rpt, mode);
 
+    if (led_state->get())
+        strcat(modes_rpt, " M151");
+    else
+        strcat(modes_rpt, " M150");
+    if (atc_connected->get())
+        strcat(modes_rpt, " N121");
+    else
+        strcat(modes_rpt, " M120");
+
 #ifdef ENABLE_PARKING_OVERRIDE_CONTROL
     if (sys.override_ctrl == Override::ParkingMotion) {
         strcat(modes_rpt, " M56");
