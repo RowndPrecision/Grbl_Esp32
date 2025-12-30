@@ -124,8 +124,8 @@ bool cartesian_to_motors(float* target, plan_line_data_t* pl_data, float* positi
         float   f_mm;
         float   f_deg;
         int32_t segments;
-        float   line_tolerance   = arc_tolerance->get();
-        float   radius_tolerance = arc_tolerance->get() / 10;
+        float   line_tolerance   = junction_deviation->get();
+        float   radius_tolerance = line_tolerance / 10;
 
         dx       = target[X_AXIS] - position[X_AXIS];
         dz       = target[Z_AXIS] - position[Z_AXIS];

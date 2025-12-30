@@ -411,7 +411,7 @@ void report_ngc_parameters(uint8_t client) {
 // Print current gcode parser mode state
 void report_gcode_modes(uint8_t client) {
     char        temp[20];
-    char        modes_rpt[75];
+    char        modes_rpt[100];
     const char* mode = "";
     strcpy(modes_rpt, "[GC:");
 
@@ -631,7 +631,7 @@ void report_gcode_modes(uint8_t client) {
     sprintf(temp, " S%d", uint32_t(gc_state.spindle_speed));
     strcat(modes_rpt, temp);
     if (gc_state.spindle_speed_limit != 0) {
-        sprintf(temp, " G50:%d", uint32_t(gc_state.spindle_speed_limit));
+        sprintf(temp, " G50:%.0f", gc_state.spindle_speed_limit);
         strcat(modes_rpt, temp);
     }
     strcat(modes_rpt, "]\r\n");
