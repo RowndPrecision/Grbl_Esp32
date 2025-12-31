@@ -626,9 +626,17 @@ void report_gcode_modes(uint8_t client) {
 
     sprintf(temp, " T%d", tool_active->get());
     strcat(modes_rpt, temp);
-    sprintf(temp, report_inches->get() ? " F%.1f" : " F%.0f", gc_state.feed_rate);
+    if (gc_state.modal.feed_rate == FeedRate::UnitsPerRev) {
+        sprintf(temp, report_inches->get() ? " F%.4f" : " F%.3f", gc_state.feed_rate);
+    } else {
+        sprintf(temp, report_inches->get() ? " F%.2f" : " F%.1f", gc_state.feed_rate);
+    }
     strcat(modes_rpt, temp);
-    sprintf(temp, " S%d", uint32_t(gc_state.spindle_speed));
+    if (gc_state.modal.spindle_speed_mode == SpindleSpeedMode::CSS) {
+        sprintf(temp, " S%.1f", gc_state.spindle_speed);
+    } else {
+        sprintf(temp, " S%d", uint32_t(gc_state.spindle_speed));
+    }
     strcat(modes_rpt, temp);
     if (gc_state.spindle_speed_limit != 0) {
         sprintf(temp, " G50:%.0f", gc_state.spindle_speed_limit);
@@ -781,9 +789,9 @@ void report_realtime_status(uint8_t client) {
     // Report realtime feed speed
 #ifdef REPORT_FIELD_CURRENT_FEED_SPEED
     if (report_inches->get()) {
-        sprintf(temp, "|FS:%.1f,%d", st_get_realtime_rate() / MM_PER_INCH, sys.spindle_speed);
+        sprintf(temp, "|FS:%.2f,%d", st_get_realtime_rate() / MM_PER_INCH, sys.spindle_speed);
     } else {
-        sprintf(temp, "|FS:%.0f,%d", st_get_realtime_rate(), sys.spindle_speed);
+        sprintf(temp, "|FS:%.1f,%d", st_get_realtime_rate(), sys.spindle_speed);
     }
     strcat(status, temp);
 #endif

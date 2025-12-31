@@ -2165,9 +2165,13 @@ Error gc_execute_line(char* line, uint8_t client) {
             FAIL(Error::InvalidJogCommand);
         }
         // Initialize planner data to current spindle and coolant modal state.
-        pl_data->spindle_speed  = gc_state.spindle_speed;
-        pl_data->spindle        = gc_state.modal.spindle;
-        pl_data->coolant        = gc_state.modal.coolant;
+        pl_data->spindle_speed = gc_state.spindle_speed;
+        pl_data->spindle       = gc_state.modal.spindle;
+        pl_data->coolant       = gc_state.modal.coolant;
+
+        pl_data->motion.constantSurfaceSpeed = gc_state.modal.spindle_speed_mode == SpindleSpeedMode::CSS;
+        pl_data->motion.mmPerRev             = gc_state.modal.feed_rate == FeedRate::UnitsPerRev;
+
         bool  cancelledInflight = false;
         Error status            = jog_execute(pl_data, &gc_block, &cancelledInflight);
         if (status == Error::Ok && !cancelledInflight) {
