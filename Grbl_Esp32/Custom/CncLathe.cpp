@@ -115,6 +115,8 @@ bool cartesian_to_motors(float* target, plan_line_data_t* pl_data, float* positi
 #ifdef POSITIONABLE_SPINDLE_AXIS
     if (rownd_param_experimental_axis_feed->get() && !gc_state.Rownd_thread) {
         float   radus;
+        float   tx;
+        float   tz;
         float   dx;
         float   dz;
         float   dc_mm;
@@ -127,6 +129,8 @@ bool cartesian_to_motors(float* target, plan_line_data_t* pl_data, float* positi
         float   line_tolerance   = junction_deviation->get();
         float   radius_tolerance = line_tolerance / 10;
 
+        tx       = target[X_AXIS];
+        tz       = target[Z_AXIS];
         dx       = target[X_AXIS] - position[X_AXIS];
         dz       = target[Z_AXIS] - position[Z_AXIS];
         dc_deg   = target[POLAR_AXIS] - position[POLAR_AXIS];
@@ -174,8 +178,13 @@ bool cartesian_to_motors(float* target, plan_line_data_t* pl_data, float* positi
                 float css = pl_data->spindle_speed * unit_mult;
 
                 for (uint16_t i = 0; i < segments; i++) {
-                    target[X_AXIS] = position[X_AXIS] + dx / segments;
-                    target[Z_AXIS] = position[Z_AXIS] + dz / segments;
+                    if (i == segments - 1) {
+                        target[X_AXIS] = tx;
+                        target[Z_AXIS] = tz;
+                    } else {
+                        target[X_AXIS] = position[X_AXIS] + dx / segments;
+                        target[Z_AXIS] = position[Z_AXIS] + dz / segments;
+                    }
 
                     radus = fabs((position[RADIUS_AXIS] + target[RADIUS_AXIS]) / 2 - wco[RADIUS_AXIS]);
                     if (radus < radius_tolerance)
