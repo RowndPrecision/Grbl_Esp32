@@ -215,10 +215,6 @@ bool cartesian_to_motors(float* target, plan_line_data_t* pl_data, float* positi
   to perform appropriate actions for your machine.
 */
 Error user_tool_change(uint8_t new_tool) {
-    if (!atc_connected->get()) {
-        return Error::AtcNotConnected;
-    }
-
     protocol_buffer_synchronize();
 
     Error oPut = check_atc_move();
@@ -244,6 +240,10 @@ Error user_tool_change(uint8_t new_tool) {
         return Error::Ok;
     } else {
         grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Active Tool No: %d | New Tool No: %d", tool_active->get(), new_tool);
+    }
+
+    if (!atc_connected->get()) {
+        return Error::AtcNotConnected;
     }
 
     if (last_feed_mode != FeedRate::UnitsPerMin) {

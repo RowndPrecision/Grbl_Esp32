@@ -219,7 +219,7 @@ Error gc_execute_line(char* line, uint8_t client) {
         switch (letter) {
             /* 'G' and 'M' Command Words: Parse commands and check for modal group violations.
            NOTE: Modal group numbers are defined in Table 4 of NIST RS274-NGC v3, pg.20 */
-            case 'G':
+            case 'G': {
                 // Determine 'G' command and its modal group
                 switch (int_value) {
                     // Modal Group G0 - non-modal actions
@@ -514,7 +514,8 @@ Error gc_execute_line(char* line, uint8_t client) {
                 }
                 bit_true(command_words, bitmask);
                 break;
-            case 'M':
+            }
+            case 'M': {
                 // Determine 'M' command and its modal group
                 if (mantissa > 0) {
                     FAIL(Error::GcodeCommandValueNotInteger);  // [No Mxx.x commands]
@@ -662,6 +663,7 @@ Error gc_execute_line(char* line, uint8_t client) {
                 }
                 bit_true(command_words, bitmask);
                 break;
+            }
             // NOTE: All remaining letters assign values.
             default:
                 /* Non-Command Words: This initial parsing phase only checks for repeats of the remaining
