@@ -41,6 +41,7 @@ extern IntSetting*      laser_full_power;
 extern IntSetting*   status_mask;
 extern FloatSetting* junction_deviation;
 extern FloatSetting* arc_tolerance;
+extern FloatSetting* css_segment_tolerance;
 
 extern FlagSetting* led_state;
 extern FlagSetting* led_inverse;

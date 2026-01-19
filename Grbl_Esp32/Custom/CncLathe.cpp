@@ -112,6 +112,7 @@ bool kinematics_pre_homing(uint8_t cycle_mask) {
  float *position:				The previous "from" location of the move
 */
 bool cartesian_to_motors(float* target, plan_line_data_t* pl_data, float* position) {
+    plan_line_data_t pl_data_local = *pl_data;
 #ifdef POSITIONABLE_SPINDLE_AXIS
     if (rownd_param_experimental_axis_feed->get() && !gc_state.Rownd_thread) {
         float   radus;
@@ -126,7 +127,7 @@ bool cartesian_to_motors(float* target, plan_line_data_t* pl_data, float* positi
         float   f_mm;
         float   f_deg;
         int32_t segments;
-        float   line_tolerance   = junction_deviation->get();
+        float   line_tolerance   = css_segment_tolerance->get();
         float   radius_tolerance = line_tolerance / 10;
 
         tx       = target[X_AXIS];
@@ -151,10 +152,10 @@ bool cartesian_to_motors(float* target, plan_line_data_t* pl_data, float* positi
                 d_deg = sqrtf((dx * dx) + (dz * dz) + (dc_deg * dc_deg));
                 d_mm  = sqrtf((dx * dx) + (dz * dz) + (dc_mm * dc_mm));
 
-                f_mm  = pl_data->feed_rate;
+                f_mm  = pl_data_local.feed_rate;
                 f_deg = (d_deg / d_mm) * f_mm;
 
-                pl_data->feed_rate = f_deg;
+                pl_data_local.feed_rate = f_deg;
 
                 if (rownd_verbose_enable->get()) {
                     grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Feed in: %.2f, Feed out: %.2f", f_mm, f_deg);
@@ -166,7 +167,7 @@ bool cartesian_to_motors(float* target, plan_line_data_t* pl_data, float* positi
                 }
             }
         } else {
-            if (pl_data->motion.constantSurfaceSpeed) {
+            if (pl_data_local.motion.constantSurfaceSpeed) {
                 bool is_jogCancel = false;
 
                 float* wco = get_wco();
@@ -175,7 +176,15 @@ bool cartesian_to_motors(float* target, plan_line_data_t* pl_data, float* positi
                 if (gc_state.modal.units == Units::Inches) {
                     unit_mult = MM_PER_FEET;  // feet/min(SFM) to mm/min
                 }
-                float css = pl_data->spindle_speed * unit_mult;
+                float css = pl_data_local.spindle_speed * unit_mult;
+
+                if (rownd_verbose_enable->get()) {
+                    grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "enter speed(css): %.2f", pl_data_local.spindle_speed);
+                    grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "    enter radius: %.2f", fabs((position[RADIUS_AXIS] + target[RADIUS_AXIS]) / 2 - wco[RADIUS_AXIS]));
+                    grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "     exit radius: %.2f", fabs((tx + position[RADIUS_AXIS]) / 2 - wco[RADIUS_AXIS]));
+                    grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "        segments: %d", segments);
+                    grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "       enter rpm: %d", sys.spindle_speed);
+                }
 
                 for (uint16_t i = 0; i < segments; i++) {
                     if (i == segments - 1) {
@@ -190,16 +199,21 @@ bool cartesian_to_motors(float* target, plan_line_data_t* pl_data, float* positi
                     if (radus < radius_tolerance)
                         radus = radius_tolerance;
 
-                    pl_data->spindle_speed = css / (M_TWOPI * radus);  // spindle_speed = rpm
+                    pl_data_local.spindle_speed = css / (M_TWOPI * radus);  // spindle_speed = rpm
 
-                    if (pl_data->spindle_speed > gc_state.spindle_speed_limit)
-                        pl_data->spindle_speed = gc_state.spindle_speed_limit;
+                    if (gc_state.spindle_speed_limit > 0 && pl_data_local.spindle_speed > gc_state.spindle_speed_limit)
+                        pl_data_local.spindle_speed = gc_state.spindle_speed_limit;
 
-                    is_jogCancel = mc_line(target, pl_data);
+                    is_jogCancel = mc_line(target, &pl_data_local);
 
                     position[X_AXIS] = target[X_AXIS];
                     position[Z_AXIS] = target[Z_AXIS];
                 }
+
+                if (rownd_verbose_enable->get()) {
+                    grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, " exit speed(rpm): %.2f", pl_data_local.spindle_speed);
+                }
+
                 return is_jogCancel;
             }
         }
@@ -207,7 +221,7 @@ bool cartesian_to_motors(float* target, plan_line_data_t* pl_data, float* positi
 #endif
     // mc_line() returns false if a jog is cancelled.
     // In that case we stop sending segments to the planner.
-    return mc_line(target, pl_data);
+    return mc_line(target, &pl_data_local);
 }
 
 /*

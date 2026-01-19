@@ -39,6 +39,7 @@ IntSetting* laser_full_power;
 IntSetting*   status_mask;
 FloatSetting* junction_deviation;
 FloatSetting* arc_tolerance;
+FloatSetting* css_segment_tolerance;
 
 #ifdef DEFAULT_ROWND_TCP
 FlagSetting* tcp_active;
@@ -545,6 +546,8 @@ void make_settings() {
         setting->setAxis(axis);
         axis_settings[axis]->steps_per_mm = setting;
     }
+    
+    css_segment_tolerance = new FloatSetting(GRBL, WG, "75", "GCode/CSS_Tolerance", DEFAULT_CSS_SEGMENT_TOLERANCE, 0.01, 10);
 
     // Tool settings
 

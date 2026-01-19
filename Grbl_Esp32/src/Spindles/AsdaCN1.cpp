@@ -183,7 +183,7 @@ namespace Spindles {
 
                 rpm = css / (M_TWOPI * radus);  // spindle_speed = rpm
 
-                if (rpm > gc_state.spindle_speed_limit)
+                if (gc_state.spindle_speed_limit > 0 && rpm > gc_state.spindle_speed_limit)
                     rpm = gc_state.spindle_speed_limit;
             }
 
