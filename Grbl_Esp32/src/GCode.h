@@ -187,12 +187,12 @@ struct CoolantState {
 
 // Modal Group MM10: User Defined Functions
 enum class SpecialActions : uint8_t {
-    None              = 0,   // Default. This means its safe to continue to the regular program flow
-    ModeSwitchLathe   = 1,   // M100
-    ModeSwitch4thAxis = 2,   // M101
-    ModeSwitchLaser   = 3,   // M102
-    ReEnableDoor      = 4,   // M110
-    DisableDoor       = 5,   // M111
+    None              = 0,  // Default. This means its safe to continue to the regular program flow
+    ModeSwitchLathe   = 1,  // M100
+    ModeSwitch4thAxis = 2,  // M101
+    ModeSwitchLaser   = 3,  // M102
+    // ReEnableDoor      = 4,   // M110
+    // DisableDoor       = 5,   // M111
     DisconnectATC     = 6,   // M120
     ConnectATC        = 7,   // M121
     LEDOFF            = 8,   // M150

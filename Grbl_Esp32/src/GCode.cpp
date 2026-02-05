@@ -628,14 +628,6 @@ Error gc_execute_line(char* line, uint8_t client) {
                         gc_block.modal.RowndAction = SpecialActions::ModeSwitchLaser;
                         mg_word_bit                = ModalGroup::MM10;
                         break;
-                    case 110:
-                        gc_block.modal.RowndAction = SpecialActions::DisableDoor;
-                        mg_word_bit                = ModalGroup::MM10;
-                        break;
-                    case 111:
-                        gc_block.modal.RowndAction = SpecialActions::ReEnableDoor;
-                        mg_word_bit                = ModalGroup::MM10;
-                        break;
                     case 120:
                         gc_block.modal.RowndAction = SpecialActions::DisconnectATC;
                         mg_word_bit                = ModalGroup::MM10;
@@ -1012,12 +1004,6 @@ Error gc_execute_line(char* line, uint8_t client) {
             case SpecialActions::ModeSwitch4thAxis:
             case SpecialActions::ModeSwitchLaser:
                 return setMachineMode(gc_block.modal.RowndAction);
-                break;
-            case SpecialActions::DisableDoor:
-                return setDisableDoor(true);
-                break;
-            case SpecialActions::ReEnableDoor:
-                return setDisableDoor(false);
                 break;
             case SpecialActions::DisconnectATC:
                 return setATCConnection(false);
