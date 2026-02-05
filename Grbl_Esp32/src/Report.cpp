@@ -802,8 +802,6 @@ void report_realtime_status(uint8_t client) {
         strcat(status, "L");
     if (atc_connected->get())
         strcat(status, "A");
-    if (rownd_param_ignore_door_switch->get())
-        strcat(status, "D");
     if (gc_state.Rownd_thread)
         strcat(status, "T");
 

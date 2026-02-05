@@ -55,7 +55,7 @@ extern FlagSetting* rownd_param_experimental_axis_feed;
 extern FlagSetting* rownd_param_experimental_position_mode;
 extern FlagSetting* rownd_param_ATC_home_direction_v2;
 extern FlagSetting* rownd_param_G76_ignore_offset;
-extern FlagSetting* rownd_param_ignore_door_switch;
+extern FlagSetting* rownd_param_experimental_atc_detection;
 
 extern AxisMaskSetting* limit_axis_move_positive;
 extern AxisMaskSetting* limit_axis_move_negative;

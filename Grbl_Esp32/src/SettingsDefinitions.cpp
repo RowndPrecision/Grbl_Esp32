@@ -49,7 +49,7 @@ FlagSetting* rownd_param_experimental_axis_feed;
 FlagSetting* rownd_param_experimental_position_mode;
 FlagSetting* rownd_param_ATC_home_direction_v2;
 FlagSetting* rownd_param_G76_ignore_offset;
-FlagSetting* rownd_param_ignore_door_switch;
+FlagSetting* rownd_param_experimental_atc_detection;
 
 AxisMaskSetting* limit_axis_move_positive;
 AxisMaskSetting* limit_axis_move_negative;
@@ -195,26 +195,6 @@ static bool postMotorSetting(char* value) {
     return true;
 }
 
-static bool checkDisableDoorChange(char* value) {
-    if (value) {
-        bool _convertedValue = (strcasecmp(value, "on") == 0) || (strcasecmp(value, "true") == 0) || (strcasecmp(value, "enabled") == 0) || (strcasecmp(value, "yes") == 0) || (strcasecmp(value, "1") == 0);
-        if (rownd_param_ignore_door_switch->get() == _convertedValue) {
-            // grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Door?: %s", value);
-        } else if (_convertedValue) {
-            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "WARNING: Safety Door DISABLED!");
-
-        } else {
-            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "NOTICE: Safety Door re-enabled.");
-        }
-    } else {
-        if (rownd_param_ignore_door_switch->get())
-            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Safety Door is disabled.");
-        else
-            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Safety Door is enabled.");
-    }
-    return true;
-}
-
 // OLD checkATCChange
 /*
 static bool checkATCChange(char* value) {
@@ -283,13 +263,15 @@ static bool checkATCChange(char* value) {
         return false;
     }
 
-    Error temp = limit_invert->setAxis(A_AXIS, !_convertedValue);
-    if (temp == Error::Ok) {
-        temp = limit_invert->saveValue();
-    }
-    if (temp != Error::Ok) {
-        atc_connected->_checkError = temp;
-        return false;
+    if (rownd_param_experimental_atc_detection->get()) {
+        Error temp = limit_invert->setAxis(A_AXIS, !_convertedValue);
+        if (temp == Error::Ok) {
+            temp = limit_invert->saveValue();
+        }
+        if (temp != Error::Ok) {
+            atc_connected->_checkError = temp;
+            return false;
+        }
     }
 
     grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC %s", _convertedValue ? "connected" : "removed");
@@ -297,32 +279,40 @@ static bool checkATCChange(char* value) {
 }
 
 bool initialATCCheck() {
-    AxisMask mask = limits_get_state();
+    if (rownd_param_experimental_atc_detection->get()) {
+        AxisMask mask = limits_get_state();
 
-    bool test1 = atc_connected->get();
-    bool test2 = bit_istrue(mask, bit(REMOVABLE_AXIS_LIMIT));
-    bool test3 = bit_istrue(limit_invert->get(), bit(REMOVABLE_AXIS_LIMIT));
+        bool test1 = atc_connected->get();
+        bool test2 = bit_istrue(mask, bit(REMOVABLE_AXIS_LIMIT));
+        bool test3 = bit_istrue(limit_invert->get(), bit(REMOVABLE_AXIS_LIMIT));
 
-    // Erroneous state: ATC state and Limit invert do not match.
-    // This could be caused by flash write errors or manual changes to related settings.
-    // A warning is issued; manually changing the ATC state from the screen should fix this.
-    if (test1 == test3) {
-        grbl_msg_sendf(
-            CLIENT_ALL, MsgLevel::Warning, "Warning: Invalid ATC state detected. Please manually change the ATC state from the screen to fix this.con(t1):%i, lst(t2):%i, inv(t3):%i, ma:%i, li:%i", test1, test2, test3, mask, limit_invert->get());
-        return false;
-    }
+        // Erroneous state: ATC state and Limit invert do not match.
+        // This could be caused by flash write errors or manual changes to related settings.
+        // A warning is issued; manually changing the ATC state from the screen should fix this.
+        if (test1 == test3) {
+            grbl_msg_sendf(CLIENT_ALL,
+                           MsgLevel::Warning,
+                           "Warning: Invalid ATC state detected. Please manually change the ATC state from the screen to fix this.con(t1):%i, lst(t2):%i, inv(t3):%i, ma:%i, li:%i",
+                           test1,
+                           test2,
+                           test3,
+                           mask,
+                           limit_invert->get());
+            return false;
+        }
 
-    // Used XNOR to represent reality. just trust me :D
-    bool reality = (test2 == test3);
+        // Used XNOR to represent reality. just trust me :D
+        bool reality = (test2 == test3);
 
-    // If the current ATC state does not match reality, update it
-    if (test1 != reality) {
-        grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "ATC state mismatch: reported %s, applying correction", atc_connected->getStringValue());
-        gc_state.Rownd_special = true;
-        atc_connected->setBoolValue(reality);
-        gc_state.Rownd_special = false;
-    } else {
-        grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "ATC state: %s", atc_connected->getStringValue());
+        // If the current ATC state does not match reality, update it
+        if (test1 != reality) {
+            grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "ATC state mismatch: reported %s, applying correction", atc_connected->getStringValue());
+            gc_state.Rownd_special = true;
+            atc_connected->setBoolValue(reality);
+            gc_state.Rownd_special = false;
+        } else {
+            grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "ATC state: %s", atc_connected->getStringValue());
+        }
     }
 
     return true;
@@ -546,7 +536,7 @@ void make_settings() {
         setting->setAxis(axis);
         axis_settings[axis]->steps_per_mm = setting;
     }
-    
+
     css_segment_tolerance = new FloatSetting(GRBL, WG, "75", "GCode/CSS_Tolerance", DEFAULT_CSS_SEGMENT_TOLERANCE, 0.01, 10);
 
     // Tool settings
@@ -579,7 +569,7 @@ void make_settings() {
 
     rownd_param_G76_ignore_offset = new FlagSetting(EXTENDED, WG, "55", "RowndG76IgnoreOffset", DEFAULT_ROWND_G76_IGNORE_OFFSET, NULL);
 
-    rownd_param_ignore_door_switch = new FlagSetting(EXTENDED, WG, "54", "RowndIgnoreDoorSwitch", DEFAULT_ROWND_IGNORE_DOOR_SWITCH, checkDisableDoorChange);
+    rownd_param_experimental_atc_detection = new FlagSetting(EXTENDED, WG, "54", "RowndExperimentalATCDetection", DEFAULT_ROWND_EXPERIMENTAL_ATC_DETECTION, NULL);
 
     // Limit move vars
 

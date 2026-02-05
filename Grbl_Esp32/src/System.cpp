@@ -202,11 +202,9 @@ ControlPins system_control_get_state() {
     pin_states.value = 0;
 
 #ifdef CONTROL_SAFETY_DOOR_PIN
-    if (!rownd_param_ignore_door_switch->get()) {
-        defined_pins.bit.safetyDoor = true;
-        if (digitalRead(CONTROL_SAFETY_DOOR_PIN)) {
-            pin_states.bit.safetyDoor = true;
-        }
+    defined_pins.bit.safetyDoor = true;
+    if (digitalRead(CONTROL_SAFETY_DOOR_PIN)) {
+        pin_states.bit.safetyDoor = true;
     }
 #endif
 #ifdef CONTROL_RESET_PIN
