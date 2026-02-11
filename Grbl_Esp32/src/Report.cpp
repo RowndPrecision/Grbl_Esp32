@@ -614,7 +614,7 @@ void report_gcode_modes(uint8_t client) {
     else
         strcat(modes_rpt, " M150");
     if (atc_connected->get())
-        strcat(modes_rpt, " N121");
+        strcat(modes_rpt, " M121");
     else
         strcat(modes_rpt, " M120");
 
