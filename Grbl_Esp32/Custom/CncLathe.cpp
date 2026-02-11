@@ -115,20 +115,21 @@ bool cartesian_to_motors(float* target, plan_line_data_t* pl_data, float* positi
     plan_line_data_t pl_data_local = *pl_data;
 #ifdef POSITIONABLE_SPINDLE_AXIS
     if (rownd_param_experimental_axis_feed->get() && !gc_state.Rownd_thread) {
-        float   radus;
-        float   tx;
-        float   tz;
-        float   dx;
-        float   dz;
-        float   dc_mm;
-        float   dc_deg;
-        float   d_mm;
-        float   d_deg;
-        float   f_mm;
-        float   f_deg;
-        int32_t segments;
-        float   line_tolerance   = css_segment_tolerance->get();
-        float   radius_tolerance = line_tolerance / 10;
+        float     radus;
+        float     tx;
+        float     tz;
+        float     dx;
+        float     dz;
+        float     dc_mm;
+        float     dc_deg;
+        float     d_mm;
+        float     d_deg;
+        float     f_mm;
+        float     f_deg;
+        int32_t   segments;
+        float     line_tolerance   = css_segment_tolerance->get();
+        float     radius_tolerance = line_tolerance / 10;
+        ExecAlarm temp;
 
         tx       = target[X_AXIS];
         tz       = target[Z_AXIS];
@@ -187,6 +188,11 @@ bool cartesian_to_motors(float* target, plan_line_data_t* pl_data, float* positi
                 }
 
                 for (uint16_t i = 0; i < segments; i++) {
+                    temp = limitsCheckDirection(target);
+                    if (temp != ExecAlarm::None) {
+                        return false;
+                    }
+
                     if (i == segments - 1) {
                         target[X_AXIS] = tx;
                         target[Z_AXIS] = tz;

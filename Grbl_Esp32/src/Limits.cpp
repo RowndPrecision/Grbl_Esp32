@@ -719,6 +719,9 @@ ExecAlarm __attribute__((weak)) limitsCheckDirection(float* target) {
             }
             // If the movement is in the negative direction, return alarm 11
             else if (temp < 0) {
+                if (rownd_verbose_enable->get()) {
+                    grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Negative Direction Block: axis %c, temp: %f", "XYZABC"[idx], temp);
+                }
                 return ExecAlarm::DirectionBlock;
             }
             // If the movement is in the positive direction and exceeds the limit, remove the lock
@@ -742,6 +745,9 @@ ExecAlarm __attribute__((weak)) limitsCheckDirection(float* target) {
             }
             // If the movement is in the positive direction, return alarm 11
             else if (temp > 0) {
+                if (rownd_verbose_enable->get()) {
+                    grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Positive Direction Block: axis %c, temp: %f", "XYZABC"[idx], temp);
+                }
                 return ExecAlarm::DirectionBlock;
             }
             // If the movement is in the negative direction and exceeds the limit, remove the lock
