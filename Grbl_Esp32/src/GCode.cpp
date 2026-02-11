@@ -1623,6 +1623,8 @@ Error gc_execute_line(char* line, uint8_t client) {
             pValue = trunc(gc_block.values.p);  // Convert p value to integer
             if (pValue > 0) {
                 ToolTable->set_tool_selected(pValue - 1);
+            } else if (pValue == 0) {
+                // P0 means use currently-selected tool, so do nothing.
             } else {
                 FAIL(Error::InvalidValue);
             }
