@@ -53,6 +53,11 @@ void gc_init() {
     gc_state.modal.coord_select = CoordIndex::G54;
     // gc_state.modal.spindle      = SpindleState::Disable;
     // gc_state.modal.coolant      = {};
+    if (rownd_param_lathe_diameter_mode_to_default->get()) {
+        gc_state.modal.d_r_mode = LatheDRMode::Diameter;
+    } else {
+        gc_state.modal.d_r_mode = LatheDRMode::Radius;
+    }
 
 #ifdef POSITIONABLE_AXIS_CONVERT
     updatePositionableAxisParams();
@@ -2502,6 +2507,12 @@ Error gc_execute_line(char* line, uint8_t client) {
             gc_state.modal.spindle_speed_mode = SpindleSpeedMode::RPM;
             gc_state.modal.spindle            = SpindleState::Disable;
             gc_state.modal.coolant            = {};
+
+            if (rownd_param_lathe_diameter_mode_to_default->get()) {
+                gc_state.modal.d_r_mode = LatheDRMode::Diameter;
+            } else {
+                gc_state.modal.d_r_mode = LatheDRMode::Radius;
+            }
 
 #ifdef POSITIONABLE_AXIS_CONVERT
             updatePositionableAxisParams();

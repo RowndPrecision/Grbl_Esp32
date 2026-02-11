@@ -46,6 +46,8 @@ extern FloatSetting* css_segment_tolerance;
 extern FlagSetting* led_state;
 extern FlagSetting* led_inverse;
 
+extern FlagSetting* rownd_param_lathe_diameter_mode_to_default;
+
 #ifdef DEFAULT_ROWND_TCP
 extern FlagSetting* tcp_active;
 #endif
