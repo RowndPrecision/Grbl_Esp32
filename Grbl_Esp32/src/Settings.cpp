@@ -52,13 +52,28 @@ Error setMachineMode(SpecialActions mMode) {
     protocol_buffer_synchronize();
     switch (mMode) {
         case SpecialActions::ModeSwitchLathe:
-            temp = spindle_type->setEnumValue((int8_t)SpindleType::ASDA_CN1);
+            if (spindle_type->get() != (int8_t)SpindleType::ASDA_CN1) {
+                temp = spindle_type->setEnumValue((int8_t)SpindleType::ASDA_CN1);
+                grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Switched to lathe mode (E%d: %s)", temp, errorString(temp));
+            } else {
+                grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Already in lathe mode");
+            }
             break;
         case SpecialActions::ModeSwitch4thAxis:
-            temp = spindle_type->setEnumValue((int8_t)SpindleType::PWM);
+            if (spindle_type->get() != (int8_t)SpindleType::PWM) {
+                temp = spindle_type->setEnumValue((int8_t)SpindleType::PWM);
+                grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Switched to 4th axis mode (E%d: %s)", temp, errorString(temp));
+            } else {
+                grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Already in 4th axis mode");
+            }
             break;
         case SpecialActions::ModeSwitchLaser:
-            temp = spindle_type->setEnumValue((int8_t)SpindleType::LASER);
+            if (spindle_type->get() != (int8_t)SpindleType::LASER) {
+                temp = spindle_type->setEnumValue((int8_t)SpindleType::LASER);
+                grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Switched to laser mode (E%d: %s)", temp, errorString(temp));
+            } else {
+                grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Already in laser mode");
+            }
             break;
         default:
             temp = Error::SettingReadFail;
