@@ -612,35 +612,41 @@ void limitCheckTask(void* pvParameters) {
             grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Switches: %s, axis: %c", msg, "XYZABC"[axis]);
         }
         if (bit_istrue(switch_state, bit(axis))) {
-            if (!atc_connected->get() && bit_is_match(switch_state, bit(REMOVABLE_AXIS_LIMIT))) {
-                gc_state.Rownd_special = true;
+            if (bit_is_match(switch_state, bit(REMOVABLE_AXIS_LIMIT))) {
+                if (rownd_param_experimental_atc_detection->get()) {
+                    if (!atc_connected->get()) {
+                        gc_state.Rownd_special = true;
 
-                // Note: Automatically switching to lathe mode would be ideal, but with the current setup,
-                // this causes display issues on the RPi side. To avoid that, we're removing the auto-switch.
-                // However, this may lead to user confusion, so we must warn users to switch to lathe mode
-                // manually before connecting the ATC.
+                        // Note: Automatically switching to lathe mode would be ideal, but with the current setup,
+                        // this causes display issues on the RPi side. To avoid that, we're removing the auto-switch.
+                        // However, this may lead to user confusion, so we must warn users to switch to lathe mode
+                        // manually before connecting the ATC.
 
-                // spindle_type->setEnumValue((int8_t)SpindleType::ASDA_CN1);
-                atc_connected->setBoolValue(true);  // auto detect?
-                gc_state.Rownd_special = false;
-                if (rownd_verbose_enable->get()) {
-                    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC connection detected: %s, %i", msg, atc_connected->get());
-                }
-                atc_connected->setBoolValue(true);  // auto detect?
-            } else if (atc_connected->get() && bit_is_match(switch_state, bit(REMOVABLE_AXIS_LIMIT))) {
-                if (dirBlock == NULL) {
-                    gc_state.Rownd_special = true;
-                    atc_connected->setBoolValue(false);  // auto detect?
-                    gc_state.Rownd_special = false;
-                    if (rownd_verbose_enable->get()) {
-                        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC connection removed: %s", msg);
+                        // spindle_type->setEnumValue((int8_t)SpindleType::ASDA_CN1);
+                        atc_connected->setBoolValue(true);  // auto detect?
+                        gc_state.Rownd_special = false;
+                        if (rownd_verbose_enable->get()) {
+                            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC connection detected: %s, %i", msg, atc_connected->get());
+                        }
+                        atc_connected->setBoolValue(true);  // auto detect?
+                    } else {
+                        if (dirBlock == NULL) {
+                            gc_state.Rownd_special = true;
+                            atc_connected->setBoolValue(false);  // auto detect?
+                            gc_state.Rownd_special = false;
+                            if (rownd_verbose_enable->get()) {
+                                grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC connection removed: %s", msg);
+                            }
+                        } else {
+                            if (rownd_verbose_enable->get()) {
+                                grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC switch triggered during revolution (ignored as expected): %s", msg);
+                            }
+                        }
+                        // ignore
                     }
                 } else {
-                    if (rownd_verbose_enable->get()) {
-                        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "ATC switch triggered during revolution (ignored as expected): %s", msg);
-                    }
+                    grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Switch test on ATC");
                 }
-                // ignore
             } else {
                 grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Limit Switch State %s", msg);
                 sys_rt_exec_alarm = ExecAlarm::HardLimit;  // Indicate hard limit critical event
