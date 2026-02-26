@@ -5,7 +5,7 @@
 
 #define N_AXIS 4
 
-// #define SERVO_MODE // Distinguishes between regular machines and those upgraded with a servo  
+#define SERVO_MODE // Distinguishes between regular machines and those upgraded with a servo  
 
 #define CUSTOM_CODE_FILENAME    "../Custom/CncLathe.cpp"
 
