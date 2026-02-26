@@ -5,7 +5,7 @@
 
 #define N_AXIS 4
 
-// #define SERVO_MODE // Distinguishes between regular machines and those upgraded with a servo
+#define SERVO_MODE // Distinguishes between regular machines and those upgraded with a servo
 
 #define CUSTOM_CODE_FILENAME    "../Custom/CncLathe.cpp"
 
@@ -79,9 +79,9 @@
 
 #define DEFAULT_ROWND_VERBOSE 0
 #define DEFAULT_ROWND_LATHE_DIAMETER_MODE_TO_DEFAULT false
-#define DEFAULT_ROWND_EXPERIMENTAL_SERVO_RAMP false
+#define DEFAULT_ROWND_EXPERIMENTAL_SERVO_RAMP true
 #define DEFAULT_ROWND_EXPERIMENTAL_AXIS_FEED false
-#define DEFAULT_ROWND_EXPERIMENTAL_POSITION_MODE false
+#define DEFAULT_ROWND_EXPERIMENTAL_POSITION_MODE true
 #define DEFAULT_ROWND_ATC_HOME_DIRECTION_V2 false
 #define DEFAULT_ROWND_G76_IGNORE_OFFSET false
 #define DEFAULT_ROWND_EXPERIMENTAL_ATC_DETECTION false
@@ -129,7 +129,7 @@
 
 #define DEFAULT_STATUS_REPORT_MASK 1
 
-#define DEFAULT_CSS_SEGMENT_TOLERANCE 0.5 // mm
+#define DEFAULT_CSS_SEGMENT_TOLERANCE 0.1 // mm
 
 #define DEFAULT_JUNCTION_DEVIATION 0.01 // mm
 #define DEFAULT_ARC_TOLERANCE 0.002 // mm
