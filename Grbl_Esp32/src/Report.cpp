@@ -638,10 +638,10 @@ void report_gcode_modes(uint8_t client) {
         sprintf(temp, " S%d", uint32_t(gc_state.spindle_speed));
     }
     strcat(modes_rpt, temp);
-    if (gc_state.spindle_speed_limit != 0) {
-        sprintf(temp, " G50_%.0f", gc_state.spindle_speed_limit);
-        strcat(modes_rpt, temp);
-    }
+    // if (gc_state.spindle_speed_limit != 0) {
+    //     sprintf(temp, " G50_%.0f", gc_state.spindle_speed_limit);
+    //     strcat(modes_rpt, temp);
+    // }
     strcat(modes_rpt, "]\r\n");
     // grbl_send(client, modes_rpt);
     grbl_send(CLIENT_ALL, modes_rpt);
@@ -804,6 +804,11 @@ void report_realtime_status(uint8_t client) {
         strcat(status, "A");
     if (gc_state.Rownd_thread)
         strcat(status, "T");
+
+    if (gc_state.spindle_speed_limit != 0) {
+        sprintf(temp, "|G50:%.0f", gc_state.spindle_speed_limit);
+        strcat(status, temp);
+    }
 
 #ifdef REPORT_FIELD_PIN_STATE
     AxisMask    lim_pin_state  = limits_get_state();
