@@ -20,7 +20,7 @@
 #define RS485_TX                GPIO_NUM_32
 #define RS485_CTRL              GPIO_NUM_12
 
-#define DEFAULT_PLANE   Plane::ZX  // ZX for lathe
+#define DEFAULT_PLANE   Plane::XY  // ZX for lathe
 
 // #define DEFAULT_SWAP_Y  C_AXIS
 // #define DEFAULT_SWAP_C  Y_AXIS
