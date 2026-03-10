@@ -407,8 +407,12 @@ Error gc_execute_line(char* line, uint8_t client) {
                         mg_word_bit              = ModalGroup::MG5;
                         break;
                     case 96:
-                        gc_block.modal.spindle_speed_mode = SpindleSpeedMode::CSS;
-                        mg_word_bit                       = ModalGroup::MG14;
+                        if (rownd_param_experimental_axis_feed->get()) {
+                            gc_block.modal.spindle_speed_mode = SpindleSpeedMode::CSS;
+                            mg_word_bit                       = ModalGroup::MG14;
+                        } else {
+                            FAIL(Error::GcodeUnsupportedCommand);  // [Unsupported G command]
+                        }
                         break;
                     case 97:
                         gc_block.modal.spindle_speed_mode = SpindleSpeedMode::RPM;
@@ -2164,8 +2168,10 @@ Error gc_execute_line(char* line, uint8_t client) {
         pl_data->spindle       = gc_state.modal.spindle;
         pl_data->coolant       = gc_state.modal.coolant;
 
-        pl_data->motion.constantSurfaceSpeed = gc_state.modal.spindle_speed_mode == SpindleSpeedMode::CSS;
-        pl_data->motion.mmPerRev             = gc_state.modal.feed_rate == FeedRate::UnitsPerRev;
+        if (rownd_param_experimental_axis_feed->get()) {
+            pl_data->motion.constantSurfaceSpeed = gc_state.modal.spindle_speed_mode == SpindleSpeedMode::CSS;
+        }
+        pl_data->motion.mmPerRev = gc_state.modal.feed_rate == FeedRate::UnitsPerRev;
 
         bool  cancelledInflight = false;
         Error status            = jog_execute(pl_data, &gc_block, &cancelledInflight);
@@ -2228,7 +2234,7 @@ Error gc_execute_line(char* line, uint8_t client) {
     if (gc_state.modal.spindle_speed_mode != gc_block.modal.spindle_speed_mode) {
         gc_state.modal.spindle_speed_mode = gc_block.modal.spindle_speed_mode;
     }
-    if (gc_state.modal.spindle_speed_mode == SpindleSpeedMode::CSS) {
+    if (gc_state.modal.spindle_speed_mode == SpindleSpeedMode::CSS && rownd_param_experimental_axis_feed->get()) {
         pl_data->motion.constantSurfaceSpeed = 1;
     }
     if ((gc_state.spindle_speed != gc_block.values.s) || bit_istrue(gc_parser_flags, GCParserFlags::GCParserLaserForceSync)) {
