@@ -1231,9 +1231,6 @@ Error gc_execute_line(char* line, uint8_t client) {
             } else {
                 // - In units per rev mode: If F word passed, ensure value is in mm/min, otherwise push last state value.
                 if (bit_istrue(value_words, bit(GCodeWord::F))) {
-                    if (gc_block.modal.spindle == SpindleState::Disable || gc_block.values.s <= 0) {
-                        FAIL(Error::GcodeValueWordMissing);
-                    }
                     if (gc_block.modal.units == Units::Inches) {
                         gc_block.values.f *= MM_PER_INCH;
                     }
