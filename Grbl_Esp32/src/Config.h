@@ -190,6 +190,7 @@ enum class Cmd : uint8_t {
     Reset                 = 0x18,  // Ctrl-X
     StatusReport          = '?',
     ModeReport            = '&',
+    EmergencyStop         = 0xA3,  // 0xA3, 163 in decimal. This is the '£' symbol on the UK keyboard, which is not used in GCode and is above 127 in the ASCII table.
     CycleStart            = '~',
     FeedHold              = '!',
     SafetyDoor            = 0x84,

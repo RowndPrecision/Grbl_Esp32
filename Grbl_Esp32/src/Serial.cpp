@@ -269,6 +269,9 @@ void execute_realtime_command(Cmd command, uint8_t client) {
                 sys_rt_exec_state.bit.motionCancel = true;
             }
             break;
+        case Cmd::EmergencyStop:
+            sys_rt_exec_alarm = ExecAlarm::EmergencyStop;
+            break;
         case Cmd::DebugReport:
 #ifdef DEBUG
             sys_rt_exec_debug = true;

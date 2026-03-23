@@ -54,6 +54,7 @@ enum class ExecAlarm : uint8_t {
     SpindleControl     = 10,
     DirectionBlock     = 11,
     EscapeTooShort     = 12,
+    EmergencyStop      = 13,
 };
 
 extern std::map<ExecAlarm, const char*> AlarmNames;
