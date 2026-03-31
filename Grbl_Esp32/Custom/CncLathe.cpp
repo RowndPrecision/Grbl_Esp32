@@ -510,6 +510,10 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
         gc_state->modal.units = Units::Mm;
     }
 
+    if (is_diameter_mode) {
+        gc_state->modal.d_r_mode = LatheDRMode::Radius;
+    }
+
     // calculate variables 1 (for loop)
 
     // No tapered threading only works on Z axis
@@ -921,6 +925,10 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
 
     if (is_inches) {
         gc_state->modal.units = Units::Inches;
+    }
+
+    if (is_diameter_mode) {
+        gc_state->modal.d_r_mode = LatheDRMode::Diameter;
     }
 
     gc_state->Rownd_thread = false;
