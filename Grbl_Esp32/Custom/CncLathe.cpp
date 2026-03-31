@@ -483,9 +483,9 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
     int      current_pass     = 0;
     float    depth_last       = 0;
     float    depth_current    = 0;
-    float    val_f            = 0;
     float    val_x            = 0;
     float    val_z            = 0;
+    float    val_r            = 0;
     float    val_c            = 0;
     Error    oPut             = Error::Ok;
 
@@ -508,6 +508,10 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
 
     if (is_inches) {
         gc_state->modal.units = Units::Mm;
+    }
+
+    if (is_absolute) {
+        gc_state->modal.distance = Distance::Incremental;
     }
 
     // calculate variables 1 (for loop)
@@ -636,31 +640,23 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
 
         for (int current_start = 0; current_start < g76_params->start_count; current_start++) {
             grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 start no: %i", current_start + 1);
+
             // Threading
-#pragma region entering smooth
-            feed_out = calculate_G76_feed(feed_in, rev_enter + rev_smooth, ((total_dist * rev_enter) / rev_total), depth_current);
 
             mult_smooth = (rev_smooth / (rev_enter + rev_smooth));
 
-            if (is_absolute) {
-                val_f = feed_out;
-                val_x = pos_start[X_AXIS] - (depth_current * mult_smooth);
-                if (is_diameter_mode)
-                    val_x *= 2;
-                val_z = pos_start[Z_AXIS] + (((total_dist * rev_enter) / rev_total) * mult_smooth);
-                val_c = pos_start[DEFAULT_SWAP_C] + (dirMultiplier * current_start * rev_offset) + (dirMultiplier * ((rev_enter + rev_smooth) * 360.0) * mult_smooth);
+#pragma region entering smooth
+            val_r = (rev_enter + rev_smooth) * mult_smooth;
+            val_x = -(depth_current * mult_smooth);
+            val_z = (((total_dist * rev_enter) / rev_total) * mult_smooth);
+            val_c = (dirMultiplier * (val_r * 360.0));
 
-                snprintf(g76_line, sizeof(g76_line), "G1G90F%.2fX%.3fZ%.3fC%.2f", val_f, val_x, val_z, val_c);
-            } else {
-                val_f = feed_out;
-                val_x = -(depth_current * mult_smooth);
-                if (is_diameter_mode)
-                    val_x *= 2;
-                val_z = (((total_dist * rev_enter) / rev_total) * mult_smooth);
-                val_c = (dirMultiplier * ((rev_enter + rev_smooth) * 360.0) * mult_smooth);
+            feed_out = calculate_G76_feed(feed_in, val_r, val_z, val_x);
 
-                snprintf(g76_line, sizeof(g76_line), "G1G91F%.2fX%.3fZ%.3fC%.2f", val_f, val_x, val_z, val_c);
-            }
+            if (is_diameter_mode)
+                val_x *= 2;
+
+            snprintf(g76_line, sizeof(g76_line), "G1G91F%.2fX%.3fZ%.3fC%.2f", feed_out, val_x, val_z, val_c);
 
             if (rownd_verbose_enable->get())
                 grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 enter 1:       %s", g76_line);
@@ -675,25 +671,17 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
 
 #pragma region entering taper
             if (rev_enter > 0) {
-                if (is_absolute) {
-                    val_f = feed_out;
-                    val_x = pos_start[X_AXIS] - depth_current;
-                    if (is_diameter_mode)
-                        val_x *= 2;
-                    val_z = pos_start[Z_AXIS] + ((total_dist * rev_enter) / rev_total);
-                    val_c = pos_start[DEFAULT_SWAP_C] + (dirMultiplier * current_start * rev_offset) + dirMultiplier * ((rev_enter + rev_smooth) * 360.0);
+                val_r = (rev_enter + rev_smooth) * (1 - mult_smooth);
+                val_x = -(depth_current * (1 - mult_smooth));
+                val_z = (((total_dist * rev_enter) / rev_total) * (1 - mult_smooth));
+                val_c = (dirMultiplier * (val_r * 360.0));
 
-                    snprintf(g76_line, sizeof(g76_line), "G1G90F%.2fX%.3fZ%.3fC%.2f", val_f, val_x, val_z, val_c);
-                } else {
-                    val_f = feed_out;
-                    val_x = -(depth_current * (1 - mult_smooth));
-                    if (is_diameter_mode)
-                        val_x *= 2;
-                    val_z = (((total_dist * rev_enter) / rev_total) * (1 - mult_smooth));
-                    val_c = (dirMultiplier * ((rev_enter + rev_smooth) * 360.0) * (1 - mult_smooth));
+                feed_out = calculate_G76_feed(feed_in, val_r, val_z, val_x);
 
-                    snprintf(g76_line, sizeof(g76_line), "G1G91F%.2fX%.3fZ%.3fC%.2f", val_f, val_x, val_z, val_c);
-                }
+                if (is_diameter_mode)
+                    val_x *= 2;
+
+                snprintf(g76_line, sizeof(g76_line), "G1G91F%.2fX%.3fZ%.3fC%.2f", feed_out, val_x, val_z, val_c);
 
                 if (rownd_verbose_enable->get())
                     grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 enter 2:       %s", g76_line);
@@ -708,27 +696,18 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
 #pragma endregion
 
 #pragma region threading
-            feed_out = calculate_G76_feed(feed_in, rev_thread, ((total_dist * rev_thread) / rev_total), 0.0f);
 
-            if (is_absolute) {
-                val_f = feed_out;
-                val_x = pos_start[X_AXIS] - depth_current;
-                if (is_diameter_mode)
-                    val_x *= 2;
-                val_z = pos_start[Z_AXIS] + ((total_dist * (rev_thread + rev_enter)) / rev_total);
-                val_c = pos_start[DEFAULT_SWAP_C] + (dirMultiplier * current_start * rev_offset) + dirMultiplier * ((rev_thread + rev_enter + rev_smooth) * 360.0);
+            val_r = rev_thread;
+            val_x = 0;
+            val_z = ((total_dist * val_r) / rev_total);
+            val_c = (dirMultiplier * (val_r * 360.0));
 
-                snprintf(g76_line, sizeof(g76_line), "G1G90F%.2fX%.3fZ%.3fC%.2f", val_f, val_x, val_z, val_c);
-            } else {
-                val_f = feed_out;
-                val_x = 0;
-                if (is_diameter_mode)
-                    val_x *= 2;
-                val_z = ((total_dist * rev_thread) / rev_total);
-                val_c = (dirMultiplier * (rev_thread * 360.0));
+            feed_out = calculate_G76_feed(feed_in, val_r, val_z, val_x);
 
-                snprintf(g76_line, sizeof(g76_line), "G1G91F%.2fX%.3fZ%.3fC%.2f", val_f, val_x, val_z, val_c);
-            }
+            if (is_diameter_mode)
+                val_x *= 2;
+
+            snprintf(g76_line, sizeof(g76_line), "G1G91F%.2fX%.3fZ%.3fC%.2f", feed_out, val_x, val_z, val_c);
 
             if (rownd_verbose_enable->get())
                 grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 thread:        %s", g76_line);
@@ -742,27 +721,18 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
 #pragma endregion
 
 #pragma region exiting
-            feed_out = calculate_G76_feed(feed_in, rev_exit, ((total_dist * rev_exit) / rev_total), depth_current);
 
-            if (is_absolute) {
-                val_f = feed_out;
-                val_x = pos_start[X_AXIS];
-                if (is_diameter_mode)
-                    val_x *= 2;
-                val_z = pos_start[Z_AXIS] + total_dist;
-                val_c = pos_start[DEFAULT_SWAP_C] + (dirMultiplier * current_start * rev_offset) + dirMultiplier * ((rev_total + rev_smooth) * 360.0);
+            val_r = rev_exit;
+            val_x = depth_current;
+            val_z = ((total_dist * val_r) / rev_total);
+            val_c = (dirMultiplier * (val_r * 360.0));
 
-                snprintf(g76_line, sizeof(g76_line), "G1G90F%.2fX%.3fZ%.3fC%.2f", val_f, val_x, val_z, val_c);
-            } else {
-                val_f = feed_out;
-                val_x = depth_current;
-                if (is_diameter_mode)
-                    val_x *= 2;
-                val_z = ((total_dist * rev_exit) / rev_total);
-                val_c = (dirMultiplier * (rev_exit * 360.0));
+            feed_out = calculate_G76_feed(feed_in, val_r, val_z, val_x);
 
-                snprintf(g76_line, sizeof(g76_line), "G1G91F%.2fX%.3fZ%.3fC%.2f", val_f, val_x, val_z, val_c);
-            }
+            if (is_diameter_mode)
+                val_x *= 2;
+
+            snprintf(g76_line, sizeof(g76_line), "G1G91F%.2fX%.3fZ%.3fC%.2f", feed_out, val_x, val_z, val_c);
 
             if (rownd_verbose_enable->get())
                 grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 exit:          %s", g76_line);
@@ -777,25 +747,14 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
 
             // returning (safety exit + return + safety enter)
 #pragma region safety exit
-            if (is_absolute) {
-                val_f = feed_out;
-                val_x = pos_start[X_AXIS] + g76_params->depth_first_cut;
-                if (is_diameter_mode)
-                    val_x *= 2;
-                val_z = pos_start[Z_AXIS] + total_dist;
-                val_c = pos_start[DEFAULT_SWAP_C] + (dirMultiplier * current_start * rev_offset) + dirMultiplier * ((rev_total + rev_smooth) * 360.0);
 
-                snprintf(g76_line, sizeof(g76_line), "G0G90X%.3fZ%.3fC%.2f", val_x, val_z, val_c);
-            } else {
-                val_f = feed_out;
-                val_x = g76_params->depth_first_cut;
-                if (is_diameter_mode)
-                    val_x *= 2;
-                val_z = 0;
-                val_c = 0;
+            val_x = g76_params->depth_first_cut;
+            if (is_diameter_mode)
+                val_x *= 2;
+            val_z = 0;
+            val_c = 0;
 
-                snprintf(g76_line, sizeof(g76_line), "G0G91X%.3fZ%.3fC%.2f", val_x, val_z, val_c);
-            }
+            snprintf(g76_line, sizeof(g76_line), "G0G91X%.3fZ%.3fC%.2f", val_x, val_z, val_c);
 
             if (rownd_verbose_enable->get())
                 grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 return/exit:   %s", g76_line);
@@ -809,25 +768,14 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
 #pragma endregion
 
 #pragma region returning
-            if (is_absolute) {
-                val_f = feed_out;
-                val_x = pos_start[X_AXIS] + g76_params->depth_first_cut;
-                if (is_diameter_mode)
-                    val_x *= 2;
-                val_z = pos_start[Z_AXIS];
-                val_c = pos_start[DEFAULT_SWAP_C] + (dirMultiplier * current_start * rev_offset);
 
-                snprintf(g76_line, sizeof(g76_line), "G0G90X%.3fZ%.3fC%.2f", val_x, val_z, val_c);
-            } else {
-                val_f = feed_out;
-                val_x = 0;
-                if (is_diameter_mode)
-                    val_x *= 2;
-                val_z = -total_dist;
-                val_c = dirMultiplier * -((rev_total + rev_smooth) * 360.0);
+            val_x = 0;
+            if (is_diameter_mode)
+                val_x *= 2;
+            val_z = -total_dist;
+            val_c = dirMultiplier * -((rev_total + rev_smooth) * 360.0);
 
-                snprintf(g76_line, sizeof(g76_line), "G0G91X%.3fZ%.3fC%.2f", val_x, val_z, val_c);
-            }
+            snprintf(g76_line, sizeof(g76_line), "G0G91X%.3fZ%.3fC%.2f", val_x, val_z, val_c);
 
             if (rownd_verbose_enable->get())
                 grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 return/thread: %s", g76_line);
@@ -841,25 +789,14 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
 #pragma endregion
 
 #pragma region safety enter
-            if (is_absolute) {
-                val_f = feed_out;
-                val_x = pos_start[X_AXIS];
-                if (is_diameter_mode)
-                    val_x *= 2;
-                val_z = pos_start[Z_AXIS];
-                val_c = pos_start[DEFAULT_SWAP_C] + (dirMultiplier * current_start * rev_offset);
 
-                snprintf(g76_line, sizeof(g76_line), "G0G90X%.3fZ%.3fC%.2f", val_x, val_z, val_c);
-            } else {
-                val_f = feed_out;
-                val_x = -g76_params->depth_first_cut;
-                if (is_diameter_mode)
-                    val_x *= 2;
-                val_z = 0.0f;
-                val_c = 0.0f;
+            val_x = -g76_params->depth_first_cut;
+            if (is_diameter_mode)
+                val_x *= 2;
+            val_z = 0.0f;
+            val_c = 0.0f;
 
-                snprintf(g76_line, sizeof(g76_line), "G0G91X%.3fZ%.3fC%.2f", val_x, val_z, val_c);
-            }
+            snprintf(g76_line, sizeof(g76_line), "G0G91X%.3fZ%.3fC%.2f", val_x, val_z, val_c);
 
             if (rownd_verbose_enable->get())
                 grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 return/enter:  %s", g76_line);
@@ -874,25 +811,14 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
 
 // make sure you are at the correct start position
 #pragma region goto next start
-            if (is_absolute) {
-                val_f = feed_out;
-                val_x = pos_start[X_AXIS];
-                if (is_diameter_mode)
-                    val_x *= 2;
-                val_z = pos_start[Z_AXIS];
-                val_c = pos_start[DEFAULT_SWAP_C] + (dirMultiplier * (current_start + 1) * rev_offset);
 
-                snprintf(g76_line, sizeof(g76_line), "G0G90X%.3fZ%.3fC%.2f", val_x, val_z, val_c);
-            } else {
-                val_f = feed_out;
-                val_x = 0;
-                if (is_diameter_mode)
-                    val_x *= 2;
-                val_z = 0;
-                val_c = dirMultiplier * rev_offset;
+            val_x = 0;
+            if (is_diameter_mode)
+                val_x *= 2;
+            val_z = 0;
+            val_c = dirMultiplier * rev_offset;
 
-                snprintf(g76_line, sizeof(g76_line), "G0G91X%.3fZ%.3fC%.2f", val_x, val_z, val_c);
-            }
+            snprintf(g76_line, sizeof(g76_line), "G0G91X%.3fZ%.3fC%.2f", val_x, val_z, val_c);
 
             if (rownd_verbose_enable->get())
                 grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 goto start:    %s", g76_line);
@@ -909,26 +835,14 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
         }
         // make sure you are at the correct start position
 #pragma region return to start
-        if (is_absolute) {
-            val_f = feed_out;
-            val_x = pos_start[X_AXIS];
-            if (is_diameter_mode)
-                val_x *= 2;
-            val_z = pos_start[Z_AXIS];
-            val_c = pos_start[DEFAULT_SWAP_C];
 
-            snprintf(g76_line, sizeof(g76_line), "G0G90X%.3fZ%.3fC%.2f", val_x, val_z, val_c);
-        } else {
-            // snprintf(g76_line, sizeof(g76_line), "G0G91X%.3fZ%.3fC%.2f", 0.0f, 0.0f, -(dirMultiplier * g76_params->start_count * rev_offset));
-            val_f = feed_out;
-            val_x = 0;
-            if (is_diameter_mode)
-                val_x *= 2;
-            val_z = 0;
-            val_c = -360.0f;
+        val_x = 0;
+        if (is_diameter_mode)
+            val_x *= 2;
+        val_z = 0;
+        val_c = -360.0f;
 
-            snprintf(g76_line, sizeof(g76_line), "G0G91X%.3fZ%.3fC%.2f", val_x, val_z, val_c);
-        }
+        snprintf(g76_line, sizeof(g76_line), "G0G91X%.3fZ%.3fC%.2f", val_x, val_z, val_c);
 
         if (rownd_verbose_enable->get())
             grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g76 return start:  %s", g76_line);
@@ -957,6 +871,10 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
 
     if (is_inches) {
         gc_state->modal.units = Units::Inches;
+    }
+
+    if (is_absolute) {
+        gc_state->modal.distance = Distance::Absolute;
     }
 
     gc_state->Rownd_thread = false;
