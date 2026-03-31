@@ -510,10 +510,6 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
         gc_state->modal.units = Units::Mm;
     }
 
-    if (is_diameter_mode) {
-        gc_state->modal.d_r_mode = LatheDRMode::Radius;
-    }
-
     // calculate variables 1 (for loop)
 
     // No tapered threading only works on Z axis
@@ -649,6 +645,8 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
             if (is_absolute) {
                 val_f = feed_out;
                 val_x = pos_start[X_AXIS] - (depth_current * mult_smooth);
+                if (is_diameter_mode)
+                    val_x *= 2;
                 val_z = pos_start[Z_AXIS] + (((total_dist * rev_enter) / rev_total) * mult_smooth);
                 val_c = pos_start[DEFAULT_SWAP_C] + (dirMultiplier * current_start * rev_offset) + (dirMultiplier * ((rev_enter + rev_smooth) * 360.0) * mult_smooth);
 
@@ -656,6 +654,8 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
             } else {
                 val_f = feed_out;
                 val_x = -(depth_current * mult_smooth);
+                if (is_diameter_mode)
+                    val_x *= 2;
                 val_z = (((total_dist * rev_enter) / rev_total) * mult_smooth);
                 val_c = (dirMultiplier * ((rev_enter + rev_smooth) * 360.0) * mult_smooth);
 
@@ -678,6 +678,8 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
                 if (is_absolute) {
                     val_f = feed_out;
                     val_x = pos_start[X_AXIS] - depth_current;
+                    if (is_diameter_mode)
+                        val_x *= 2;
                     val_z = pos_start[Z_AXIS] + ((total_dist * rev_enter) / rev_total);
                     val_c = pos_start[DEFAULT_SWAP_C] + (dirMultiplier * current_start * rev_offset) + dirMultiplier * ((rev_enter + rev_smooth) * 360.0);
 
@@ -685,6 +687,8 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
                 } else {
                     val_f = feed_out;
                     val_x = -(depth_current * (1 - mult_smooth));
+                    if (is_diameter_mode)
+                        val_x *= 2;
                     val_z = (((total_dist * rev_enter) / rev_total) * (1 - mult_smooth));
                     val_c = (dirMultiplier * ((rev_enter + rev_smooth) * 360.0) * (1 - mult_smooth));
 
@@ -709,6 +713,8 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
             if (is_absolute) {
                 val_f = feed_out;
                 val_x = pos_start[X_AXIS] - depth_current;
+                if (is_diameter_mode)
+                    val_x *= 2;
                 val_z = pos_start[Z_AXIS] + ((total_dist * (rev_thread + rev_enter)) / rev_total);
                 val_c = pos_start[DEFAULT_SWAP_C] + (dirMultiplier * current_start * rev_offset) + dirMultiplier * ((rev_thread + rev_enter + rev_smooth) * 360.0);
 
@@ -716,6 +722,8 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
             } else {
                 val_f = feed_out;
                 val_x = 0;
+                if (is_diameter_mode)
+                    val_x *= 2;
                 val_z = ((total_dist * rev_thread) / rev_total);
                 val_c = (dirMultiplier * (rev_thread * 360.0));
 
@@ -739,6 +747,8 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
             if (is_absolute) {
                 val_f = feed_out;
                 val_x = pos_start[X_AXIS];
+                if (is_diameter_mode)
+                    val_x *= 2;
                 val_z = pos_start[Z_AXIS] + total_dist;
                 val_c = pos_start[DEFAULT_SWAP_C] + (dirMultiplier * current_start * rev_offset) + dirMultiplier * ((rev_total + rev_smooth) * 360.0);
 
@@ -746,6 +756,8 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
             } else {
                 val_f = feed_out;
                 val_x = depth_current;
+                if (is_diameter_mode)
+                    val_x *= 2;
                 val_z = ((total_dist * rev_exit) / rev_total);
                 val_c = (dirMultiplier * (rev_exit * 360.0));
 
@@ -768,6 +780,8 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
             if (is_absolute) {
                 val_f = feed_out;
                 val_x = pos_start[X_AXIS] + g76_params->depth_first_cut;
+                if (is_diameter_mode)
+                    val_x *= 2;
                 val_z = pos_start[Z_AXIS] + total_dist;
                 val_c = pos_start[DEFAULT_SWAP_C] + (dirMultiplier * current_start * rev_offset) + dirMultiplier * ((rev_total + rev_smooth) * 360.0);
 
@@ -775,6 +789,8 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
             } else {
                 val_f = feed_out;
                 val_x = g76_params->depth_first_cut;
+                if (is_diameter_mode)
+                    val_x *= 2;
                 val_z = 0;
                 val_c = 0;
 
@@ -796,6 +812,8 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
             if (is_absolute) {
                 val_f = feed_out;
                 val_x = pos_start[X_AXIS] + g76_params->depth_first_cut;
+                if (is_diameter_mode)
+                    val_x *= 2;
                 val_z = pos_start[Z_AXIS];
                 val_c = pos_start[DEFAULT_SWAP_C] + (dirMultiplier * current_start * rev_offset);
 
@@ -803,6 +821,8 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
             } else {
                 val_f = feed_out;
                 val_x = 0;
+                if (is_diameter_mode)
+                    val_x *= 2;
                 val_z = -total_dist;
                 val_c = dirMultiplier * -((rev_total + rev_smooth) * 360.0);
 
@@ -824,6 +844,8 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
             if (is_absolute) {
                 val_f = feed_out;
                 val_x = pos_start[X_AXIS];
+                if (is_diameter_mode)
+                    val_x *= 2;
                 val_z = pos_start[Z_AXIS];
                 val_c = pos_start[DEFAULT_SWAP_C] + (dirMultiplier * current_start * rev_offset);
 
@@ -831,6 +853,8 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
             } else {
                 val_f = feed_out;
                 val_x = -g76_params->depth_first_cut;
+                if (is_diameter_mode)
+                    val_x *= 2;
                 val_z = 0.0f;
                 val_c = 0.0f;
 
@@ -853,6 +877,8 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
             if (is_absolute) {
                 val_f = feed_out;
                 val_x = pos_start[X_AXIS];
+                if (is_diameter_mode)
+                    val_x *= 2;
                 val_z = pos_start[Z_AXIS];
                 val_c = pos_start[DEFAULT_SWAP_C] + (dirMultiplier * (current_start + 1) * rev_offset);
 
@@ -860,6 +886,8 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
             } else {
                 val_f = feed_out;
                 val_x = 0;
+                if (is_diameter_mode)
+                    val_x *= 2;
                 val_z = 0;
                 val_c = dirMultiplier * rev_offset;
 
@@ -884,6 +912,8 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
         if (is_absolute) {
             val_f = feed_out;
             val_x = pos_start[X_AXIS];
+            if (is_diameter_mode)
+                val_x *= 2;
             val_z = pos_start[Z_AXIS];
             val_c = pos_start[DEFAULT_SWAP_C];
 
@@ -892,6 +922,8 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
             // snprintf(g76_line, sizeof(g76_line), "G0G91X%.3fZ%.3fC%.2f", 0.0f, 0.0f, -(dirMultiplier * g76_params->start_count * rev_offset));
             val_f = feed_out;
             val_x = 0;
+            if (is_diameter_mode)
+                val_x *= 2;
             val_z = 0;
             val_c = -360.0f;
 
@@ -925,10 +957,6 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
 
     if (is_inches) {
         gc_state->modal.units = Units::Inches;
-    }
-
-    if (is_diameter_mode) {
-        gc_state->modal.d_r_mode = LatheDRMode::Diameter;
     }
 
     gc_state->Rownd_thread = false;
