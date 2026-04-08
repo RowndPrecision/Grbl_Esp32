@@ -93,10 +93,11 @@ void saveLimitsTaskFunction(void* pvParameters) {
         // Check limit pin state.
         AxisMask pinMask = limits_get_state();
         if (pinMask) {
-            AxisMask is_test  = 0;
-            AxisMask is_limit = 0;
-            char     msg[10]  = "";
-            auto     n_axis   = number_axis->get();
+            AxisMask is_test   = 0;
+            AxisMask is_limit  = 0;
+            char     msg_1[10] = "";
+            char     msg_2[10] = "";
+            auto     n_axis    = number_axis->get();
             for (int axis = 0; axis < n_axis; axis++) {
                 if (bitnum_istrue(pinMask, axis) && isAxisValid(axis)) {
                     if (dirBlock == NULL)
@@ -126,13 +127,21 @@ void saveLimitsTaskFunction(void* pvParameters) {
                 }
             }
             if (is_test) {
-                maskToString(is_test, msg);
-                grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Switch test on axis: %s", msg);
+                maskToString(is_test, msg_1);
+                grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Switch test on axis: %s", msg_1);
                 is_test = 0;
             }
             if (is_limit) {
-                maskToString(is_limit, msg);
-                grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Hard limits: %s", msg);
+                maskToString(limit_axis_move_negative->get(), msg_1);
+                maskToString(limit_axis_move_positive->get(), msg_2);
+                // if (msg_1[0] == '\0') {
+                //     strcpy(msg_1, "-");
+                // }
+                // if (msg_2[0] == '\0') {
+                //     strcpy(msg_2, "-");
+                // }
+                // grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Hard limits | Neg: %i, Pos: %i", limit_axis_move_negative->get(), limit_axis_move_positive->get());
+                grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Hard limits | Neg: %s, Pos: %s", msg_1, msg_2);
                 is_limit = 0;
             }
         } else {
