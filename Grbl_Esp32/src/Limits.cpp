@@ -737,6 +737,11 @@ ExecAlarm __attribute__((weak)) limitsCheckDirection(float* target) {
                 if (rownd_verbose_enable->get()) {
                     grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Negative Direction Block: axis %c, temp: %f", "XYZABC"[idx], temp);
                 }
+                char msg_1[10] = "";
+                char msg_2[10] = "";
+                maskToString(limit_axis_move_negative->get(), msg_1);
+                maskToString(limit_axis_move_positive->get(), msg_2);
+                grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Hard limits | Neg: %s, Pos: %s", msg_1, msg_2);
                 return ExecAlarm::DirectionBlock;
             }
             // If the movement is in the positive direction and exceeds the limit, remove the lock
@@ -748,6 +753,11 @@ ExecAlarm __attribute__((weak)) limitsCheckDirection(float* target) {
             }
             // If the movement is in the positive direction but does not exceed the limit, return alarm 12
             else {
+                char msg_1[10] = "";
+                char msg_2[10] = "";
+                maskToString(limit_axis_move_negative->get(), msg_1);
+                maskToString(limit_axis_move_positive->get(), msg_2);
+                grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Hard limits | Neg: %s, Pos: %s", msg_1, msg_2);
                 return ExecAlarm::EscapeTooShort;
             }
         }
