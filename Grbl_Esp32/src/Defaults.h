@@ -704,10 +704,6 @@
 #    define DEFAULT_USER_MACRO2 ""
 #endif
 
-#ifndef DEFAULT_USER_MACRO3
-#    define DEFAULT_USER_MACRO3 ""
-#endif
-
 // ================ TOOL CHANGER ==============================
 
 #ifndef DEFAULT_ATC_SPEED

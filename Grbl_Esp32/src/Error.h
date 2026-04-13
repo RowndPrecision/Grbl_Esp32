@@ -44,6 +44,7 @@ enum class Error : uint8_t {
     InvalidJogCommand           = 16,
     SettingDisabledLaser        = 17,
     HomingNoCycles              = 18,
+    EmergencyStop               = 19,
     GcodeUnsupportedCommand     = 20,
     GcodeModalGroupViolation    = 21,
     GcodeUndefinedFeedRate      = 22,

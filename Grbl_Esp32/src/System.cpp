@@ -82,10 +82,10 @@ void system_ini() {  // Renamed from system_init() due to conflict with esp32 fi
     pinMode(MACRO_BUTTON_2_PIN, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(MACRO_BUTTON_2_PIN), isr_control_inputs, CHANGE);
 #endif
-#ifdef MACRO_BUTTON_3_PIN
-    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Macro Pin 3 %s", pinName(MACRO_BUTTON_3_PIN).c_str());
-    pinMode(MACRO_BUTTON_3_PIN, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(MACRO_BUTTON_3_PIN), isr_control_inputs, CHANGE);
+#ifdef CONTROL_ESTOP_PIN
+    grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "E-Stop on pin %s", pinName(CONTROL_ESTOP_PIN).c_str());
+    pinMode(CONTROL_ESTOP_PIN, INPUT_PULLUP);
+    attachInterrupt(digitalPinToInterrupt(CONTROL_ESTOP_PIN), isr_control_inputs, CHANGE);
 #endif
 #ifdef ENABLE_CONTROL_SW_DEBOUNCE
     // setup task used for debouncing
@@ -148,6 +148,15 @@ void IRAM_ATTR isr_control_inputs() {
 #else
     ControlPins pins = system_control_get_state();
     system_exec_control_pin(pins);
+#endif
+}
+
+// Returns if emergency stop is pressed(T) or released(F), based on pin state.
+uint8_t system_check_emergency_stop_pressed() {
+#ifdef ENABLE_ESTOP_INPUT_PIN
+    return system_control_get_state().bit.eStop;
+#else
+    return false;  // Input pin not enabled, so just return that it's closed.
 #endif
 }
 
@@ -225,6 +234,12 @@ ControlPins system_control_get_state() {
         pin_states.bit.cycleStart = true;
     }
 #endif
+#ifdef CONTROL_ESTOP_PIN
+    defined_pins.bit.eStop = true;
+    if (digitalRead(CONTROL_ESTOP_PIN)) {
+        pin_states.bit.eStop = true;
+    }
+#endif
 #ifdef MACRO_BUTTON_0_PIN
     defined_pins.bit.macro0 = true;
     if (digitalRead(MACRO_BUTTON_0_PIN)) {
@@ -243,12 +258,6 @@ ControlPins system_control_get_state() {
         pin_states.bit.macro2 = true;
     }
 #endif
-#ifdef MACRO_BUTTON_3_PIN
-    defined_pins.bit.macro3 = true;
-    if (digitalRead(MACRO_BUTTON_3_PIN)) {
-        pin_states.bit.macro3 = true;
-    }
-#endif
 #ifdef INVERT_CONTROL_PIN_MASK
     pin_states.value ^= (INVERT_CONTROL_PIN_MASK & defined_pins.value);
 #endif
@@ -257,6 +266,9 @@ ControlPins system_control_get_state() {
 
 // execute the function of the control pin
 void system_exec_control_pin(ControlPins pins) {
+    if (pins.value != 0 && rownd_verbose_enable->get()) {
+        grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Debug, "Control pin triggered: %02X", pins.value);
+    }
     if (pins.bit.reset) {
         grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Reset via control pin");
         mc_reset();
@@ -265,15 +277,21 @@ void system_exec_control_pin(ControlPins pins) {
     } else if (pins.bit.feedHold) {
         sys_rt_exec_state.bit.feedHold = true;
     } else if (pins.bit.safetyDoor) {
+        if (rownd_verbose_enable->get()) {
+            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Safety door triggered: %02X", pins.value);
+        }
         sys_rt_exec_state.bit.safetyDoor = true;
-        // } else if (pins.bit.macro0) {
-        //     user_defined_macro(0);  // function must be implemented by user //CHG remove
-        // } else if (pins.bit.macro1) {
-        //     user_defined_macro(1);  // function must be implemented by user
-        // } else if (pins.bit.macro2) {
-        //     user_defined_macro(2);  // function must be implemented by user
-        // } else if (pins.bit.macro3) {
-        //     user_defined_macro(3);  // function must be implemented by user
+    } else if (pins.bit.eStop) {
+        if (rownd_verbose_enable->get()) {
+            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Emergency stop triggered: %02X", pins.value);
+        }
+        mc_emgs();
+    } else if (pins.bit.macro0) {
+        user_defined_macro(0);  // function must be implemented by user
+    } else if (pins.bit.macro1) {
+        user_defined_macro(1);  // function must be implemented by user
+    } else if (pins.bit.macro2) {
+        user_defined_macro(2);  // function must be implemented by user
     }
 }
 
@@ -355,9 +373,6 @@ void __attribute__((weak)) user_defined_macro(uint8_t index) {
             break;
         case 2:
             user_macro = user_macro2->get();
-            break;
-        case 3:
-            user_macro = user_macro3->get();
             break;
         default:
             return;

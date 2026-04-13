@@ -189,7 +189,7 @@ bool cartesian_to_motors(float* target, plan_line_data_t* pl_data, float* positi
 
                 for (uint16_t i = 0; i < segments; i++) {
                     temp = limitsCheckDirection(target);
-                    if (temp != ExecAlarm::None) {
+                    if (temp != ExecAlarm::None || sys.state == State::EmergencyStop) {
                         return false;
                     }
 

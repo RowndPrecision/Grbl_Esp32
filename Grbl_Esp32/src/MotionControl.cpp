@@ -534,7 +534,9 @@ void mc_reset() {
         // the steppers enabled by avoiding the go_idle call altogether, unless the motion state is
         // violated, by which, all bets are off.
         if ((sys.state == State::Cycle || sys.state == State::Homing || sys.state == State::Jog) || (sys.step_control.executeHold || sys.step_control.executeSysMotion || sys_rt_exec_alarm == ExecAlarm::HardLimit)) {
-            if (sys.state == State::Homing) {
+            if (sys_rt_exec_state.bit.emergencyStop) {
+                sys_rt_exec_alarm = ExecAlarm::EmergencyStop;
+            } else if (sys.state == State::Homing) {
                 if (sys_rt_exec_alarm == ExecAlarm::None) {
                     sys_rt_exec_alarm = ExecAlarm::HomingFailReset;
                 }
@@ -552,4 +554,11 @@ void mc_reset() {
         }
 #endif
     }
+}
+
+void mc_emgs() {
+    sys_rt_exec_state.bit.reset         = false;
+    sys_rt_exec_state.bit.emergencyStop = true;
+    mc_reset();
+    sys_rt_exec_state.bit.emergencyStop = true;
 }

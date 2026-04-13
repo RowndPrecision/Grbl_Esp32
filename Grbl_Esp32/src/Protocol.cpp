@@ -87,6 +87,10 @@ Error execute_line(char* line, uint8_t client, WebUI::AuthenticationLevel auth_l
     if (sys.state == State::Alarm || sys.state == State::Jog) {
         return Error::SystemGcLock;
     }
+    // Everything else is gcode. Block if in E-stop mode.
+    if (sys.state == State::EmergencyStop) {
+        return Error::EmergencyStop;
+    }
     return gc_execute_line(line, client);
 }
 
@@ -114,18 +118,32 @@ void protocol_main_loop() {
         }
     }
 #endif
+
+#ifdef CONTROL_ESTOP_PIN
+    if (system_check_emergency_stop_pressed()) {
+        sys.state = State::EmergencyStop;  // Ensure E-stop state is active.
+    }
+#endif
+
     // Check for and report alarm state after a reset, error, or an initial power up.
     // NOTE: Sleep mode disables the stepper drivers and position can't be guaranteed.
     // Re-initialize the sleep state as an ALARM mode to ensure user homes or acknowledges.
     if (sys.state == State::Alarm || sys.state == State::Sleep) {
         report_feedback_message(Message::AlarmLock);
         sys.state = State::Alarm;  // Ensure alarm state is set.
+    } else if (sys.state == State::EmergencyStop && system_check_emergency_stop_pressed()) {
+        report_feedback_message(Message::EmergencyStop);
+        sys.state = State::EmergencyStop;  // Ensure E-stop state is set.
     } else {
         // Check if the safety door is open.
         sys.state = State::Idle;
         if (system_check_safety_door_ajar()) {
             sys_rt_exec_state.bit.safetyDoor = true;
             protocol_execute_realtime();  // Enter safety door mode. Should return as IDLE state.
+        }
+        if (system_check_emergency_stop_pressed()) {
+            sys_rt_exec_state.bit.emergencyStop = true;
+            protocol_execute_realtime();  // Enter emergency stop mode.
         }
         // All systems go!
         system_execute_startup(line);  // Execute startup script.
@@ -256,7 +274,7 @@ void protocol_exec_rt_system() {
         sys.state = State::Alarm;  // Set system alarm state
         report_alarm_message(alarm);
         // Halt everything upon a critical event flag. Currently hard and soft limits flag this.
-        if ((alarm == ExecAlarm::HardLimit) || (alarm == ExecAlarm::SoftLimit) || (alarm == ExecAlarm::DirectionBlock) || (alarm == ExecAlarm::EscapeTooShort) || (alarm == ExecAlarm::EmergencyStop)) {
+        if ((alarm == ExecAlarm::HardLimit) || (alarm == ExecAlarm::SoftLimit) || (alarm == ExecAlarm::DirectionBlock) || (alarm == ExecAlarm::EscapeTooShort)) {
             report_feedback_message(Message::CriticalEvent);
             sys_rt_exec_state.bit.reset = false;  // Disable any existing reset
             do {
@@ -269,9 +287,19 @@ void protocol_exec_rt_system() {
         }
         sys_rt_exec_alarm = ExecAlarm::None;
     }
+
+    if (system_check_emergency_stop_pressed() && sys.state != State::EmergencyStop) {
+        sys_rt_exec_state.bit.emergencyStop = true;
+        mc_emgs();
+    }
+
     ExecState rt_exec_state;
     rt_exec_state.value = sys_rt_exec_state.value;  // Copy volatile sys_rt_exec_state.
-    if (rt_exec_state.value != 0 || cycle_stop) {   // Test if any bits are on
+    if (rt_exec_state.bit.emergencyStop) {
+        sys.state = State::EmergencyStop;  // Set system E-stop state
+    }
+
+    if (rt_exec_state.value != 0 || cycle_stop) {  // Test if any bits are on
         // Execute system abort.
         if (rt_exec_state.bit.reset) {
             sys.abort = true;  // Only place this is set true.
@@ -286,7 +314,7 @@ void protocol_exec_rt_system() {
         // main program processes until either reset or resumed. This ensures a hold completes safely.
         if (rt_exec_state.bit.motionCancel || rt_exec_state.bit.feedHold || rt_exec_state.bit.safetyDoor || rt_exec_state.bit.sleep) {
             // State check for allowable states for hold methods.
-            if (!(sys.state == State::Alarm || sys.state == State::CheckMode)) {
+            if (!(sys.state == State::Alarm || sys.state == State::CheckMode || sys.state == State::EmergencyStop)) {
                 // If in CYCLE or JOG states, immediately initiate a motion HOLD.
                 if (sys.state == State::Cycle || sys.state == State::Jog) {
                     if (!(sys.suspend.bit.motionCancel || sys.suspend.bit.jogCancel)) {  // Block, if already holding.

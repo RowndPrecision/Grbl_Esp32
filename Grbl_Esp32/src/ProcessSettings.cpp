@@ -211,6 +211,9 @@ Error disable_alarm_lock(const char* value, WebUI::AuthenticationLevel auth_leve
         if (system_check_safety_door_ajar()) {
             return Error::CheckDoor;
         }
+        if (system_check_emergency_stop_pressed()) {
+            return Error::EmergencyStop;
+        }
         report_feedback_message(Message::AlarmUnlock);
         sys.state = State::Idle;
         // Don't run startup script. Prevents stored moves in startup from causing accidents.
@@ -227,6 +230,9 @@ Error home(int cycle) {
     }
     if (system_check_safety_door_ajar()) {
         return Error::CheckDoor;  // Block if safety door is ajar.
+    }
+    if (system_check_emergency_stop_pressed()) {
+        return Error::EmergencyStop;  // Block if emergency stop is pressed.
     }
     State prev_state = sys.state;
     sys.state        = State::Homing;  // Set system state variable

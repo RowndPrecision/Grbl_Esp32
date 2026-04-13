@@ -42,15 +42,7 @@ bool mc_line(float* target, plan_line_data_t* pl_data);  // returns true if line
 // offset == offset from current xyz, axis_XXX defines circle plane in tool space, axis_linear is
 // the direction of helical travel, radius == circle radius, is_clockwise_arc boolean. Used
 // for vector transformation direction.
-void mc_arc(float*            target,
-            plan_line_data_t* pl_data,
-            float*            position,
-            float*            offset,
-            float             radius,
-            uint8_t           axis_0,
-            uint8_t           axis_1,
-            uint8_t           axis_linear,
-            uint8_t           is_clockwise_arc);
+void mc_arc(float* target, plan_line_data_t* pl_data, float* position, float* offset, float radius, uint8_t axis_0, uint8_t axis_1, uint8_t axis_linear, uint8_t is_clockwise_arc);
 
 // Dwell for a specific number of seconds
 bool mc_dwell(int32_t milliseconds);
@@ -69,6 +61,8 @@ void mc_parking_motion(float* parking_target, plan_line_data_t* pl_data);
 
 // Performs system reset. If in motion state, kills all motion and sets system alarm.
 void mc_reset();
+
+void mc_emgs();  // Emergency stop. Kills all motion and sets system alarm.
 
 enum class SquaringMode : uint8_t {
     Dual,  // both motors run

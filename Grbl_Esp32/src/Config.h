@@ -52,9 +52,9 @@ Some features should not be changed. See notes below.
 // Inverts pin logic of the control command pins based on a mask. This essentially means you can use
 // normally-closed switches on the specified pins, rather than the default normally-open switches.
 // The mask order is ...
-// Macro3 | Macro2 | Macro 1| Macr0 |Cycle Start | Feed Hold | Reset | Safety Door
+// E-Stop | Macro2 | Macro1 | Macro0 | Cycle Start | Feed Hold | Reset | Safety Door
 // For example B1101 will invert the function of the Reset pin.
-#define INVERT_CONTROL_PIN_MASK B00001110
+#define INVERT_CONTROL_PIN_MASK B10001110
 
 // #define ENABLE_CONTROL_SW_DEBOUNCE     // Default disabled. Uncomment to enable.
 #define CONTROL_SW_DEBOUNCE_PERIOD 32  // in milliseconds default 32 microseconds
@@ -273,6 +273,10 @@ static const uint8_t NHomingLocateCycle = 1;  // Integer (1-128)
 // the safety door is re-engaged. When it is, Grbl will re-energize the machine and then resume on the
 // previous tool path, as if nothing happened.
 #define ENABLE_SAFETY_DOOR_INPUT_PIN  // ESP32 Leave this enabled for now .. code for undefined not ready
+
+// Similar to the safety door, this option causes the E-Stop input to act as an emergency stop switch.
+// When triggered, it immediately forces a reset on the machine.
+#define ENABLE_ESTOP_INPUT_PIN  // ESP32 Leave this enabled for now .. code for undefined not ready
 
 // Inverts select limit pin states based on the following mask. This effects all limit pin functions,
 // such as hard limits and homing. However, this is different from overall invert limits setting.

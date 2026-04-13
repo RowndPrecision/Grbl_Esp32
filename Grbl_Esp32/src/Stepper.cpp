@@ -284,7 +284,7 @@ static void stepper_pulse_func() {
                 st.steps[axis] = st.exec_block->steps[axis] >> st.exec_segment->amass_level;
             }
             // Set real-time spindle output as segment is loaded, just prior to the first step.
-            if (sys_rt_exec_alarm == ExecAlarm::None) {
+            if (sys_rt_exec_alarm == ExecAlarm::None && sys.state != State::EmergencyStop) {
                 spindle->set_rpm(st.exec_segment->spindle_rpm);
             }
         } else {
@@ -440,11 +440,11 @@ void st_go_idle() {
     Stepper_Timer_Stop();
 
     // Set stepper driver idle state, disabled or enabled, depending on settings and circumstances.
-    if (((stepper_idle_lock_time->get() != 0xff) || sys_rt_exec_alarm != ExecAlarm::None || sys.state == State::Sleep) && sys.state != State::Homing) {
+    if (((stepper_idle_lock_time->get() != 0xff || sys_rt_exec_alarm != ExecAlarm::None || sys.state == State::Sleep) && sys.state != State::Homing) || sys.state == State::EmergencyStop) {
         // Force stepper dwell to lock axes for a defined amount of time to ensure the axes come to a complete
         // stop and not drift from residual inertial forces at the end of the last movement.
 
-        if (sys.state == State::Sleep || sys_rt_exec_alarm != ExecAlarm::None) {
+        if (sys.state == State::Sleep || sys_rt_exec_alarm != ExecAlarm::None || sys.state == State::EmergencyStop) {
             motors_set_disable(true);
         } else {
             stepper_idle         = true;                                                           // esp32 work around for disable in main loop

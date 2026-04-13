@@ -315,7 +315,7 @@ void limits_go_home(uint8_t cycle_mask) {
             }
             st_prep_buffer();  // Check and prep segment buffer. NOTE: Should take no longer than 200us.
             // Exit routines: No time to run protocol_execute_realtime() in this loop.
-            if (sys_rt_exec_state.bit.safetyDoor || sys_rt_exec_state.bit.reset || cycle_stop) {
+            if (sys_rt_exec_state.bit.safetyDoor || sys_rt_exec_state.bit.reset || sys_rt_exec_state.bit.emergencyStop || cycle_stop) {
                 ExecState rt_exec_state;
                 rt_exec_state.value = sys_rt_exec_state.value;
                 // Homing failure condition: Reset issued during cycle.
@@ -325,6 +325,10 @@ void limits_go_home(uint8_t cycle_mask) {
                 // Homing failure condition: Safety door was opened.
                 if (rt_exec_state.bit.safetyDoor) {
                     sys_rt_exec_alarm = ExecAlarm::HomingFailDoor;
+                }
+                // Homing failure condition: Emergency stop was pressed.
+                if (rt_exec_state.bit.emergencyStop) {
+                    sys_rt_exec_alarm = ExecAlarm::EmergencyStop;
                 }
                 // Homing failure condition: Limit switch still engaged after pull-off motion
                 if (!approach && (limits_get_state() & cycle_mask)) {
@@ -341,7 +345,7 @@ void limits_go_home(uint8_t cycle_mask) {
                     }
                 }
 
-                if (sys_rt_exec_alarm != ExecAlarm::None) {
+                if (sys_rt_exec_alarm != ExecAlarm::None || sys.state == State::EmergencyStop) {
                     motors_set_homing_mode(cycle_mask, false);  // tell motors homing is done...failed
                     grbl_msg_sendf(CLIENT_ALL, MsgLevel::Debug, "Homing fail");
                     mc_reset();  // Stop motors, if they are running.

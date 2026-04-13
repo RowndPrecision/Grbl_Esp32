@@ -301,6 +301,7 @@ std::map<Message, const char*> MessageText = {
     { Message::RestoreDefaults, "Restoring defaults" },
     { Message::SpindleRestore, "Restoring spindle" },
     { Message::SleepMode, "Sleeping" },
+    { Message::EmergencyStop, "Emergency Stop Activated" },
     // Handled separately due to numeric argument
     // { Message::SdFileQuit, "Reset during SD file at line: %d" },
 };
@@ -862,8 +863,8 @@ void report_realtime_status(uint8_t client) {
             if (ctrl_pin_state.bit.macro2) {
                 strcat(status, "2");
             }
-            if (ctrl_pin_state.bit.macro3) {
-                strcat(status, "3");
+            if (ctrl_pin_state.bit.eStop) {
+                strcat(status, "E");
             }
         }
     }
@@ -878,6 +879,7 @@ void report_realtime_status(uint8_t client) {
             case State::Hold:
             case State::Jog:
             case State::SafetyDoor:
+            case State::EmergencyStop:
                 sys.report_wco_counter = (REPORT_WCO_REFRESH_BUSY_COUNT - 1);  // Reset counter for slow refresh
             default:
                 sys.report_wco_counter = (REPORT_WCO_REFRESH_IDLE_COUNT - 1);
@@ -901,6 +903,7 @@ void report_realtime_status(uint8_t client) {
             case State::Hold:
             case State::Jog:
             case State::SafetyDoor:
+            case State::EmergencyStop:
                 sys.report_ovr_counter = (REPORT_OVR_REFRESH_BUSY_COUNT - 1);  // Reset counter for slow refresh
             default:
                 sys.report_ovr_counter = (REPORT_OVR_REFRESH_IDLE_COUNT - 1);
@@ -1049,6 +1052,10 @@ char* report_state_text() {
                     strcat(state, "2");  // Retracting
                 }
             }
+            break;
+        case State::EmergencyStop:
+            strcpy(state, "E-Stop");
+            system_check_emergency_stop_pressed() ? strcat(state, ":1") : strcat(state, ":0");
             break;
         case State::Sleep:
             strcpy(state, "Sleep");

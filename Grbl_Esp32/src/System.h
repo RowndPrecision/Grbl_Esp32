@@ -27,15 +27,16 @@
 // of Grbl to manage each without overlapping. It is also used as a messaging flag for
 // critical events.
 enum class State : uint8_t {
-    Idle = 0,    // Must be zero.
-    Alarm,       // In alarm state. Locks out all g-code processes. Allows settings access.
-    CheckMode,   // G-code check mode. Locks out planner and motion only.
-    Homing,      // Performing homing cycle
-    Cycle,       // Cycle is running or motions are being executed.
-    Hold,        // Active feed hold
-    Jog,         // Jogging mode.
-    SafetyDoor,  // Safety door is ajar. Feed holds and de-energizes system.
-    Sleep,       // Sleep state.
+    Idle = 0,      // Must be zero.
+    Alarm,         // In alarm state. Locks out all g-code processes. Allows settings access.
+    CheckMode,     // G-code check mode. Locks out planner and motion only.
+    Homing,        // Performing homing cycle
+    Cycle,         // Cycle is running or motions are being executed.
+    Hold,          // Active feed hold
+    Jog,           // Jogging mode.
+    SafetyDoor,    // Safety door is ajar. Feed holds and de-energizes system.
+    Sleep,         // Sleep state.
+    EmergencyStop  // Emergency stop has been triggered. Locks out all g-code processes.
 };
 
 // Step segment generator state flags.
@@ -119,7 +120,7 @@ struct ControlPinBits {
     uint8_t macro0 : 1;
     uint8_t macro1 : 1;
     uint8_t macro2 : 1;
-    uint8_t macro3 : 1;
+    uint8_t eStop : 1;
 };
 union ControlPins {
     uint8_t        value;
@@ -130,15 +131,15 @@ union ControlPins {
 extern int32_t sys_position[MAX_N_AXIS];        // Real-time machine (aka home) position vector in steps.
 extern int32_t sys_probe_position[MAX_N_AXIS];  // Last probe position in machine coordinates and steps.
 
-extern volatile Probe         sys_probe_state;    // Probing state value.  Used to coordinate the probing cycle with stepper ISR.
-extern volatile ExecState     sys_rt_exec_state;  // Global realtime executor bitflag variable for state management. See EXEC bitmasks.
-extern volatile ExecAlarm     sys_rt_exec_alarm;  // Global realtime executor bitflag variable for setting various alarms.
+extern volatile Probe         sys_probe_state;                 // Probing state value.  Used to coordinate the probing cycle with stepper ISR.
+extern volatile ExecState     sys_rt_exec_state;               // Global realtime executor bitflag variable for state management. See EXEC bitmasks.
+extern volatile ExecAlarm     sys_rt_exec_alarm;               // Global realtime executor bitflag variable for setting various alarms.
 extern volatile ExecAccessory sys_rt_exec_accessory_override;  // Global realtime executor bitflag variable for spindle/coolant overrides.
 extern volatile Percent       sys_rt_f_override;               // Feed override value in percent
 extern volatile Percent       sys_rt_r_override;               // Rapid feed override value in percent
 extern volatile Percent       sys_rt_s_override;               // Spindle override value in percent
-extern volatile bool          cycle_stop;
-extern volatile void* sys_pl_data_inflight;  // holds a plan_line_data_t while cartesian_to_motors has taken ownership of a line motion
+extern volatile bool          cycle_stop;                      // For state transitions, instead of bitflag
+extern volatile void*         sys_pl_data_inflight;            // holds a plan_line_data_t while cartesian_to_motors has taken ownership of a line motion
 #ifdef DEBUG
 extern volatile bool sys_rt_exec_debug;
 #endif
@@ -147,6 +148,9 @@ void system_ini();  // Renamed from system_init() due to conflict with esp32 fil
 
 // Returns bitfield of control pin states, organized by CONTROL_PIN_INDEX. (1=triggered, 0=not triggered).
 ControlPins system_control_get_state();
+
+// Returns if safety door is ajar(T) or closed(F), based on pin state.
+uint8_t system_check_emergency_stop_pressed();
 
 // Returns if safety door is ajar(T) or closed(F), based on pin state.
 uint8_t system_check_safety_door_ajar();

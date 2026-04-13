@@ -55,7 +55,8 @@
 #define X_LIMIT_PIN                 GPIO_NUM_36
 #define Z_LIMIT_PIN                 GPIO_NUM_39
 #define A_LIMIT_PIN                 GPIO_NUM_18
-#define PROBE_PIN                   GPIO_NUM_34
+// #define PROBE_PIN                   GPIO_NUM_34
+#define CONTROL_ESTOP_PIN           GPIO_NUM_34
 #define CONTROL_SAFETY_DOOR_PIN     GPIO_NUM_35
 
 #define DEFAULT_HOMING_CYCLE_0  bit(X_AXIS)
