@@ -270,7 +270,7 @@ void execute_realtime_command(Cmd command, uint8_t client) {
             }
             break;
         case Cmd::EmergencyStop:
-            sys_rt_exec_alarm = ExecAlarm::EmergencyStop;
+            // sys_rt_exec_alarm = ExecAlarm::EmergencyStop;
             break;
         case Cmd::DebugReport:
 #ifdef DEBUG
