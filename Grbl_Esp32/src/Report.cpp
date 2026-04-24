@@ -1128,3 +1128,11 @@ float* get_wco() {
     }
     return wco;
 }
+
+void report_limit_state() {
+    char msg_1[10] = "";
+    char msg_2[10] = "";
+    maskToString(limit_axis_move_negative->get(), msg_1);
+    maskToString(limit_axis_move_positive->get(), msg_2);
+    grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Hard limits | Neg: %s, Pos: %s", msg_1, msg_2);
+}

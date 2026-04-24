@@ -133,3 +133,6 @@ void reportTaskStackSize(UBaseType_t& saved);
 char*  report_state_text();
 float* get_wco();
 void   mpos_to_wpos(float* position);
+
+// Prints the current state of the hard limits.
+void report_limit_state();
