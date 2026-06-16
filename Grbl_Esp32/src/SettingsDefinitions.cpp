@@ -43,6 +43,8 @@ FloatSetting* css_segment_tolerance;
 
 FlagSetting* rownd_param_lathe_diameter_mode_to_default;
 
+FlagSetting* rownd_param_allow_feed_override_during_jog_operations;
+
 #ifdef DEFAULT_ROWND_TCP
 FlagSetting* tcp_active;
 #endif
@@ -541,6 +543,8 @@ void make_settings() {
     css_segment_tolerance = new FloatSetting(GRBL, WG, "75", "GCode/CSS_Tolerance", DEFAULT_CSS_SEGMENT_TOLERANCE, 0.01, 10);
 
     rownd_param_lathe_diameter_mode_to_default = new FlagSetting(EXTENDED, WG, "73", "RowndLatheDiameterModeToDefault", DEFAULT_ROWND_LATHE_DIAMETER_MODE_TO_DEFAULT, NULL);
+
+    rownd_param_allow_feed_override_during_jog_operations = new FlagSetting(EXTENDED, WG, "71", "Jog/AllowFeedOverride", DEFAULT_ROWND_ALLOW_FEED_OVERRIDE_DURING_JOG_OPERATIONS, NULL);
 
     // Tool settings
 

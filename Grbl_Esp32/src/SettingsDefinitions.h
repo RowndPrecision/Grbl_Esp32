@@ -47,6 +47,7 @@ extern FlagSetting* led_state;
 extern FlagSetting* led_inverse;
 
 extern FlagSetting* rownd_param_lathe_diameter_mode_to_default;
+extern FlagSetting* rownd_param_allow_feed_override_during_jog_operations;
 
 #ifdef DEFAULT_ROWND_TCP
 extern FlagSetting* tcp_active;
