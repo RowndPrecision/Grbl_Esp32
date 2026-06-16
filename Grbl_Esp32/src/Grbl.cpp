@@ -47,7 +47,13 @@ void grbl_init() {
     memset(sys_position, 0, sizeof(sys_position));  // Clear machine position.
     machine_init();                                 // weak definition in Grbl.cpp does nothing
 
-    led_state->setBoolValue(true);
+    const char* src_ls = led_state->getDefaultString();
+
+    char* default_led_state = new char[strlen(src_ls) + 1];
+    strcpy(default_led_state, src_ls);
+
+    led_state->setStringValue(default_led_state);  // Set the LED to the default state with sanity checker.
+    // led_state->setDefault(); // Does not care if the LED is active high or low, it will set it to the default state on startup.
 
     if (rownd_verbose_enable->get())
         grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Led test");

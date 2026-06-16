@@ -110,6 +110,8 @@ public:
     static Setting*   List;
     Setting*          next() { return link; }
 
+    bool _anystate = false;  // If true, the setting can be changed in any state.  If false, it can only be changed in idle or alarm states.
+
     Error _checkError = Error::Ok;  // DO NOT use unless you are absolutely certain of its purpose and implications.
 
     Error check(char* s);

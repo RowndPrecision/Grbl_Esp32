@@ -392,6 +392,8 @@ static bool checkLedChange(char* value) {
 static void led_init() {
     pinMode(LED_PIN, OUTPUT);
     led_state->setBoolValue(false);
+    led_state->_anystate   = true;
+    led_inverse->_anystate = true;
     checkLedChange();
 }
 
