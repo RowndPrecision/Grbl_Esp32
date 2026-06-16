@@ -184,8 +184,7 @@ void limits_go_home(uint8_t cycle_mask) {
         grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Homing cycle count: %i", cycle_count);
     }
 
-    bool         is_ErrorDebugSent = false;
-    static float temp_target[MAX_N_AXIS];
+    bool is_ErrorDebugSent = false;
 
     // Initialize plan data struct for homing motion. Spindle and coolant are disabled.
 
@@ -269,10 +268,6 @@ void limits_go_home(uint8_t cycle_mask) {
                 axislock |= step_pin[idx];
             }
         }
-
-        memcpy(temp_target, target, n_axis * sizeof(float));
-        limitsCheckDirection(temp_target);
-        memcpy(target, temp_target, n_axis * sizeof(float));
 
         homing_rate *= sqrt(n_active_axis);  // [sqrt(number of active axis)] Adjust so individual axes all move at homing rate.
         sys.homing_axis_lock = axislock;
@@ -427,6 +422,15 @@ void limits_go_home(uint8_t cycle_mask) {
                 if (rownd_verbose_enable->get()) {
                     grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "tool set to sel: %i (%s), act: %i (%s)", tool_selected->get(), errorString(err1), tool_active->get(), errorString(err2));
                 }
+            }
+
+            if (bit_istrue(limit_axis_move_negative->get(), bit(idx))) {
+                limit_axis_move_negative->setAxis(idx, false);
+                limit_axis_move_negative->saveValue();
+            }
+            if (bit_istrue(limit_axis_move_positive->get(), bit(idx))) {
+                limit_axis_move_positive->setAxis(idx, false);
+                limit_axis_move_positive->saveValue();
             }
         }
     }
