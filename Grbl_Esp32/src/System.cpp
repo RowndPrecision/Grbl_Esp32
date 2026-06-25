@@ -38,6 +38,46 @@ volatile Percent sys_rt_f_override;  // Global realtime executor feedrate overri
 volatile Percent sys_rt_r_override;  // Global realtime executor rapid override percentage
 volatile Percent sys_rt_s_override;  // Global realtime executor spindle override percentage
 
+/*
+Set to true when the system is ready to perform GPIO operations.
+
+This flag is set after system_ini() has completed. It is currently
+used as a workaround for an emergency-stop initialization bug found
+in v4.2.0 that appears to have existed since v4.1.11.
+
+The root cause is not fully understood, but it was determined that
+Coordinates::set() and ToolTable_t::set_tool_active() could be
+called before system_ini() had finished. Under normal operation,
+these functions are only reachable through specific G-code commands,
+which should not execute until initialization is complete.
+
+Both functions attempt to synchronize the planner, which can cause
+the system to enter the main loop prematurely. One of the first
+checks performed in the main loop is
+system_check_emergency_stop_pressed(), which reads the emergency-stop
+input pin. At this point the system has not yet been initialized,
+so the GPIO pins may still be floating and return random values.
+
+This can cause the emergency-stop state to be read incorrectly,
+resulting in a call to mc_reset(). During the reset sequence, the
+firmware attempts to disable all known outputs. This operation is
+normally safe, but because initialization has not completed, some
+output pointers may still be null.
+
+In certain situations, such as flashing an empty controller for the
+first time, this can result in an ESP Guru Meditation error. Systems
+upgraded from versions prior to v4.1.11 may not exhibit the problem
+because the older firmware initializes the relevant pointer values
+before the newer emergency-stop logic is executed.
+
+The workaround is to keep sys_is_ready false until system_ini()
+completes. system_check_emergency_stop_pressed() must check this
+flag before reading the emergency-stop input. If the flag is false,
+the function should simply return false (emergency stop not
+pressed), allowing initialization to complete normally.
+*/
+bool sys_is_ready = false;
+
 UserOutput::AnalogOutput*  myAnalogOutputs[MaxUserDigitalPin];
 UserOutput::DigitalOutput* myDigitalOutputs[MaxUserDigitalPin];
 
@@ -114,6 +154,8 @@ void system_ini() {  // Renamed from system_init() due to conflict with esp32 fi
     myAnalogOutputs[1] = new UserOutput::AnalogOutput(1, USER_ANALOG_PIN_1, USER_ANALOG_PIN_1_FREQ);
     myAnalogOutputs[2] = new UserOutput::AnalogOutput(2, USER_ANALOG_PIN_2, USER_ANALOG_PIN_2_FREQ);
     myAnalogOutputs[3] = new UserOutput::AnalogOutput(3, USER_ANALOG_PIN_3, USER_ANALOG_PIN_3_FREQ);
+
+    sys_is_ready = true;  // set this flag to true after initialization is complete
 }
 
 #ifdef ENABLE_CONTROL_SW_DEBOUNCE
@@ -154,6 +196,9 @@ void IRAM_ATTR isr_control_inputs() {
 // Returns if emergency stop is pressed(T) or released(F), based on pin state.
 uint8_t system_check_emergency_stop_pressed() {
 #ifdef ENABLE_ESTOP_INPUT_PIN
+    if (!sys_is_ready) {
+        return false;  // System not ready, so just return that it's not pressed.
+    }
     return system_control_get_state().bit.eStop;
 #else
     return false;  // Input pin not enabled, so just return that it's closed.
@@ -163,6 +208,9 @@ uint8_t system_check_emergency_stop_pressed() {
 // Returns if safety door is ajar(T) or closed(F), based on pin state.
 uint8_t system_check_safety_door_ajar() {
 #ifdef ENABLE_SAFETY_DOOR_INPUT_PIN
+    if (!sys_is_ready) {
+        return false;  // System not ready, so just return that it's not ajar.
+    }
     return system_control_get_state().bit.safetyDoor;
 #else
     return false;  // Input pin not enabled, so just return that it's closed.
