@@ -151,6 +151,14 @@ Error __attribute__((weak)) rownd_G76(parser_block_t* gc_block, g76_params_t* g7
     return Error::Ok;
 }
 
+Error __attribute__((weak)) rownd_M160() {
+    return Error::Ok;
+}
+
+Error __attribute__((weak)) rownd_M161() {
+    return Error::Ok;
+}
+
 /*
   setup() and loop() in the Arduino .ino implements this control flow:
 

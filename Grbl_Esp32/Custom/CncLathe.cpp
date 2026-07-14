@@ -890,6 +890,71 @@ Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state
 #endif
 }
 
+Error rownd_M160() {
+    char     m160_line[50];
+    Error    oPut             = Error::Ok;
+    protocol_buffer_synchronize();
+
+    #pragma region goto g28
+        snprintf(m160_line, sizeof(m160_line), "G28");
+
+        if (rownd_verbose_enable->get())
+            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "goto G28");
+
+        oPut = execute_line(m160_line, CLIENT_SERIAL, WebUI::AuthenticationLevel::LEVEL_GUEST);
+
+        if (oPut != Error::Ok) {
+            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g28 return/enter error: %i", oPut);
+        }
+    #pragma endregion
+
+    atc_allow_debug->setBoolValue(true);
+    
+    #pragma region Rise ATC
+        snprintf(m160_line, sizeof(m160_line), "G91 G1 A5 F60");
+
+        if (rownd_verbose_enable->get())
+            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Rise ATC");
+
+        oPut = execute_line(m160_line, CLIENT_SERIAL, WebUI::AuthenticationLevel::LEVEL_GUEST);
+
+        if (oPut != Error::Ok) {
+            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "Rise ATC error: %i", oPut);
+        }
+    #pragma endregion
+
+    return oPut;
+}
+
+Error rownd_M161() {
+    char     m161_line[50];
+    Error    oPut             = Error::Ok;
+    protocol_buffer_synchronize();
+
+    #pragma region goto g28
+        snprintf(m161_line, sizeof(m161_line), "G28");
+
+        if (rownd_verbose_enable->get())
+            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "goto G28");
+
+        oPut = execute_line(m161_line, CLIENT_SERIAL, WebUI::AuthenticationLevel::LEVEL_GUEST);
+
+        if (oPut != Error::Ok) {
+            grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Info, "g28 return/enter error: %i", oPut);
+        }
+    #pragma endregion
+
+    #pragma region Rise ATC
+        uint8_t cycle_mask = bit(A_AXIS);
+        mc_homing_cycle(cycle_mask);
+    #pragma endregion
+    
+    atc_allow_debug->setBoolValue(false);
+    protocol_buffer_synchronize();
+
+    return oPut;
+}
+
 /*
   options.  user_defined_macro() is called with the button number to
   perform whatever actions you choose.

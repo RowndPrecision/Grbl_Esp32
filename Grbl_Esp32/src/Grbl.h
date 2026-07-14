@@ -101,6 +101,8 @@ void  user_m30();                                                               
 Error user_tool_change(uint8_t new_tool);                                                       // weak definition in Grbl.cpp
 Error rownd_G33(parser_block_t* gc_block, float* position);                                     // weak definition in Grbl.cpp
 Error rownd_G76(parser_block_t* gc_block, g76_params_t* g76_params, parser_state_t* gc_state);  // weak definition in Grbl.cpp
+Error rownd_M160();                                                                              // weak definition in Grbl.cpp
+Error rownd_M161();                                                                              // weak definition in Grbl.cpp
 
 bool user_defined_homing(uint8_t cycle_mask);  // weak definition in Limits.cpp
 

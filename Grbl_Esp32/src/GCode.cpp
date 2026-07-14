@@ -653,6 +653,14 @@ Error gc_execute_line(char* line, uint8_t client) {
                         gc_block.modal.RowndAction = SpecialActions::LEDON;
                         mg_word_bit                = ModalGroup::MM10;
                         break;
+                    case 160:
+                        gc_block.modal.RowndAction = SpecialActions::PrepareATCClean;
+                        mg_word_bit                = ModalGroup::MM10;
+                        break;
+                    case 161:
+                        gc_block.modal.RowndAction = SpecialActions::FinishATCClean;
+                        mg_word_bit                = ModalGroup::MM10;
+                        break;
                     default:
                         FAIL(Error::GcodeUnsupportedCommand);  // [Unsupported M command]
                 }
@@ -1026,6 +1034,16 @@ Error gc_execute_line(char* line, uint8_t client) {
             case SpecialActions::LEDON:
                 return led_state->setBoolValue(true);
                 break;
+            case SpecialActions::PrepareATCClean: { //M160
+                //gc_state.Rownd_special = false;
+                return rownd_M160();
+                break;
+            }
+            case SpecialActions::FinishATCClean: { //M161
+                return rownd_M161();
+                break;
+            }
+
             case SpecialActions::SpindleSpeedLimit:
                 gc_state.spindle_speed_limit = gc_block.values.s;
                 spindle->sync(gc_state.modal.spindle, (uint32_t)gc_state.spindle_speed);

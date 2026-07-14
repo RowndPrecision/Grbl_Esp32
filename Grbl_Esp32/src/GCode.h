@@ -197,6 +197,8 @@ enum class SpecialActions : uint8_t {
     ConnectATC        = 7,   // M121
     LEDOFF            = 8,   // M150
     LEDON             = 9,   // M151
+    PrepareATCClean   = 10,  // M160
+    FinishATCClean    = 11,  // M161
     SpindleSpeedLimit = 50,  // G50 Rownd specific
 };
 
