@@ -76,7 +76,7 @@ enum class NonModal : uint8_t {
     SpindleSpeedLimit     = 50,   // G50 (Do not alter value)
     AbsoluteOverride      = 53,   // G53 (Do not alter value)
     SetCoordinateOffset   = 92,   // G92 (Do not alter value)
-    ResetCoordinateOffset = 102,  //G92.1 (Do not alter value)
+    ResetCoordinateOffset = 102,  // G92.1 (Do not alter value)
 };
 
 // Modal Group MG1: Motion modes

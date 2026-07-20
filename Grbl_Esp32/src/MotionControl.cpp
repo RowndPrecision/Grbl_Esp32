@@ -510,6 +510,9 @@ void mc_override_ctrl_update(uint8_t override_state) {
 // lost, since there was an abrupt uncontrolled deceleration. Called at an interrupt level by
 // realtime abort command and hard limits. So, keep to a minimum.
 void mc_reset() {
+    if (!sys_is_ready) {
+        return;  // System not ready, so just return.
+    }
     grbl_msg_sendf(CLIENT_SERIAL, MsgLevel::Debug, "mc_reset()");
     // Only this function can set the system reset. Helps prevent multiple kill calls.
     if (!sys_rt_exec_state.bit.reset) {

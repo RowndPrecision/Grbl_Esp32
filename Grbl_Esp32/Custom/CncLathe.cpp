@@ -45,10 +45,13 @@ Error check_atc_move() {
 #endif
 
         if (!skip) {
-            if (curr_mpos[idx] != coords[CoordIndex::G28]->get()[idx]) {
+            if (abs(curr_mpos[idx] - coords[CoordIndex::G28]->get()[idx]) > 0.001) {
+                if (rownd_verbose_enable->get()) {
+                    grbl_msg_sendf(CLIENT_ALL, MsgLevel::Info, "Atc Homing error: Axis %d is not at G28 position %.3f, at %.3f", idx, coords[CoordIndex::G28]->get()[idx], curr_mpos[idx]);
+                }
                 return Error::AtcNeedsG28;
             }
-            if (curr_mpos[idx] != coords[CoordIndex::G28]->get()[idx]) {  // WIP
+            if (abs(curr_mpos[idx] - coords[CoordIndex::G28]->get()[idx]) > 0.001) {
                 return Error::AtcInsufficientRadius;
             }
         }
